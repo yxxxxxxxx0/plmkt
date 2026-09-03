@@ -1,0 +1,35 @@
+# ---------------------------------------------------------------------------
+# Recorded and derived data. This is the important one.
+#
+# data/live/books.jsonl alone is ~43 GB, data/uniform ~13 GB and
+# data/viewer_full ~13 GB. GitHub rejects any single file over 100 MB and
+# warns past a ~5 GB repo, so none of this can be committed. All of it is
+# reproducible from the recorder output; only the small MLB Stats API window
+# file is worth keeping in the repo.
+# ---------------------------------------------------------------------------
+data/*
+!data/game_windows.json
+
+# Analysis OUTPUTS are small and worth versioning -- they are the findings,
+# not bulk data. 4 MB total: the per-event CSV, the figures, and the cached
+# aggregate arrays (which stand in for ~25 minutes of recomputation).
+!data/collapse/
+!data/collapse/**
+
+# Generated viewer page (rebuild with build_viewer_multi.py; it embeds the
+# manifest from data/viewer_full/index.json, so it churns on every rebuild).
+viewer_full.html
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Logs and scratch
+*.log
+
+# Unattended run logs
+logs/

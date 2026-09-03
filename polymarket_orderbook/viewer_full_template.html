@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order Book Replay</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg:#0d1117; --bg-elev:#161b22; --bg-sunk:#010409;
+    --border:#30363d; --border-soft:#21262d;
+    --text:#e6edf3; --text-dim:#9198a1; --text-faint:#6e7681;
+    --bid:#3fb950; --bid-soft:rgba(63,185,80,.16);
+    --ask:#f85149; --ask-soft:rgba(248,81,73,.16);
+    --accent:#58a6ff; --accent-soft:rgba(88,166,255,.15);
+    --warn:#d29922;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --r:10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#ffffff; --bg-elev:#f6f8fa; --bg-sunk:#eef1f4;
+      --border:#d1d9e0; --border-soft:#e4e8ec;
+      --text:#1f2328; --text-dim:#59636e; --text-faint:#818b98;
+      --bid:#1a7f37; --bid-soft:rgba(26,127,55,.12);
+      --ask:#cf222e; --ask-soft:rgba(207,34,46,.12);
+      --accent:#0969da; --accent-soft:rgba(9,105,218,.10);
+      --warn:#9a6700;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1680px; margin:0 auto; padding:0 20px 48px;}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;
+    padding:18px 0 14px;
+  }
+  .masthead h1{font-size:16px; font-weight:650; margin:0; letter-spacing:-.01em;}
+  .masthead .count{
+    font-size:11px; color:var(--text-dim); background:var(--bg-elev);
+    border:1px solid var(--border-soft); padding:2px 8px; border-radius:99px;
+  }
+
+  /* ---------- sticky toolbar ---------- */
+  .toolbar{
+    position:sticky; top:0; z-index:30;
+    /* solid, not translucent: a blurred backdrop-filter on a sticky element
+       forces full-page repaints and visibly tears on long pages */
+    background:var(--bg);
+    border:1px solid var(--border); border-radius:var(--r);
+    padding:12px 14px; margin-bottom:16px;
+    display:grid; gap:12px;
+    grid-template-columns:auto auto minmax(220px,1.4fr) minmax(130px,.8fr) minmax(190px,1.2fr);
+  }
+  @media (max-width:1080px){ .toolbar{grid-template-columns:1fr 1fr;} }
+  .field{display:flex; flex-direction:column; gap:5px; min-width:0;}
+  .field > .lbl{
+    font-size:10px; font-weight:600; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--text-faint);
+  }
+  select,input[type=text],input[type=number]{
+    width:100%; font:inherit; font-size:13px;
+    background:var(--bg-elev); color:var(--text);
+    border:1px solid var(--border); border-radius:7px; padding:7px 9px;
+  }
+  select:focus,input:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent;}
+
+  .search-wrap{position:relative; min-width:0;}
+  .results{
+    position:absolute; top:calc(100% + 5px); left:0; right:0; z-index:60;
+    background:var(--bg-elev); border:1px solid var(--border);
+    border-radius:9px; max-height:300px; overflow-y:auto;
+    box-shadow:0 12px 32px rgba(0,0,0,.35); display:none;
+  }
+  .results.open{display:block;}
+  .results .row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    padding:8px 11px; cursor:pointer; font-size:13px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .results .row:last-child{border-bottom:none;}
+  .results .row:hover{background:var(--accent-soft);}
+  .results .row .meta{font-size:11px; color:var(--text-dim); white-space:nowrap;}
+  .results .row.cur{color:var(--accent); font-weight:600;}
+
+  /* ---------- panels ---------- */
+  .panel{
+    background:var(--bg-elev); border:1px solid var(--border);
+    border-radius:var(--r); margin-bottom:16px;
+  }
+  .panel-hd{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:11px 15px; border-bottom:1px solid var(--border-soft); flex-wrap:wrap;
+  }
+  .panel-hd h2{
+    font-size:11px; font-weight:600; margin:0;
+    letter-spacing:.07em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .panel-bd{padding:14px 15px;}
+
+  /* breadcrumb */
+  .crumb{display:flex; align-items:center; gap:7px; flex-wrap:wrap; font-size:12px; color:var(--text-faint);}
+  .crumb b{color:var(--text); font-weight:600;}
+  .crumb .sep{opacity:.4;}
+
+  /* ---------- chart ---------- */
+  .legend{display:flex; gap:16px; flex-wrap:wrap; align-items:center;}
+  .legend .item{display:inline-flex; align-items:center; gap:6px; font-size:12px;}
+  .legend .sw{width:9px; height:9px; border-radius:2px; flex:none;}
+  .legend .val{font-family:var(--mono); font-size:12px; font-weight:600;}
+  .chart-host{position:relative;}
+  #priceChart{display:block; width:100%; height:260px; cursor:crosshair;}
+  .tip{
+    position:absolute; pointer-events:none; z-index:10; display:none;
+    background:var(--bg-sunk); border:1px solid var(--border);
+    border-radius:7px; padding:7px 9px; font-size:11px; font-family:var(--mono);
+    box-shadow:0 6px 20px rgba(0,0,0,.4); white-space:nowrap;
+  }
+  .tip.on{display:block;}
+  .tip .t{color:var(--text-dim); margin-bottom:3px;}
+  .tip .r{display:flex; justify-content:space-between; gap:14px;}
+
+  /* ---------- transport ---------- */
+  .transport{display:flex; flex-direction:column; gap:13px;}
+  .readout{display:flex; align-items:baseline; gap:20px; flex-wrap:wrap;}
+  .readout .tick{font-family:var(--mono); font-size:20px; font-weight:650; letter-spacing:-.02em;}
+  .readout .tick .of{color:var(--text-faint); font-weight:400; font-size:14px;}
+  .readout .meta{font-family:var(--mono); font-size:12px; color:var(--text-dim);}
+  .readout .dt{
+    font-family:var(--mono); font-size:11px; padding:2px 7px; border-radius:99px;
+    background:var(--bg-sunk); border:1px solid var(--border-soft); color:var(--text-dim);
+  }
+  .readout .dt.real{color:var(--accent); border-color:var(--accent);}
+
+  .row-ctl{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  button{
+    font:inherit; font-size:12px; cursor:pointer; white-space:nowrap;
+    background:var(--bg-sunk); color:var(--text);
+    border:1px solid var(--border); border-radius:7px; padding:6px 11px;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
+  button.primary:hover{opacity:.9; color:#fff;}
+  button.on{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .seg{display:flex; gap:4px; flex-wrap:wrap;}
+  .seg button{padding:5px 9px; font-family:var(--mono); font-size:11px;}
+  .ctl-group{display:flex; flex-direction:column; gap:5px;}
+  .ctl-group .lbl{font-size:10px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--text-faint);}
+
+  input[type=range]{
+    flex:1; min-width:200px; accent-color:var(--accent);
+    height:5px; cursor:pointer;
+  }
+
+  /* ---------- token panels ---------- */
+  .tokens{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(360px,1fr));}
+  .tok{border:1px solid var(--border); border-radius:var(--r); background:var(--bg); overflow:hidden;}
+  .tok-hd{padding:11px 14px; border-bottom:1px solid var(--border-soft); background:var(--bg-elev);}
+  .tok-hd .nm{display:flex; align-items:center; gap:7px; font-size:13px; font-weight:650; margin-bottom:9px;}
+  .tok-hd .sw{width:9px;height:9px;border-radius:2px;flex:none;}
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .stat .k{font-size:9px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--text-faint); margin-bottom:2px;}
+  .stat .v{font-family:var(--mono); font-size:14px; font-weight:650;}
+  .v.bid{color:var(--bid);} .v.ask{color:var(--ask);}
+
+  .ladder{padding:4px 0;}
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11.5px;}
+  th{
+    font-family:inherit; font-size:9px; font-weight:600; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--text-faint); text-align:right;
+    padding:5px 14px; font-weight:600;
+  }
+  td{padding:2px 14px; text-align:right; position:relative;}
+  tr.ask td.p{color:var(--ask);} tr.bid td.p{color:var(--bid);}
+  td.p{width:26%;} td.s{width:32%;} td.c{width:42%; color:var(--text-faint);}
+  .bar{position:absolute; top:1px; bottom:1px; right:0; border-radius:2px; z-index:0;}
+  tr.ask .bar{background:var(--ask-soft);} tr.bid .bar{background:var(--bid-soft);}
+  td span{position:relative; z-index:1;}
+  .midrow td{
+    padding:5px 14px; background:var(--bg-elev);
+    border-top:1px solid var(--border-soft); border-bottom:1px solid var(--border-soft);
+    text-align:center; color:var(--text-dim); font-size:10.5px; letter-spacing:.04em;
+  }
+  .empty{color:var(--text-faint); text-align:center; padding:14px; font-size:11px; font-family:inherit;}
+
+  .sub-hd{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:9px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-faint); padding:11px 14px 6px; border-top:1px solid var(--border-soft);
+  }
+  canvas.depth{display:block; width:100%; height:110px;}
+  .chg{padding:2px 14px 13px; font-family:var(--mono); font-size:11px; max-height:150px; overflow-y:auto;}
+  .chg div{padding:1.5px 0; display:flex; justify-content:space-between; gap:10px;}
+  .up{color:var(--bid);} .dn{color:var(--ask);}
+  .chg .lbl2{color:var(--text-faint);}
+
+  /* ---------- overview ---------- */
+  table.ov{font-family:inherit; font-size:12.5px;}
+  table.ov th{text-align:left; padding:7px 12px; border-bottom:1px solid var(--border);}
+  table.ov th.num, table.ov td.num{text-align:right; font-family:var(--mono);}
+  table.ov td{text-align:left; padding:7px 12px; border-bottom:1px solid var(--border-soft);}
+  table.ov tr[data-slug]{cursor:pointer;}
+  table.ov tr[data-slug]:hover{background:var(--accent-soft);}
+  table.ov tr.cur{background:var(--accent-soft);}
+  table.ov tr.cur td:first-child{box-shadow:inset 3px 0 0 var(--accent); font-weight:650;}
+  details.panel > summary{
+    padding:11px 15px; cursor:pointer; font-size:11px; font-weight:600;
+    letter-spacing:.07em; text-transform:uppercase; color:var(--text-dim);
+  }
+  details.panel[open] > summary{border-bottom:1px solid var(--border-soft);}
+  .scroll-x{overflow-x:auto;}
+  .note{font-size:11px; color:var(--text-faint); padding:9px 15px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Order Book Replay</h1>
+    <span class="count" id="matchCount"></span>
+    <span class="count" id="tickBasis"></span>
+    <span class="count" id="status" style="display:none"></span>
+    <button id="refreshBtn" style="margin-left:auto" title="Re-read the match manifest from disk">↻ Refresh data</button>
+  </div>
+
+  <!-- ── selectors ─────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <label class="field"><span class="lbl">Sport</span><select id="sportSel"></select></label>
+    <label class="field"><span class="lbl">Date</span><select id="dateSel"></select></label>
+    <div class="field search-wrap">
+      <span class="lbl">Match</span>
+      <input type="text" id="matchSearch" placeholder="Search team, slug or date…" autocomplete="off">
+      <div class="results" id="matchResults"></div>
+    </div>
+    <label class="field"><span class="lbl">Market Type</span><select id="marketTypeSel"></select></label>
+    <label class="field"><span class="lbl">Market</span><select id="marketSel"></select></label>
+  </div>
+
+  <!-- ── price history ─────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-hd">
+      <div class="crumb" id="crumb"></div>
+      <div class="seg">
+        <button id="yFitBtn" class="on">Fit&nbsp;Y</button>
+        <button id="yFullBtn">0&nbsp;–&nbsp;1</button>
+      </div>
+    </div>
+    <div class="panel-bd">
+      <div class="legend" id="legend" style="margin-bottom:10px"></div>
+      <div class="chart-host">
+        <canvas id="priceChart"></canvas>
+        <div class="tip" id="tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── transport ─────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-bd transport">
+      <div class="readout">
+        <span class="tick" id="tickLabel">–<span class="of"> / –</span></span>
+        <span class="meta" id="timeLabel">–</span>
+        <span class="dt" id="dtLabel">Δt –</span>
+      </div>
+
+      <div class="row-ctl">
+        <button id="btnStart" title="Jump to first tick">⏮</button>
+        <button id="btnPrev" title="Previous tick">◀</button>
+        <button id="btnPlay" class="primary">▶&nbsp;Play</button>
+        <button id="btnNext" title="Next tick">▶</button>
+        <button id="btnEnd" title="Jump to last tick">⏭</button>
+        <input type="range" id="slider" min="0" max="0" value="0" step="1">
+      </div>
+
+      <div class="row-ctl" style="gap:22px; align-items:flex-end;">
+        <div class="ctl-group">
+          <span class="lbl">Speed</span>
+          <div class="seg" id="speedRow"></div>
+        </div>
+        <div class="ctl-group">
+          <span class="lbl">Mode</span>
+          <div class="seg" id="modeRow">
+            <button data-mode="tick" class="on">Tick</button>
+            <button data-mode="realtime">Real-time</button>
+          </div>
+        </div>
+        <div class="ctl-group">
+          <span class="lbl">Jump to tick</span>
+          <div class="seg">
+            <input type="number" id="gotoInput" style="width:110px" min="0" value="0">
+            <button id="gotoBtn">Go</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── order books ───────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-hd">
+      <h2 id="bookTitle">Order Book</h2>
+      <div class="seg">
+        <button id="depthLessBtn">−</button>
+        <button id="depthMoreBtn">+</button>
+        <span style="font-size:11px;color:var(--text-dim);align-self:center;margin-left:4px">
+          <span id="depthShown">12</span> levels
+        </span>
+      </div>
+    </div>
+    <div class="panel-bd">
+      <div class="tokens" id="tokens"></div>
+    </div>
+  </div>
+
+  <!-- ── overview ──────────────────────────────────────────────── -->
+  <details class="panel" open>
+    <summary>All matches</summary>
+    <div class="scroll-x"><table class="ov" id="ovTable"></table></div>
+  </details>
+
+</div>
+
+<script>
+const DATA = __MATCH_INDEX_DATA__;
+const DATA_DIR = "__DATA_DIR__";   // where per-match payloads live, relative to this page
+
+/* Opened from disk instead of over HTTP?
+
+   The page itself loads fine from a file:// URL -- the manifest is inlined --
+   but every per-match fetch is blocked by the browser, which surfaces only as
+   "Failed to fetch". That reads like missing or corrupt data when the data is
+   perfectly fine, so say plainly what is wrong and how to fix it. */
+const IS_FILE_URL = location.protocol === 'file:';
+if (IS_FILE_URL) {
+  addEventListener('DOMContentLoaded', () => {
+    const b = document.createElement('div');
+    // A strip at the top, NOT a full-screen cover: hiding the whole page makes
+    // it look like the viewer is broken or empty, which is worse than the
+    // error it was meant to explain. The page below still works as far as it
+    // can -- selectors, manifest, layout -- only the fetches fail.
+    b.style.cssText = 'position:sticky;top:0;z-index:9999;background:#7a2312;'
+      + 'color:#fff;padding:10px 16px;font:13px/1.5 -apple-system,BlinkMacSystemFont,'
+      + '"Segoe UI",sans-serif';
+    b.innerHTML = '<b>No data will load from a file:// URL.</b> '
+      + 'Browsers block fetch() on local files. Run '
+      + '<code style="background:rgba(255,255,255,.18);padding:1px 5px;border-radius:4px">'
+      + 'python serve_viewer.py</code> and open '
+      + '<b>http://127.0.0.1:8799/viewer_full.html</b>';
+    document.body.prepend(b);
+  });
+}
+
+/* ===========================================================================
+   Index (built once). Sport → Date → Match → Market → Token, plus flat
+   lookups so switching match/market never rescans anything.
+   =========================================================================== */
+const matchesBySlug = new Map();
+const sportSet = new Set();
+for (const m of DATA.matches) { matchesBySlug.set(m.event_slug, m); sportSet.add(m.sport); }
+
+const state = {
+  slug:null, marketType:null, marketKey:null,
+  tick:0, playing:false, speed:1, mode:'tick',
+  timer:null, raf:null, lastFrameT:null, simTime:null,
+  yFit:true, depthRows:12, hoverX:null,
+};
+
+const el = id => document.getElementById(id);
+const SERIES = ['#58a6ff','#f78166','#3fb950','#d29922','#bc8cff','#39c5cf'];
+
+const fmtP  = p => p == null ? '–' : p.toFixed(3);
+const fmtSz = s => s == null ? '–' : s.toLocaleString(undefined,{maximumFractionDigits:0});
+const pad2  = n => String(n).padStart(2,'0');
+function fmtClock(ts){
+  const d = new Date(ts*1000);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${String(d.getMilliseconds()).padStart(3,'0')}`;
+}
+function fmtFull(ts){
+  const d = new Date(ts*1000);
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'}) + '  ' + fmtClock(ts);
+}
+const MT_LABEL = {
+  moneyline:'Moneyline', spread:'Spread', total:'Total',
+  first_inning_run:'First Inning Run',
+  first_five_spread:'1st 5 Innings Spread', first_five_total:'1st 5 Innings Total',
+  extra_innings:'Extra Innings',
+};
+const MT_ORDER = ['moneyline','spread','total','first_inning_run',
+                  'first_five_spread','first_five_total','extra_innings'];
+
+/* ===========================================================================
+   Match selection
+   =========================================================================== */
+function populateSportDate(){
+  el('sportSel').innerHTML = '<option value="">All sports</option>' +
+    [...sportSet].sort().map(s=>`<option value="${s}">${s}</option>`).join('');
+  refreshDates();
+}
+function refreshDates(){
+  const sp = el('sportSel').value;
+  const ds = new Set(DATA.matches.filter(m=>!sp||m.sport===sp).map(m=>m.date));
+  el('dateSel').innerHTML = '<option value="">All dates</option>' +
+    [...ds].sort().map(d=>`<option value="${d}">${d}</option>`).join('');
+}
+function filteredMatches(){
+  const sp = el('sportSel').value, dt = el('dateSel').value;
+  const q = el('matchSearch').value.trim().toLowerCase();
+  return DATA.matches.filter(m=>{
+    if (sp && m.sport!==sp) return false;
+    if (dt && m.date!==dt) return false;
+    if (q){
+      const hay = [m.match_name,m.event_slug,m.date,m.sport,...(m.teams||[])].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function renderResults(){
+  const box = el('matchResults');
+  const rows = filteredMatches();
+  box.innerHTML = rows.slice(0,60).map(m=>`
+    <div class="row ${m.event_slug===state.slug?'cur':''}" data-slug="${m.event_slug}">
+      <span>${m.match_name}</span><span class="meta">${m.date} · ${m.sport}</span>
+    </div>`).join('') || '<div class="row"><span class="meta">No matches found</span></div>';
+  box.classList.add('open');
+  box.querySelectorAll('[data-slug]').forEach(r=>r.addEventListener('click',()=>{
+    selectMatch(r.dataset.slug); box.classList.remove('open');
+  }));
+}
+el('sportSel').addEventListener('change',()=>{refreshDates(); renderResults();});
+el('dateSel').addEventListener('change',renderResults);
+el('matchSearch').addEventListener('focus',function(){this.select(); renderResults();});
+el('matchSearch').addEventListener('input',renderResults);
+document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap')) el('matchResults').classList.remove('open'); });
+
+/* ===========================================================================
+   Market / token cascade (scoped to current match)
+   =========================================================================== */
+function populateMarketTypes(){
+  const m = matchesBySlug.get(state.slug);
+  // MT_ORDER first, then anything the data has that we did not anticipate,
+  // so a new Polymarket market type shows up instead of silently vanishing.
+  const known = MT_ORDER.filter(t=>m.market_types[t]?.length);
+  const extra = Object.keys(m.market_types)
+    .filter(t=>!MT_ORDER.includes(t) && m.market_types[t]?.length).sort();
+  const types = [...known, ...extra];
+  el('marketTypeSel').innerHTML = types.map(t=>`<option value="${t}">${MT_LABEL[t]||t}</option>`).join('');
+  state.marketType = types[0] || null;
+  el('marketTypeSel').value = state.marketType;
+}
+function populateMarkets(){
+  const m = matchesBySlug.get(state.slug);
+  const mks = m.market_types[state.marketType] || [];
+  el('marketSel').innerHTML = mks.map(k=>`<option value="${k.market_key}">${k.market_label}</option>`).join('');
+  state.marketKey = mks[0]?.market_key ?? null;
+  el('marketSel').value = state.marketKey;
+}
+function currentMarket(){
+  const m = matchesBySlug.get(state.slug);
+  return (m.market_types[state.marketType]||[]).find(k=>k.market_key===state.marketKey) || null;
+}
+el('marketTypeSel').addEventListener('change',()=>{
+  state.marketType = el('marketTypeSel').value;
+  populateMarkets(); buildTokenPanels(); redraw(); ensureMarketData();
+});
+el('marketSel').addEventListener('change',()=>{
+  state.marketKey = el('marketSel').value;
+  buildTokenPanels(); redraw(); ensureMarketData();
+});
+
+/* ===========================================================================
+   Full-fidelity loading.
+
+   Every recorded tick is available; what varies is how much has been fetched.
+   A match is ~2.6 GB at full depth, so it arrives in three tiers:
+
+     ticks.json          the complete tick axis (delta-encoded)   ~7 MB, once
+     <asset>/series.json best_bid/best_ask for EVERY run          ~2-4 MB/token
+     <asset>/cNNNN.json  full order books for one time chunk      ~10 MB each
+
+   The chart draws from `series`, so it shows every tick immediately. The
+   ladder needs a real book, so it pulls the chunk containing the playhead --
+   one fetch, then cached. Nothing is downsampled at any tier.
+   =========================================================================== */
+const fetchCache = new Map();
+let loadSeq = 0;
+
+async function getJSON(url){
+  if (fetchCache.has(url)) return fetchCache.get(url);
+  const p = fetch(url, {cache:'force-cache'}).then(r=>{
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.json();
+  });
+  fetchCache.set(url, p);
+  try { return await p; }
+  catch (e){ fetchCache.delete(url); throw e; }
+}
+
+/* Inverse of enc_times(): integer-microsecond deltas -> absolute seconds.
+   Accumulating in integers keeps this exact; summing floats would drift. */
+function decTimes(enc){
+  const d = enc.d, out = new Float64Array(d.length+1);
+  let acc = enc.t0;
+  out[0] = acc/1e6;
+  for (let i=0;i<d.length;i++){ acc += d[i]; out[i+1] = acc/1e6; }
+  return out;
+}
+function decSeries(enc){
+  const t = decTimes(enc);
+  const n = t.length;
+  const bb = new Float64Array(n), ba = new Float64Array(n);
+  const hb = new Uint8Array(n), ha = new Uint8Array(n);   // side present?
+  const S = enc.raw ? 1 : 1000;
+  for (let i=0;i<n;i++){
+    const b = enc.bb[i], a = enc.ba[i];
+    if (b!=null){ bb[i] = b/S; hb[i] = 1; }
+    if (a!=null){ ba[i] = a/S; ha[i] = 1; }
+  }
+  return {t, bb, ba, hb, ha, n, t_end: enc.t_end};
+}
+
+const slugDir = slug => `${DATA_DIR}/${encodeURIComponent(slug)}`;
+
+async function loadTicks(m){
+  if (m.tick_times) return;
+  m.tick_times = decTimes(await getJSON(`${slugDir(m.event_slug)}/ticks.json`));
+}
+async function loadSeries(m, assetId){
+  const tok = m.tokens[assetId];
+  if (!tok || tok.series) return;
+  tok.series = decSeries(await getJSON(`${slugDir(m.event_slug)}/${assetId}/series.json`));
+}
+/* Which chunk holds time t. Edges are uniform, but binary-search anyway so the
+   builder is free to change to variable-width chunks later. */
+function chunkOf(m, t){
+  const e = m.chunk_edges;
+  if (t <= e[0]) return 0;
+  if (t >= e[e.length-1]) return e.length-2;
+  let lo=0, hi=e.length-2;
+  while(lo<hi){ const mid=(lo+hi+1)>>1; if(e[mid]<=t) lo=mid; else hi=mid-1; }
+  return lo;
+}
+/* Chunks are EVICTED, deliberately, and are never put in fetchCache.
+
+   A ~20 MB chunk file explodes in the JS heap: every [price,size] level
+   becomes its own array object, so ~1M levels cost hundreds of MB. Caching
+   them all (as the first version did) exhausted the tab's heap after two or
+   three chunks and wedged the renderer hard enough that even a CDP screenshot
+   timed out. Only ticks and series -- small, and needed for the whole match --
+   stay resident; books are transient by design.
+
+   MAX_CHUNKS is 4 so the two tokens of the current market can hold the current
+   chunk plus one neighbour while scrubbing across a boundary. */
+const MAX_CHUNKS = 4;
+const chunkLRU = [];   // [{tok, k}], most recently used last
+
+function touchChunk(tok, k){
+  const i = chunkLRU.findIndex(e => e.tok === tok && e.k === k);
+  if (i >= 0) chunkLRU.splice(i,1);
+  chunkLRU.push({tok, k});
+  while (chunkLRU.length > MAX_CHUNKS){
+    const old = chunkLRU.shift();
+    old.tok.chunks?.delete(old.k);
+  }
+}
+async function loadChunk(m, assetId, k){
+  const tok = m.tokens[assetId];
+  if (!tok) return;
+  tok.chunks = tok.chunks || new Map();
+  if (tok.chunks.has(k)){ touchChunk(tok,k); return; }
+  const pad = String(k).padStart(4,'0');
+  const res = await fetch(`${slugDir(m.event_slug)}/${assetId}/c${pad}.json`,
+                          {cache:'force-cache'});
+  if (!res.ok) throw new Error(`chunk ${k}: ${res.status} ${res.statusText}`);
+  tok.chunks.set(k, await res.json());
+  touchChunk(tok,k);
+}
+
+/* Switching match: drop every other match's books and series. Without this the
+   heap keeps a full match's series (tens of MB) per visited match. */
+function releaseOtherMatches(keepSlug){
+  for (const [slug, mm] of matchesBySlug){
+    if (slug === keepSlug) continue;
+    for (const tok of Object.values(mm.tokens||{})){
+      tok.chunks = undefined; tok.series = undefined;
+    }
+    mm.tick_times = undefined;
+  }
+  for (let i=chunkLRU.length-1;i>=0;i--){
+    if (!chunkLRU[i].tok.chunks) chunkLRU.splice(i,1);
+  }
+  for (const url of [...fetchCache.keys()]){
+    if (!url.includes(`/${encodeURIComponent(keepSlug)}/`)) fetchCache.delete(url);
+  }
+}
+
+/* Switching match resets every dependent view and pauses playback. */
+async function selectMatch(slug){
+  const m = matchesBySlug.get(slug);
+  if (!m) return;
+  stopPlay();
+  const seq = ++loadSeq;
+  if (state.slug && state.slug !== slug) releaseOtherMatches(slug);
+  state.slug = slug;
+  el('matchSearch').value = `${m.date} · ${m.sport} · ${m.match_name}`;
+  renderOverview();
+
+  if (!m.tick_times){
+    setStatus(`Loading ${m.match_name} — ${m.n_ticks.toLocaleString()} ticks…`);
+    try {
+      await loadTicks(m);
+      if (seq !== loadSeq) return;             // a newer selection superseded this one
+    } catch (err){
+      setStatus(`Could not load ${m.match_name}: ${err.message}` + (IS_FILE_URL ? " — open this over HTTP (python serve_viewer.py), not from the file system" : " — is the server still running? (python serve_viewer.py)"), true);
+      return;
+    }
+    setStatus('');
+  }
+  if (seq !== loadSeq) return;
+
+  populateMarketTypes();
+  populateMarkets();
+  buildTokenPanels();
+  state.tick = 0; state.hoverX = null;
+  el('slider').max = m.n_ticks-1; el('slider').value = 0;
+  el('gotoInput').max = m.n_ticks-1; el('gotoInput').value = 0;
+  redraw();
+  ensureMarketData();
+}
+
+/* Fetches what the CURRENT market and playhead need, then repaints. Safe to
+   call redundantly -- everything below is cached and deduplicated by URL. */
+async function ensureMarketData(){
+  const m = matchesBySlug.get(state.slug); if (!m) return;
+  const mk = currentMarket(); if (!mk) return;
+  const ids = mk.tokens.map(t=>t.asset_id);
+  const t = tickTime(m, state.tick);
+  const k = chunkOf(m, t);
+  const seq = ++dataSeq;
+
+  const need = ids.filter(id => !m.tokens[id]?.series ||
+                                !m.tokens[id]?.chunks?.has(k));
+  if (!need.length) return;
+  setStatus('Loading books…');
+  try {
+    await Promise.all(ids.flatMap(id => [loadSeries(m,id), loadChunk(m,id,k)]));
+  } catch (err){
+    if (seq === dataSeq) setStatus(`Load failed: ${err.message}`, true);
+    return;
+  }
+  if (seq !== dataSeq) return;
+  setStatus('');
+  redraw();
+}
+let dataSeq = 0;
+
+function setStatus(msg, isErr){
+  const s = el('status');
+  s.textContent = msg || '';
+  s.style.display = msg ? 'inline-flex' : 'none';
+  s.style.color = isErr ? 'var(--ask)' : 'var(--text-dim)';
+  s.style.borderColor = isErr ? 'var(--ask)' : 'var(--border-soft)';
+}
+
+/* ===========================================================================
+   Tick axis + run lookup.
+   tick_times is a real, unevenly spaced axis: a 100ms baseline grid merged
+   with every genuine recorded change. Books are stored run-length-encoded
+   ({t_start,t_end,...}), so a lookup is a binary search — never an expansion
+   to one row per tick.
+   =========================================================================== */
+const tickTime = (m,i) => m.tick_times[Math.max(0,Math.min(m.tick_times.length-1,i))];
+
+function bisect(arr,t){
+  if (t<=arr[0]) return 0;
+  if (t>=arr[arr.length-1]) return arr.length-1;
+  let lo=0, hi=arr.length-1;
+  while(lo<hi){ const mid=(lo+hi+1)>>1; if(arr[mid]<=t) lo=mid; else hi=mid-1; }
+  return lo;
+}
+const EMPTY = {bids:[],asks:[],best_bid:null,best_ask:null};
+const PENDING = {bids:[],asks:[],best_bid:null,best_ask:null,pending:true};
+
+/* Book lookup inside the loaded chunk. Chunks repeat the run in force at their
+   start boundary, so a binary search within one chunk always finds the run
+   covering t -- no cross-chunk stitching needed. Returns PENDING (not EMPTY)
+   when the chunk hasn't arrived, so the UI can say "loading" rather than
+   silently render an empty book as if the market were dead. */
+function runAt(tok,m,t){
+  const k = chunkOf(m,t);
+  const r = tok.chunks?.get(k);
+  if (!r) return PENDING;
+  if (!r.length) return EMPTY;
+  if (t < r[0].t_start) return r[0];
+  if (t >= r[r.length-1].t_end) return r[r.length-1];
+  let lo=0, hi=r.length-1;
+  while(lo<hi){ const mid=(lo+hi+1)>>1; if(r[mid].t_start<=t) lo=mid; else hi=mid-1; }
+  return r[lo];
+}
+const bookAt = (tok,m,i) => runAt(tok, m, tickTime(m,i));
+const midOf = r => (r.best_bid!=null && r.best_ask!=null) ? (r.best_bid+r.best_ask)/2
+                 : (r.best_bid ?? r.best_ask ?? null);
+/* Mid price at an arbitrary time, straight from `series`.
+
+   Price readouts (chart legend, hover tooltip) must NOT go through runAt: they
+   only need best_bid/best_ask, which series carries for every run of the whole
+   match, whereas runAt would return PENDING outside the loaded chunk. So the
+   hover tooltip reads correctly anywhere on the chart with nothing fetched. */
+function midFromSeries(tok, t){
+  const s = tok?.series; if (!s?.n) return null;
+  if (t <= s.t[0]) return midAt(s,0);
+  let lo=0, hi=s.n-1;
+  while(lo<hi){ const mid=(lo+hi+1)>>1; if(s.t[mid]<=t) lo=mid; else hi=mid-1; }
+  return midAt(s,lo);
+}
+/* Same mid, read out of the columnar series at index i. */
+function midAt(s,i){
+  const hb = s.hb[i], ha = s.ha[i];
+  if (hb && ha) return (s.bb[i]+s.ba[i])/2;
+  if (hb) return s.bb[i];
+  if (ha) return s.ba[i];
+  return null;
+}
+
+/* ===========================================================================
+   Canvas helper
+   =========================================================================== */
+function ctx2d(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = Math.max(1,Math.round(w*dpr)); cv.height = Math.max(1,Math.round(h*dpr));
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ===========================================================================
+   Token panels — every token of the selected market, side by side
+   =========================================================================== */
+function buildTokenPanels(){
+  const mk = currentMarket();
+  const toks = mk?.tokens || [];
+  el('tokens').innerHTML = toks.map((t,i)=>`
+    <div class="tok" data-asset="${t.asset_id}">
+      <div class="tok-hd">
+        <div class="nm"><span class="sw" style="background:${SERIES[i%SERIES.length]}"></span>${t.label}</div>
+        <div class="stats">
+          <div class="stat"><div class="k">Bid</div><div class="v bid" data-r="bb">–</div></div>
+          <div class="stat"><div class="k">Ask</div><div class="v ask" data-r="ba">–</div></div>
+          <div class="stat"><div class="k">Mid</div><div class="v" data-r="mid">–</div></div>
+          <div class="stat"><div class="k">Spread</div><div class="v" data-r="sp">–</div></div>
+        </div>
+      </div>
+      <div class="ladder">
+        <table>
+          <thead><tr><th>Price</th><th>Size</th><th>Cumulative</th></tr></thead>
+          <tbody data-r="asks"></tbody>
+          <tbody data-r="mid-row"></tbody>
+          <tbody data-r="bids"></tbody>
+        </table>
+      </div>
+      <div class="sub-hd"><span>Depth</span><span data-r="lvlcount"></span></div>
+      <canvas class="depth" data-r="depth"></canvas>
+      <div class="sub-hd"><span>Changes from previous tick</span></div>
+      <div class="chg" data-r="chg"></div>
+    </div>`).join('');
+}
+
+function ladderRows(levels, side, maxSize){
+  if (!levels.length) return `<tr><td colspan="3" class="empty">no ${side==='ask'?'asks':'bids'}</td></tr>`;
+  const shown = levels.slice(0, state.depthRows);
+  // asks render worst→best downward so the best ask sits against the spread
+  const ordered = side==='ask' ? [...shown].reverse() : shown;
+  let cum = 0;
+  const cums = new Map();
+  for (const [p,s] of shown){ cum += s; cums.set(p,cum); }
+  return ordered.map(([p,s])=>{
+    const pct = maxSize ? Math.min(100,(s/maxSize)*100) : 0;
+    return `<tr class="${side}">
+      <td class="p"><span>${fmtP(p)}</span></td>
+      <td class="s"><span>${fmtSz(s)}</span><span class="bar" style="width:${pct}%"></span></td>
+      <td class="c"><span>${fmtSz(cums.get(p))}</span></td></tr>`;
+  }).join('');
+}
+
+function renderTokens(mk,m){
+  const toks = mk?.tokens || [];
+  toks.forEach((t,i)=>{
+    const pane = el('tokens').querySelector(`[data-asset="${t.asset_id}"]`);
+    if (!pane) return;
+    const tok = m.tokens[t.asset_id];
+    const q = r => pane.querySelector(`[data-r="${r}"]`);
+    const bk = tok ? bookAt(tok,m,state.tick) : EMPTY;
+    const mid = midOf(bk);
+    const spread = (bk.best_bid!=null && bk.best_ask!=null) ? bk.best_ask-bk.best_bid : null;
+
+    q('bb').textContent  = fmtP(bk.best_bid);
+    q('ba').textContent  = fmtP(bk.best_ask);
+    q('mid').textContent = fmtP(mid);
+    q('sp').textContent  = spread==null ? '–' : spread.toFixed(3);
+
+    const maxSize = Math.max(1,
+      ...bk.bids.slice(0,state.depthRows).map(l=>l[1]),
+      ...bk.asks.slice(0,state.depthRows).map(l=>l[1]));
+    q('asks').innerHTML = ladderRows(bk.asks,'ask',maxSize);
+    q('bids').innerHTML = ladderRows(bk.bids,'bid',maxSize);
+    q('mid-row').innerHTML = `<tr class="midrow"><td colspan="3">
+      ${mid==null?'—':`mid ${fmtP(mid)}`}${spread==null?'':`&nbsp;&nbsp;·&nbsp;&nbsp;spread ${spread.toFixed(3)}`}
+    </td></tr>`;
+    q('lvlcount').textContent = bk.pending
+      ? 'loading books for this chunk…'
+      : `${bk.bids.length} bid · ${bk.asks.length} ask levels`;
+
+    renderDepth(q('depth'), bk);
+    renderChanges(q('chg'), tok, m);
+  });
+}
+
+/* cumulative depth profile, full book (not just the visible ladder rows) */
+function renderDepth(cv, bk){
+  const {c,w,h} = ctx2d(cv);
+  if (!bk.bids.length && !bk.asks.length) return;
+  let a=0; const bc = bk.bids.map(([p,s])=>{a+=s; return [p,a];});
+  let b=0; const ac = bk.asks.map(([p,s])=>{b+=s; return [p,b];});
+  const maxC = Math.max(1,...bc.map(x=>x[1]),...ac.map(x=>x[1]));
+  const ps = [...bk.bids.map(x=>x[0]),...bk.asks.map(x=>x[0])];
+  const lo = Math.min(...ps), hi = Math.max(...ps);
+  const X = p => ((p-lo)/Math.max(1e-9,hi-lo))*w;
+  const Y = v => h-2-(v/maxC)*(h-10);
+
+  const step=(pts,fill,stroke)=>{
+    if(!pts.length) return;
+    c.beginPath(); c.moveTo(X(pts[0][0]),h);
+    pts.forEach(([p,v])=>c.lineTo(X(p),Y(v)));
+    c.lineTo(X(pts[pts.length-1][0]),h); c.closePath();
+    c.fillStyle=fill; c.fill();
+    c.beginPath();
+    pts.forEach(([p,v],i)=> i? c.lineTo(X(p),Y(v)) : c.moveTo(X(p),Y(v)));
+    c.strokeStyle=stroke; c.lineWidth=1.4; c.stroke();
+  };
+  step(bc, cssVar('--bid-soft'), cssVar('--bid'));
+  step(ac, cssVar('--ask-soft'), cssVar('--ask'));
+}
+
+const lvlMap = ls => new Map(ls);
+function renderChanges(box, tok, m){
+  if (!tok || state.tick===0){ box.innerHTML='<div class="lbl2">—</div>'; return; }
+  const cur = bookAt(tok,m,state.tick), prv = bookAt(tok,m,state.tick-1);
+  if (cur === prv){ box.innerHTML='<div class="lbl2">no change at this tick</div>'; return; }
+  const out=[];
+  for (const side of ['bids','asks']){
+    const P=lvlMap(prv[side]), C=lvlMap(cur[side]);
+    const lbl = side==='bids'?'bid':'ask';
+    for (const p of new Set([...P.keys(),...C.keys()])){
+      const a=P.get(p), b=C.get(p);
+      if (a===b) continue;
+      if (a==null) out.push(`<div class="up"><span>+ ${fmtSz(b)} ${lbl}</span><span>@ ${fmtP(p)}</span></div>`);
+      else if (b==null) out.push(`<div class="dn"><span>− ${fmtSz(a)} ${lbl} pulled</span><span>@ ${fmtP(p)}</span></div>`);
+      else out.push(`<div class="${b>a?'up':'dn'}"><span>${fmtSz(a)} → ${fmtSz(b)} ${lbl}</span><span>@ ${fmtP(p)}</span></div>`);
+    }
+  }
+  const sp = r => (r.best_bid!=null&&r.best_ask!=null) ? r.best_ask-r.best_bid : null;
+  if (prv.best_bid!==cur.best_bid) out.unshift(`<div><span class="lbl2">best bid</span><span>${fmtP(prv.best_bid)} → ${fmtP(cur.best_bid)}</span></div>`);
+  if (prv.best_ask!==cur.best_ask) out.unshift(`<div><span class="lbl2">best ask</span><span>${fmtP(prv.best_ask)} → ${fmtP(cur.best_ask)}</span></div>`);
+  const s0=sp(prv), s1=sp(cur);
+  if (s0!==s1) out.push(`<div><span class="lbl2">spread</span><span>${s0==null?'–':s0.toFixed(3)} → ${s1==null?'–':s1.toFixed(3)}</span></div>`);
+  box.innerHTML = out.length ? out.join('') : '<div class="lbl2">no change at this tick</div>';
+}
+
+/* ===========================================================================
+   Price history chart — drawn straight off the run-length-encoded series.
+   Y auto-fits the actual traded range by default: these markets often live
+   inside a narrow band, and a hard 0–1 axis flattens real movement into a
+   straight line.
+   =========================================================================== */
+const PAD = {l:44, r:12, t:10, b:22};
+
+function chartGeom(m,mk){
+  const cv = el('priceChart');
+  const w = cv.clientWidth, h = cv.clientHeight;
+  const toks = (mk?.tokens||[]).map(t=>m.tokens[t.asset_id]).filter(Boolean);
+  let lo=1, hi=0;
+  if (state.yFit){
+    // From `series` (every run's best bid/ask), not from loaded books -- the
+    // y-range must cover the whole match, not just the fetched chunk.
+    for (const tok of toks){
+      const s = tok.series; if (!s) continue;
+      for (let i=0;i<s.n;i++){
+        const v = midAt(s,i); if (v==null) continue;
+        if (v<lo) lo=v; if (v>hi) hi=v;
+      }
+    }
+    if (!(hi>lo)){ lo=0; hi=1; }
+    const pad = Math.max(0.01,(hi-lo)*0.12);
+    lo = Math.max(0, lo-pad); hi = Math.min(1, hi+pad);
+  } else { lo=0; hi=1; }
+  const pw = w-PAD.l-PAD.r, ph = h-PAD.t-PAD.b;
+  const span = Math.max(1e-9, m.end_ts-m.start_ts);
+  return {
+    cv,w,h,toks,lo,hi,
+    X: t => PAD.l + ((t-m.start_ts)/span)*pw,
+    Y: v => PAD.t + (1-(v-lo)/Math.max(1e-9,hi-lo))*ph,
+    invX: px => m.start_ts + ((px-PAD.l)/pw)*span,
+  };
+}
+
+function renderChart(m,mk){
+  const g = chartGeom(m,mk);
+  const {c,w,h} = ctx2d(g.cv);
+  const brd = cssVar('--border-soft'), dim = cssVar('--text-faint');
+  c.font = '10px ui-monospace,monospace';
+
+  /* y gridlines + labels */
+  c.strokeStyle = brd; c.fillStyle = dim; c.lineWidth = 1;
+  c.textAlign='right'; c.textBaseline='middle';
+  const STEPS = 5;
+  for (let i=0;i<=STEPS;i++){
+    const v = g.lo + (g.hi-g.lo)*i/STEPS, y = Math.round(g.Y(v))+.5;
+    c.beginPath(); c.moveTo(PAD.l,y); c.lineTo(w-PAD.r,y); c.stroke();
+    c.fillText(v.toFixed(3), PAD.l-7, y);
+  }
+  /* x time labels */
+  c.textAlign='center'; c.textBaseline='top';
+  for (let i=0;i<=4;i++){
+    const t = m.start_ts + (m.end_ts-m.start_ts)*i/4, x = g.X(t);
+    c.fillText(fmtClock(t).slice(0,5), Math.min(w-PAD.r-14,Math.max(PAD.l+14,x)), h-PAD.b+6);
+  }
+
+  /* kickoff / game-end reference markers */
+  const mark=(ts,label,col)=>{
+    if (ts==null || ts<m.start_ts || ts>m.end_ts) return;
+    const x=Math.round(g.X(ts))+.5;
+    c.strokeStyle=col; c.setLineDash([2,3]);
+    c.beginPath(); c.moveTo(x,PAD.t); c.lineTo(x,h-PAD.b); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle=col; c.textAlign='left'; c.textBaseline='top';
+    c.fillText(label, x+3, PAD.t+1);
+  };
+  mark(m.kickoff_ts,'kickoff',cssVar('--accent'));
+  mark(m.game_end_ts,'final out',cssVar('--warn'));
+
+  /* series: step lines (a book holds its state until the next change) */
+  /* Drawn from `series`, so the line covers EVERY recorded change across the
+     whole match -- not merely the chunk whose books happen to be loaded.
+     Consecutive runs are contiguous (t_end[i] == t_start[i+1]), so stepping to
+     the next start is the same step line the run-based version drew.
+     Sub-pixel runs are skipped: at ~400k points over ~1400px, drawing each one
+     is thousands of ops per pixel with no visible difference. The skip is
+     purely a rasterisation detail -- every point is still present in memory
+     and every tick remains addressable by the slider. */
+  g.toks.forEach((tok,i)=>{
+    const s = tok.series; if (!s?.n) return;
+    c.beginPath(); c.strokeStyle = SERIES[i%SERIES.length]; c.lineWidth = 1.6;
+    c.lineJoin='round';
+    let started=false, lastPx=-1e9, lastY=0, lastX=0;
+    for (let j=0;j<s.n;j++){
+      const v = midAt(s,j); if (v==null) continue;
+      const x = g.X(s.t[j]), y = g.Y(v);
+      if (!started){ c.moveTo(x,y); started=true; lastPx=x; lastY=y; lastX=x; continue; }
+      if (x - lastPx < 0.5 && j !== s.n-1){ lastY=y; lastX=x; continue; }
+      c.lineTo(x,lastY); c.lineTo(x,y);
+      lastPx=x; lastY=y; lastX=x;
+    }
+    if (started && s.t_end!=null){ c.lineTo(g.X(s.t_end), lastY); }
+    c.stroke();
+  });
+
+  /* playhead */
+  const t = tickTime(m,state.tick), px = Math.round(g.X(t))+.5;
+  c.strokeStyle = cssVar('--text'); c.lineWidth = 1;
+  c.beginPath(); c.moveTo(px,PAD.t); c.lineTo(px,h-PAD.b); c.stroke();
+
+  /* hover crosshair */
+  if (state.hoverX!=null){
+    const hx = Math.round(state.hoverX)+.5;
+    c.strokeStyle = dim; c.setLineDash([2,2]);
+    c.beginPath(); c.moveTo(hx,PAD.t); c.lineTo(hx,h-PAD.b); c.stroke();
+    c.setLineDash([]);
+  }
+
+  /* frame */
+  c.strokeStyle = brd;
+  c.strokeRect(PAD.l+.5, PAD.t+.5, w-PAD.l-PAD.r-1, h-PAD.t-PAD.b-1);
+  return g;
+}
+
+function renderLegend(mk,m){
+  const t = tickTime(m,state.tick);
+  el('legend').innerHTML = (mk?.tokens||[]).map((tk,i)=>{
+    const tok = m.tokens[tk.asset_id];
+    const v = tok ? midFromSeries(tok,t) : null;
+    return `<span class="item"><span class="sw" style="background:${SERIES[i%SERIES.length]}"></span>
+      ${tk.label}<span class="val">${fmtP(v)}</span></span>`;
+  }).join('');
+}
+
+/* hover tooltip */
+el('priceChart').addEventListener('mousemove',e=>{
+  const m = matchesBySlug.get(state.slug); if(!m) return;
+  const mk = currentMarket();
+  const rect = e.target.getBoundingClientRect();
+  const x = e.clientX-rect.left;
+  state.hoverX = x;
+  const g = chartGeom(m,mk);
+  const t = Math.max(m.start_ts, Math.min(m.end_ts, g.invX(x)));
+  const tip = el('tip');
+  const rows = (mk?.tokens||[]).map((tk,i)=>{
+    const tok = m.tokens[tk.asset_id];
+    const v = tok ? midFromSeries(tok,t) : null;
+    return `<div class="r"><span style="color:${SERIES[i%SERIES.length]}">${tk.label}</span><span>${fmtP(v)}</span></div>`;
+  }).join('');
+  tip.innerHTML = `<div class="t">${fmtClock(t)}</div>${rows}`;
+  tip.classList.add('on');
+  const tw = tip.offsetWidth;
+  tip.style.left = Math.min(rect.width-tw-6, Math.max(0,x+12)) + 'px';
+  tip.style.top = '8px';
+  renderChart(m,mk);
+});
+el('priceChart').addEventListener('mouseleave',()=>{
+  state.hoverX=null; el('tip').classList.remove('on');
+  const m=matchesBySlug.get(state.slug); if(m) renderChart(m,currentMarket());
+});
+el('priceChart').addEventListener('click',e=>{
+  const m = matchesBySlug.get(state.slug); if(!m) return;
+  const g = chartGeom(m,currentMarket());
+  const rect = e.target.getBoundingClientRect();
+  stopPlay();
+  setTick(bisect(m.tick_times, g.invX(e.clientX-rect.left)));
+});
+el('yFitBtn').addEventListener('click',()=>{ state.yFit=true;  syncYBtns(); redraw(); });
+el('yFullBtn').addEventListener('click',()=>{ state.yFit=false; syncYBtns(); redraw(); });
+function syncYBtns(){
+  el('yFitBtn').classList.toggle('on',state.yFit);
+  el('yFullBtn').classList.toggle('on',!state.yFit);
+}
+
+/* ===========================================================================
+   Master redraw
+   =========================================================================== */
+function redraw(){
+  const m = matchesBySlug.get(state.slug); if(!m) return;
+  const mk = currentMarket();
+  const t = tickTime(m,state.tick);
+
+  el('tickLabel').innerHTML =
+    `${state.tick.toLocaleString()}<span class="of"> / ${(m.n_ticks-1).toLocaleString()}</span>`;
+  el('timeLabel').textContent = fmtFull(t);
+
+  /* Δt to the previous tick. When the payload was resampled onto a uniform
+     grid (m.tick_grid_seconds), EVERY tick is a grid point and none is a real
+     recorded change -- saying otherwise would be a lie about the data. Only an
+     unresampled payload has the 100ms-baseline-plus-real-changes axis, where a
+     Δt that isn't 100ms marks a genuine recorded change. */
+  const dtEl = el('dtLabel');
+  if (state.tick>0){
+    const dt = (t-m.tick_times[state.tick-1])*1000;
+    const grid = m.tick_grid_seconds;
+    const isReal = grid ? false : Math.abs(dt-100) > 0.5;
+    dtEl.textContent = `Δt ${dt<1 ? dt.toFixed(3) : Math.round(dt).toLocaleString()} ms`;
+    dtEl.classList.toggle('real', isReal);
+    dtEl.title = grid
+      ? `${grid}s grid sample (archive holds ${(m.n_ticks_archive||0).toLocaleString()} real ticks)`
+      : (isReal ? 'real recorded change' : '100ms grid point');
+  } else { dtEl.textContent='Δt –'; dtEl.classList.remove('real'); }
+
+  el('slider').value = state.tick;
+  el('gotoInput').value = state.tick;
+
+  el('crumb').innerHTML =
+    `<b>${m.sport}</b><span class="sep">/</span><b>${m.date}</b><span class="sep">/</span>` +
+    `<b>${m.match_name}</b><span class="sep">/</span><b>${MT_LABEL[state.marketType]||''}</b>` +
+    `<span class="sep">/</span><b>${mk?mk.market_label:''}</b>`;
+  el('bookTitle').textContent = `Order Book — ${mk?mk.market_label:''}`;
+
+  renderLegend(mk,m);
+  renderChart(m,mk);
+  renderTokens(mk,m);
+}
+
+/* ===========================================================================
+   Playback
+   =========================================================================== */
+const SPEEDS = [0.25,0.5,1,2,5,10,25,'Max'];
+function buildSpeeds(){
+  el('speedRow').innerHTML = SPEEDS.map(s=>`<button data-s="${s}">${s==='Max'?'Max':s+'×'}</button>`).join('');
+  el('speedRow').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    state.speed = b.dataset.s==='Max' ? 'Max' : parseFloat(b.dataset.s);
+    el('speedRow').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    if (state.playing){ stopPlay(); startPlay(); }
+  }));
+  el('speedRow').children[2].classList.add('on');
+}
+el('modeRow').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  state.mode = b.dataset.mode;
+  el('modeRow').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  if (state.playing){ stopPlay(); startPlay(); }
+}));
+
+function setTick(i){
+  const m = matchesBySlug.get(state.slug); if(!m) return;
+  state.tick = Math.max(0,Math.min(m.n_ticks-1,i));
+  redraw();
+  ensureMarketData();   // pulls the chunk under the new playhead if not cached
+}
+function clearTimers(){
+  if (state.timer!=null){ clearInterval(state.timer); state.timer=null; }
+  if (state.raf!=null){ cancelAnimationFrame(state.raf); state.raf=null; }
+}
+function startPlay(){
+  const m = matchesBySlug.get(state.slug); if(!m) return;
+  clearTimers();
+  state.playing = true;
+  el('btnPlay').innerHTML = '❚❚&nbsp;Pause';
+  if (state.mode==='tick'){
+    const ms = state.speed==='Max' ? 0 : 40/state.speed;   // ~25 ticks/s at 1×
+    state.timer = setInterval(()=>{
+      if (state.tick >= m.n_ticks-1){ stopPlay(); return; }
+      setTick(state.tick+1);
+    }, ms);
+  } else {
+    /* Real-time: ticks are unevenly spaced, so 1× means replaying at the
+       wall-clock pace they were actually recorded at. */
+    state.simTime = tickTime(m,state.tick);
+    state.lastFrameT = performance.now();
+    const loop = now => {
+      if (!state.playing) return;
+      const dt = (now-state.lastFrameT)/1000;
+      state.lastFrameT = now;
+      state.simTime += dt * (state.speed==='Max' ? 1e6 : state.speed);
+      const nxt = bisect(m.tick_times, state.simTime);
+      if (nxt!==state.tick) setTick(nxt);
+      if (state.tick >= m.n_ticks-1){ stopPlay(); return; }
+      state.raf = requestAnimationFrame(loop);
+    };
+    state.raf = requestAnimationFrame(loop);
+  }
+}
+function stopPlay(){
+  clearTimers();
+  state.playing = false;
+  el('btnPlay').innerHTML = '▶&nbsp;Play';
+}
+el('btnPlay').addEventListener('click',()=> state.playing?stopPlay():startPlay());
+el('btnStart').addEventListener('click',()=>{stopPlay(); setTick(0);});
+el('btnEnd').addEventListener('click',()=>{stopPlay(); setTick(matchesBySlug.get(state.slug).n_ticks-1);});
+el('btnPrev').addEventListener('click',()=>{stopPlay(); setTick(state.tick-1);});
+el('btnNext').addEventListener('click',()=>{stopPlay(); setTick(state.tick+1);});
+el('slider').addEventListener('input',()=>{stopPlay(); setTick(+el('slider').value);});
+el('gotoBtn').addEventListener('click',()=>{stopPlay(); setTick(+el('gotoInput').value);});
+el('gotoInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){stopPlay(); setTick(+el('gotoInput').value);} });
+
+el('depthMoreBtn').addEventListener('click',()=>{ state.depthRows=Math.min(50,state.depthRows+4); el('depthShown').textContent=state.depthRows; redraw(); });
+el('depthLessBtn').addEventListener('click',()=>{ state.depthRows=Math.max(4,state.depthRows-4); el('depthShown').textContent=state.depthRows; redraw(); });
+
+document.addEventListener('keydown',e=>{
+  if (e.target.tagName==='INPUT') return;
+  if (e.key==='ArrowRight'){ stopPlay(); setTick(state.tick + (e.shiftKey?100:1)); }
+  if (e.key==='ArrowLeft'){  stopPlay(); setTick(state.tick - (e.shiftKey?100:1)); }
+  if (e.key===' '){ e.preventDefault(); state.playing?stopPlay():startPlay(); }
+  if (e.key==='Home'){ stopPlay(); setTick(0); }
+  if (e.key==='End'){ stopPlay(); setTick(matchesBySlug.get(state.slug).n_ticks-1); }
+});
+
+/* ===========================================================================
+   Overview
+   =========================================================================== */
+function renderOverview(){
+  const rows = DATA.matches.map(m=>{
+    const nm = Object.values(m.market_types).reduce((a,v)=>a+v.length,0);
+    const real = m.n_real_ticks_in_window;
+    return `<tr data-slug="${m.event_slug}" class="${m.event_slug===state.slug?'cur':''}">
+      <td>${m.match_name}</td><td>${m.sport}</td><td>${m.date}</td>
+      <td class="num">${nm}</td>
+      <td class="num">${m.n_ticks.toLocaleString()}</td>
+      <td class="num">${real!=null?real.toLocaleString():'–'}</td>
+      <td class="num">${((m.end_ts-m.start_ts)/60).toFixed(0)}m</td>
+      <td class="num">${fmtClock(m.start_ts).slice(0,5)}</td>
+      <td class="num">${fmtClock(m.end_ts).slice(0,5)}</td></tr>`;
+  }).join('');
+  el('ovTable').innerHTML =
+    `<thead><tr><th>Match</th><th>Sport</th><th>Date</th><th class="num">Markets</th>
+      <th class="num">Ticks</th><th class="num">Real</th><th class="num">Length</th>
+      <th class="num">Start</th><th class="num">End</th></tr></thead><tbody>${rows}</tbody>`;
+  el('ovTable').querySelectorAll('[data-slug]').forEach(r=>
+    r.addEventListener('click',()=>selectMatch(r.dataset.slug)));
+}
+
+/* ===========================================================================
+   Boot
+   =========================================================================== */
+function reindex(matches){
+  matchesBySlug.clear(); sportSet.clear();
+  for (const m of matches){ matchesBySlug.set(m.event_slug,m); sportSet.add(m.sport); }
+  DATA.matches = matches;
+  el('matchCount').textContent = `${matches.length} matches`;
+  populateSportDate();
+  renderOverview();
+}
+
+/* Re-read the manifest so matches rebuilt/added since page load appear
+   without editing or rebuilding the viewer itself. */
+el('refreshBtn').addEventListener('click', async ()=>{
+  setStatus('Refreshing…');
+  try{
+    const res = await fetch(`${DATA_DIR}/index.json`, {cache:'no-store'});
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const fresh = await res.json();
+    fetchCache.clear();
+    const prev = state.slug;
+    reindex(fresh.matches);
+    setStatus('');
+    selectMatch(matchesBySlug.has(prev) ? prev : fresh.matches[0]?.event_slug);
+  }catch(err){ setStatus(`Refresh failed: ${err.message}`, true); }
+});
+
+buildSpeeds();
+syncYBtns();
+reindex(DATA.matches);
+/* Describe the resolution the VIEWER actually has, not the archive's. A
+   resampled payload holds one sample per grid step, so claiming "every
+   recorded change" would overstate it by several orders of magnitude. */
+{
+  const m0 = DATA.matches[0];
+  el('tickBasis').textContent = m0?.tick_grid_seconds
+    ? `${m0.tick_grid_seconds}s grid — archive keeps every recorded change`
+    : (m0?.n_real_ticks_in_window != null
+        ? 'every recorded change + 100ms grid'
+        : '100ms grid');
+}
+if (DATA.matches.length) selectMatch(DATA.matches[0].event_slug);
+
+let rz;
+window.addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>state.slug&&redraw(),120); });
+</script>
+</body>
+</html>

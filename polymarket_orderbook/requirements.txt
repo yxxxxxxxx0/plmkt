@@ -1,0 +1,11 @@
+requests>=2.31
+websockets>=13.0
+
+# rebuild_duckdb.py (fast rebuild path)
+duckdb>=1.5
+pyarrow>=25.0
+numpy>=2.0
+orjson>=3.12
+
+# build_match_index.py (streams multi-GB data/uniform/*.json without json.load)
+ijson>=3.5

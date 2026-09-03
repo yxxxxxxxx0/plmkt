@@ -1,0 +1,23 @@
+# Recorded and derived data. books.jsonl is ~45 GB per slate and the viewer
+# tree is ~65 GB across ~64,000 files -- far past GitHub's limits, and all of
+# it is reproducible from the recorder output. Only the small MLB Stats API
+# window file and the analysis results are worth committing (see the
+# project-level .gitignore for those exceptions).
+polymarket_orderbook/data/live/
+polymarket_orderbook/data/viewer_full/
+polymarket_orderbook/data/uniform/
+polymarket_orderbook/data/plots/
+polymarket_orderbook/data/discovery_cache.json
+
+# Generated viewer page: rebuilt by build_viewer_multi.py, churns every run.
+polymarket_orderbook/viewer_full.html
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+polymarket_orderbook/logs/
