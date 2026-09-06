@@ -113,6 +113,11 @@ class Writer(threading.Thread):
         tag = f"_{session}" if session else ""
         self.books_path = os.path.join(OUT_DIR, f"books{tag}.jsonl")
         self.top_path = os.path.join(OUT_DIR, f"top_of_book{tag}.csv")
+        # Trades go to their OWN file, never into books.jsonl. rebuild_duckdb
+        # reads that file with read_ndjson under a fixed column list, so a
+        # record carrying no bids/asks would either break the parse or be
+        # coerced to nulls and silently become a phantom empty book.
+        self.trades_path = os.path.join(OUT_DIR, f"trades{tag}.jsonl")
 
     def put(self, kind, payload):
         # never blocks the event loop; the queue is unbounded on purpose so a
@@ -123,6 +128,7 @@ class Writer(threading.Thread):
     def run(self):
         new_top = not (os.path.exists(self.top_path) and os.path.getsize(self.top_path) > 0)
         bf = open(self.books_path, "a", encoding="utf-8")
+        xf = open(self.trades_path, "a", encoding="utf-8")
         tf = open(self.top_path, "a", newline="", encoding="utf-8")
         tw = csv.writer(tf)
         if new_top:
@@ -139,6 +145,9 @@ class Writer(threading.Thread):
                     if kind == "book":
                         bf.write(payload)
                         bf.write("\n")
+                    elif kind == "trade":
+                        xf.write(payload)
+                        xf.write("\n")
                     else:
                         tw.writerow(payload)
                     self.written += 1
@@ -151,17 +160,19 @@ class Writer(threading.Thread):
                         break
                 if drained:
                     bf.flush()
+                    xf.flush()
                     tf.flush()
                 now = time.monotonic()
                 if now - last_sync >= self.fsync_interval:
                     # durability checkpoint, off the event loop and rare
                     os.fsync(bf.fileno())
+                    os.fsync(xf.fileno())
                     os.fsync(tf.fileno())
                     last_sync = now
         finally:
-            bf.flush(); tf.flush()
-            os.fsync(bf.fileno()); os.fsync(tf.fileno())
-            bf.close(); tf.close()
+            bf.flush(); xf.flush(); tf.flush()
+            os.fsync(bf.fileno()); os.fsync(xf.fileno()); os.fsync(tf.fileno())
+            bf.close(); xf.close(); tf.close()
 
     def stop(self):
         self._stop.set()
@@ -232,6 +243,7 @@ class MatchRecorder:
         self.last_top = {}
         self.msgs = 0
         self.snapshots = 0
+        self.trades = 0
         self.reconnects = 0
         self.unknown = 0
         self.last_msg_ms = None
@@ -321,7 +333,41 @@ class MatchRecorder:
                 self.emit(aid, ts_ex, ts_recv, "price_change")
             return
 
-        # tick_size_change / last_trade_price / anything else: not book state.
+        if et == "last_trade_price":
+            # NOT book state, so it never touches self.books -- but it is the
+            # only record of when a trade actually happened, and the exchange
+            # stamps it in milliseconds. The public data-api tape can be
+            # backfilled later, but only at SECOND resolution, and one second
+            # here holds a median of ~85 book updates. That precision cannot
+            # be recovered afterwards, so it has to be caught live.
+            for tr in (msg.get("trades") or [msg]):
+                aid = tr.get("asset_id") or msg.get("asset_id")
+                meta = self.assets.get(aid)
+                if meta is None:
+                    self.unknown += 1
+                    continue
+                try:
+                    price = float(tr["price"])
+                    size = float(tr["size"])
+                except (KeyError, TypeError, ValueError):
+                    self.unknown += 1
+                    continue
+                self.writer.put("trade", json.dumps({
+                    "seq": self.seq.next(),
+                    "ts": ts_ex, "recv": ts_recv, "et": "trade",
+                    "slug": self.slug, "asset_id": aid,
+                    "market_type": meta["market_type"], "outcome": meta["outcome"],
+                    "market_question": meta.get("market_question"),
+                    "outcome_name": meta.get("outcome_name"),
+                    "line": meta["line"], "condition_id": meta["condition_id"],
+                    "price": price, "size": size, "side": tr.get("side"),
+                    "fee_rate_bps": tr.get("fee_rate_bps"),
+                    "tx": tr.get("transaction_hash"),
+                }, separators=(",", ":")))
+                self.trades += 1
+            return
+
+        # tick_size_change / anything else: not book state.
 
     # -- seeding ------------------------------------------------------------
     async def seed(self):
@@ -587,8 +633,9 @@ async def stats_loop(recs, writer, interval, stop_event, t0):
         tot_m = sum(r.msgs for r in recs)
         tot_s = sum(r.snapshots for r in recs)
         rc = sum(r.reconnects for r in recs)
+        tot_tr = sum(r.trades for r in recs)
         log(f"[stats] {el:6.0f}s  msgs {tot_m:>8,} ({tot_m/max(el,1):>6.1f}/s)  "
-            f"snapshots {tot_s:>8,}  reconnects {rc}  "
+            f"snapshots {tot_s:>8,}  trades {tot_tr:>6,}  reconnects {rc}  "
             f"queued {writer.q.qsize():>6,}  written {writer.written:>8,}")
         stale = []
         for r in recs:
@@ -659,9 +706,11 @@ async def main_async(args):
     for r in sorted(recs, key=lambda x: -x.snapshots):
         lag = (r.lag_sum / r.lag_n) if r.lag_n else float("nan")
         log(f"  {r.slug:<34} msgs {r.msgs:>7,}  snapshots {r.snapshots:>7,}  "
-            f"reconnects {r.reconnects:>3}  mean delivery lag {lag:>7.0f} ms")
+            f"trades {r.trades:>6,}  reconnects {r.reconnects:>3}  "
+            f"mean delivery lag {lag:>7.0f} ms")
     tot_s = sum(r.snapshots for r in recs)
-    log(f"  TOTAL {tot_s:,} snapshots in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
+    tot_tr = sum(r.trades for r in recs)
+    log(f"  TOTAL {tot_s:,} snapshots, {tot_tr:,} trades in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
         f"{sum(r.reconnects for r in recs)} reconnects, "
         f"{writer.written:,} records written, {writer.q.qsize()} still queued")
 

@@ -1,0 +1,41 @@
+{
+ "config": {
+  "slate": null,
+  "market_type": "moneyline",
+  "latency": 0.5,
+  "horizon": 1.0,
+  "fee_rate": 0.05,
+  "max_gap": 30.0,
+  "gap_buffer": 5.0,
+  "tape": "auto",
+  "panel_dir": "D:\\plmkt\\polymarket_orderbook\\data\\panel",
+  "json": "data/analysis/realistic_500ms.json"
+ },
+ "fill_retention": 0.9435679845708775,
+ "results": {
+  "capture at fill only": {
+   "mean_c": 0.5879266262054443,
+   "pos_games": 40,
+   "games": 41,
+   "t": 11.876587237551687
+  },
+  "mark-to-mid (optimistic)": {
+   "mean_c": 0.45219804850913525,
+   "pos_games": 34,
+   "games": 41,
+   "t": 6.88564087588856
+  },
+  "exit as MAKER (best case)": {
+   "mean_c": 1.334055668266948,
+   "pos_games": 41,
+   "games": 41,
+   "t": 17.71613015618659
+  },
+  "exit as TAKER + fee": {
+   "mean_c": -1.2667037007572322,
+   "pos_games": 0,
+   "games": 41,
+   "t": -14.652275674423716
+  }
+ }
+}

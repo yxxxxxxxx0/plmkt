@@ -207,6 +207,11 @@ asynchronous updates.
 | `build_viewer_multi.py` | renders the template into `viewer_full.html` |
 | `viewer_full_template.html` | the viewer UI (edit this) |
 | `serve_viewer.py` | local HTTP server |
+| `decompress_raw.py` | restore the `.xz` archives to `.jsonl` |
+| `fetch_trades.py` | backfill the public trade tape per match |
+| `rebuild_all_slates.py` | every slate -> viewer, one slate at a time |
+| `sim_jump_capture.py` | perfect-foresight jump-capture cost simulation |
+| `test_sim_jump_capture.py` | pins the simulator's swing filter and ladder walk |
 
 ## Requirements
 

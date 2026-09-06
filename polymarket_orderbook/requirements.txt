@@ -1,7 +1,18 @@
+# Direct requirements, with floors rather than exact pins -- this file says
+# what the code NEEDS. For a byte-identical environment on another machine,
+# install requirements.lock.txt instead (see setup.ps1 / setup.sh).
+#
+# Python: 3.14 (see .python-version). 3.12+ works; every dependency below
+# ships cp314 win_amd64 / manylinux / macos wheels, so nothing builds from
+# source.
+
+# live_recorder.py, discovery.py, plan_slate.py, fetch_game_windows.py
 requests>=2.31
 websockets>=13.0
 
-# rebuild_duckdb.py (fast rebuild path)
+# rebuild_duckdb.py (fast rebuild path). pyarrow is not imported by name --
+# duckdb needs it for the .arrow() zero-copy interface load_columns() relies
+# on, so it is a hard requirement, not an optional extra.
 duckdb>=1.5
 pyarrow>=25.0
 numpy>=2.0
@@ -9,3 +20,7 @@ orjson>=3.12
 
 # build_match_index.py (streams multi-GB data/uniform/*.json without json.load)
 ijson>=3.5
+
+# liquidity_collapse.py, depth5c_plot.py, collapse_summary_plot.py.
+# All three use the Agg backend, so no GUI toolkit is needed.
+matplotlib>=3.8

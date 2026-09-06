@@ -33,3 +33,25 @@ env/
 
 # Unattended run logs
 logs/
+
+# Research findings from the strategy search. The JSON result sets are the
+# conclusions (81 KB total) and the probe scripts are the evidence behind
+# them, so both are versioned. Excluded from that exception: the 56 MB
+# parquet kept only to prove one vectorisation was faithful, the one-off
+# patch scripts whose edits are already in the source files, and a recorder
+# backup superseded by git history itself.
+!data/analysis/
+!data/analysis/**
+data/analysis/*.parquet
+data/analysis/patch_*.py
+data/analysis/*.bak
+
+# The research panel: ~2.9 GB of derived parquet, rebuilt by build_panel.py.
+data/panel/
+
+# Trade tapes and play-by-play: refetchable with fetch_trades.py,
+# split_live_trades.py and fetch_plays.py.
+data/trades/
+data/trades_live/
+data/plays/
+data/resolved/

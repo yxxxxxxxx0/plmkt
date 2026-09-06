@@ -1,6 +1,9 @@
 @echo off
-REM Unattended slate launcher for Task Scheduler.
-REM   %1 = HKT date (YYYY-MM-DD)   %2 = duration guard in hours
+REM Unattended slate recording. Registered with Task Scheduler so it is owned
+REM by the scheduler and survives the interactive session that created it
+REM ending -- recording is the one step in this pipeline that cannot be redone.
+REM
+REM Usage:  run_slate.bat <hkt-date> <duration-hours>
 cd /d "%~dp0"
 if not exist logs mkdir logs
-"C:\Users\JustinCHENG\AppData\Local\Python\pythoncore-3.14-64\python.exe" run_slate.py --hkt-date %1 --duration-hours %2 >> "logs\scheduler_%1.log" 2>&1
+"D:\plmkt\.venv\Scripts\python.exe" -u run_slate.py --hkt-date %1 --duration-hours %2 >> "logs\slate_%1_task.log" 2>&1

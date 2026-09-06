@@ -1,0 +1,527 @@
+<title>Quoting the MLB Moneyline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#F1F3F4; --raise:#FBFCFC; --ink:#16202A; --ink-2:#3A4A56;
+    --muted:#66757F; --rule:#D3DADD; --rule-2:#E4E9EB;
+    --accent:#1E5F7A; --accent-soft:#DCE9EE;
+    --pos:#1D6F4E; --pos-soft:#DCEBE3; --neg:#9C3A2C; --neg-soft:#F3E1DD;
+    --warn:#8A6018; --warn-soft:#F3EAD6;
+    --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#10171C; --raise:#18222A; --ink:#E3EAEE; --ink-2:#B4C2CA;
+      --muted:#8497A1; --rule:#2A3841; --rule-2:#212D35;
+      --accent:#6FB4CE; --accent-soft:#1B2E38;
+      --pos:#5FC095; --pos-soft:#152A22; --neg:#DE8878; --neg-soft:#2E1C18;
+      --warn:#D6A94E; --warn-soft:#2B2415;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#10171C; --raise:#18222A; --ink:#E3EAEE; --ink-2:#B4C2CA;
+    --muted:#8497A1; --rule:#2A3841; --rule-2:#212D35;
+    --accent:#6FB4CE; --accent-soft:#1B2E38;
+    --pos:#5FC095; --pos-soft:#152A22; --neg:#DE8878; --neg-soft:#2E1C18;
+    --warn:#D6A94E; --warn-soft:#2B2415;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:52rem;margin:0 auto;padding:3.5rem 1.5rem 6rem;}
+  .stack{display:flex;flex-direction:column;}
+
+  /* ---- masthead ---- */
+  header.mast{border-bottom:2px solid var(--ink);padding-bottom:1.6rem;
+    display:flex;flex-direction:column;gap:.75rem;}
+  .kicker{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);font-weight:600;}
+  h1{font-family:var(--serif);font-weight:500;font-size:clamp(2.3rem,5.6vw,3.35rem);
+    line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.015em;}
+  .standfirst{font-family:var(--serif);font-size:1.16rem;line-height:1.55;
+    color:var(--ink-2);max-width:38rem;margin:0;}
+  .byline{font-family:var(--mono);font-size:.74rem;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;}
+
+  /* ---- headline figures ---- */
+  .figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));
+    gap:0;border:1px solid var(--rule);border-radius:3px;overflow:hidden;
+    margin:2.2rem 0 0;background:var(--raise);}
+  .fig{padding:1.05rem 1.15rem;border-right:1px solid var(--rule);}
+  .fig:last-child{border-right:none;}
+  .fig .v{font-family:var(--mono);font-size:1.5rem;font-weight:600;
+    font-variant-numeric:tabular-nums;line-height:1.15;display:block;}
+  .fig .l{font-size:.76rem;color:var(--muted);display:block;margin-top:.25rem;
+    line-height:1.35;}
+  .fig .v.pos{color:var(--pos)}
+
+  /* ---- sections ---- */
+  section{margin-top:3.2rem;}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.62rem;line-height:1.25;
+    margin:0 0 .3rem;text-wrap:balance;letter-spacing:-.01em;}
+  h3{font-family:var(--sans);font-weight:600;font-size:.95rem;margin:1.9rem 0 .55rem;
+    letter-spacing:.005em;}
+  .lede{color:var(--ink-2);margin:.1rem 0 1.3rem;max-width:40rem;}
+  p{margin:0 0 1rem;max-width:40rem;}
+  .h-rule{height:1px;background:var(--rule);border:0;margin:.85rem 0 1.4rem;}
+
+  /* ---- confidence tiers: the report's one structural device ---- */
+  .tier{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--mono);
+    font-size:.67rem;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+    padding:.2rem .5rem;border-radius:2px;white-space:nowrap;}
+  .tier.ok{background:var(--pos-soft);color:var(--pos);}
+  .tier.thin{background:var(--warn-soft);color:var(--warn);}
+  .tier.open{background:var(--neg-soft);color:var(--neg);}
+  .tier .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+  /* ---- tables ---- */
+  .tbl-wrap{overflow-x:auto;margin:1rem 0 1.3rem;}
+  table{border-collapse:collapse;width:100%;font-size:.87rem;min-width:29rem;}
+  caption{text-align:left;font-size:.79rem;color:var(--muted);padding-bottom:.5rem;}
+  th{text-align:left;font-weight:600;font-size:.72rem;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted);padding:0 .8rem .45rem 0;
+    border-bottom:1px solid var(--rule);white-space:nowrap;}
+  td{padding:.46rem .8rem .46rem 0;border-bottom:1px solid var(--rule-2);
+    vertical-align:baseline;}
+  th.n,td.n{text-align:right;font-family:var(--mono);
+    font-variant-numeric:tabular-nums;padding-right:0;}
+  tr.hi td{background:var(--accent-soft);font-weight:600;}
+  td.pos{color:var(--pos);font-weight:500}
+  td.neg{color:var(--neg);font-weight:500}
+  code{font-family:var(--mono);font-size:.86em;background:var(--rule-2);
+    padding:.08em .34em;border-radius:2px;}
+
+  /* ---- spec sheet ---- */
+  .spec{border:1px solid var(--ink);border-radius:3px;background:var(--raise);
+    padding:1.4rem 1.5rem;margin:1.2rem 0;}
+  .spec dl{display:grid;grid-template-columns:minmax(8rem,auto) 1fr;
+    gap:.62rem 1.4rem;margin:0;}
+  .spec dt{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+    letter-spacing:.03em;}
+  .spec dd{margin:0;font-size:.92rem;}
+  .spec dd b{font-family:var(--mono);font-weight:600;}
+
+  /* ---- callouts ---- */
+  .note{border-left:3px solid var(--accent);padding:.15rem 0 .15rem 1.1rem;
+    margin:1.3rem 0;color:var(--ink-2);}
+  .note.alarm{border-left-color:var(--neg);}
+  .note strong{color:var(--ink);}
+
+  /* ---- chart ---- */
+  figure{margin:1.4rem 0 1.1rem;}
+  figure svg{display:block;width:100%;height:auto;}
+  figcaption{font-size:.79rem;color:var(--muted);margin-top:.5rem;max-width:38rem;}
+
+  /* ---- checklist ---- */
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:1rem 0;
+    display:flex;flex-direction:column;gap:.7rem;}
+  ol.steps li{counter-increment:s;display:grid;grid-template-columns:1.6rem 1fr;
+    gap:.75rem;align-items:baseline;}
+  ol.steps li::before{content:counter(s,decimal-leading-zero);
+    font-family:var(--mono);font-size:.74rem;color:var(--accent);font-weight:600;}
+  ul.plain{padding-left:1.1rem;margin:.6rem 0 1rem;}
+  ul.plain li{margin-bottom:.4rem;max-width:39rem;}
+
+  footer{margin-top:4rem;padding-top:1.2rem;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:.73rem;color:var(--muted);line-height:1.7;}
+  a{color:var(--accent);}
+  @media (max-width:34rem){
+    .spec dl{grid-template-columns:1fr;gap:.2rem 0;}
+    .spec dt{margin-top:.55rem;}
+  }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="kicker">Strategy dossier &middot; Polymarket</div>
+  <h1>Quoting the MLB Moneyline</h1>
+  <p class="standfirst">A two-sided passive market-making strategy on Polymarket
+  MLB moneyline binaries. It is the only positive-expectancy strategy that
+  survived a full search of the strategy space &mdash; and it is small,
+  capacity-limited, and gated on one unverified number.</p>
+  <div class="byline">
+    <span>Built 2026-08-27 &rarr; 2026-09-06</span>
+    <span>52 games &middot; 5 slates &middot; 98.1M book updates</span>
+    <span>16,305 ms-stamped trades</span>
+  </div>
+</header>
+
+<div class="figs">
+  <div class="fig"><span class="v pos">$27</span><span class="l">per game, at 10% flow capture</span></div>
+  <div class="fig"><span class="v pos">$401</span><span class="l">per 15-game slate</span></div>
+  <div class="fig"><span class="v">$30k</span><span class="l">capital at peak return</span></div>
+  <div class="fig"><span class="v">+1.71&cent;</span><span class="l">per share, after settlement</span></div>
+</div>
+
+<section>
+  <h2>The one-paragraph version</h2>
+  <hr class="h-rule">
+  <p>Quote both sides of the moneyline continuously, capture the spread, and
+  retire inventory on a clock before the game resolves. Every taker strategy
+  tested lost roughly the spread at every latency; this one wins because
+  Polymarket charges makers <b>nothing</b> and adverse selection consumes only
+  about a third of the half-spread you capture. The edge is real and it
+  replicated across four independent slates. It is also <b>capacity-limited to
+  roughly $30,000</b> of deployed capital, above which returns fall, and its
+  headline number rests on an assumed 10% fill rate that this dataset cannot
+  verify.</p>
+
+  <div class="note">
+    <strong>The premise to discard:</strong> this is not a strategy to wait for
+    more capital to run. It saturates at ~$30k and earns <em>less</em> at
+    $240k than at $6k. Surplus capital belongs in a different strategy.
+  </div>
+</section>
+
+<section>
+  <h2>Capacity, not capital, is the constraint</h2>
+  <p class="lede">Quote size and inventory cap scaled together, all 34 games,
+  full inventory-and-settlement simulation.</p>
+
+  <figure>
+    <svg viewBox="0 0 720 320" role="img" aria-label="Profit per game against capital deployed, peaking near thirty thousand dollars and declining after.">
+      <!-- grid -->
+      <g stroke="var(--rule)" stroke-width="1">
+        <line x1="78" y1="255" x2="700" y2="255"></line>
+      </g>
+      <g stroke="var(--rule-2)" stroke-width="1" stroke-dasharray="2 4">
+        <line x1="78" y1="185" x2="700" y2="185"></line>
+        <line x1="78" y1="115" x2="700" y2="115"></line>
+        <line x1="78" y1="45"  x2="700" y2="45"></line>
+      </g>
+      <!-- y labels -->
+      <g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)" text-anchor="end">
+        <text x="68" y="259">$0</text>
+        <text x="68" y="189">$10</text>
+        <text x="68" y="119">$20</text>
+        <text x="68" y="49">$30</text>
+      </g>
+      <!-- area under curve -->
+      <path d="M118,169 L222,98 L326,68 L430,75 L534,84 L638,168 L638,255 L118,255 Z"
+            fill="var(--accent-soft)"></path>
+      <!-- line -->
+      <path d="M118,169 L222,98 L326,68 L430,75 L534,84 L638,168"
+            fill="none" stroke="var(--accent)" stroke-width="2.5"
+            stroke-linejoin="round" stroke-linecap="round"></path>
+      <!-- points -->
+      <g fill="var(--paper)" stroke="var(--accent)" stroke-width="2.5">
+        <circle cx="118" cy="169" r="4.5"></circle>
+        <circle cx="222" cy="98"  r="4.5"></circle>
+        <circle cx="430" cy="75"  r="4.5"></circle>
+        <circle cx="534" cy="84"  r="4.5"></circle>
+        <circle cx="638" cy="168" r="4.5"></circle>
+      </g>
+      <!-- peak emphasised -->
+      <circle cx="326" cy="68" r="6.5" fill="var(--accent)" stroke="var(--paper)" stroke-width="2.5"></circle>
+      <!-- value labels -->
+      <g font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--ink-2)" text-anchor="middle">
+        <text x="118" y="156">$12.24</text>
+        <text x="222" y="85">$22.38</text>
+        <text x="430" y="62">$25.68</text>
+        <text x="534" y="71">$24.51</text>
+        <text x="638" y="155">$12.47</text>
+      </g>
+      <text x="326" y="52" font-family="IBM Plex Mono, monospace" font-size="12.5"
+            font-weight="600" fill="var(--accent)" text-anchor="middle">$26.76</text>
+      <!-- x labels -->
+      <g font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--muted)" text-anchor="middle">
+        <text x="118" y="276">$6k</text>
+        <text x="222" y="276">$15k</text>
+        <text x="326" y="276">$30k</text>
+        <text x="430" y="276">$60k</text>
+        <text x="534" y="276">$120k</text>
+        <text x="638" y="276">$240k</text>
+      </g>
+      <text x="389" y="302" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+            fill="var(--muted)" text-anchor="middle">capital deployed across a 15-game slate</text>
+      <text x="20" y="150" font-family="IBM Plex Sans, sans-serif" font-size="11.5"
+            fill="var(--muted)" text-anchor="middle" transform="rotate(-90 20 150)">profit per game</text>
+    </svg>
+    <figcaption>Peak return sits near $30k. Best return <em>on capital</em> is
+    lower still, around $15k ($22.38/game on $15k deployed). Past $60k the
+    curve turns over: larger quotes accumulate inventory faster than the extra
+    fills pay for, and moneyline flow is finite at ~4.02M shares per slate.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>The specification</h2>
+  <span class="tier ok"><span class="dot"></span>Walk-forward validated</span>
+
+  <div class="spec">
+    <dl>
+      <dt>market</dt>
+      <dd><b>Moneyline only.</b> 1.50&cent; mean spread. Totals (10.53&cent;) and
+        run-line spreads (9.13&cent;) look richer per share but yielded only
+        373 and 516 clean fills &mdash; too thin to validate.</dd>
+      <dt>side</dt>
+      <dd><b>One token per market.</b> YES and NO are the same book mirrored
+        (<code>bid_YES + ask_NO = 100&cent;</code>, identical size, in
+        100.0000% of 884,686 simultaneous states). Quoting both is one
+        position, not two.</dd>
+      <dt>quote size</dt>
+      <dd><b>500 shares</b> for maximum total PnL; <b>250</b> for the best
+        return on capital (+1.87&cent;/share vs +1.71&cent;).</dd>
+      <dt>inventory cap</dt>
+      <dd><b>&plusmn;4,000 shares.</b> Counter-intuitively, <em>tight caps
+        hurt</em> &mdash; they stop you quoting the very side that would mean-revert
+        the position. A &plusmn;250 cap turned +$1,820 into &minus;$277.</dd>
+      <dt>quote skew</dt>
+      <dd><b>1.0 spread</b> per unit of inventory/cap. Skew of 2.0 or more lost
+        money in every configuration tested: quoting away from the touch costs
+        more in missed fills than it saves in inventory.</dd>
+      <dt>flatten</dt>
+      <dd><b>Taper the cap to zero over the final 40%</b> of the game, quoting
+        only the inventory-reducing side. The single most valuable rule in the
+        spec.</dd>
+      <dt>exit</dt>
+      <dd><b>Maker only, never cross.</b> A taker exit costs &minus;1.85&cent;/share
+        and lost in 41 of 41 games at any fee rate.</dd>
+      <dt>fees</dt>
+      <dd><b>Zero on both legs.</b> Polymarket's schedule is
+        <code>takerOnly: true</code>, confirmed by all 16,305 captured trades
+        reporting <code>fee_rate_bps = 0</code>. A fee only ever appears if you
+        cross out.</dd>
+    </dl>
+  </div>
+
+  <h3>Why flattening matters more than anything else</h3>
+  <p>A binary contract walks to its outcome. A symmetric quoter therefore buys
+  as the loser falls and sells as the winner rises, and is systematically left
+  holding the wrong side at resolution &mdash; where the position pays 0 or 1,
+  not the mid. Before the taper, every worst-case token in the simulation was
+  <em>short</em> a contract that resolved at 100&cent;.</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption>All 68 tokens &middot; 500-share quotes &middot; &plusmn;4,000 cap &middot; 500&nbsp;ms latency</caption>
+    <thead><tr><th>Flatten window</th><th class="n">Settled</th>
+      <th class="n">&cent;/share</th><th class="n">Final |inv|</th>
+      <th class="n">Mean DD</th><th class="n">p95 DD</th></tr></thead>
+    <tbody>
+      <tr><td>none</td><td class="n">$1,586</td><td class="n">+1.146</td>
+        <td class="n">528</td><td class="n">$196</td><td class="n">$738</td></tr>
+      <tr><td>last 20%</td><td class="n">$1,511</td><td class="n">+1.309</td>
+        <td class="n">328</td><td class="n">$163</td><td class="n">$565</td></tr>
+      <tr class="hi"><td>last 40%</td><td class="n">$1,820</td><td class="n">+1.706</td>
+        <td class="n">233</td><td class="n">$140</td><td class="n">$385</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>More money, a quarter the terminal inventory, and half the drawdown. It
+  dominates on every dimension measured.</p>
+</section>
+
+<section>
+  <h2>Evidence</h2>
+  <p class="lede">What each claim rests on, and how far it should be trusted.</p>
+
+  <h3>Per-fill edge <span class="tier ok"><span class="dot"></span>37/37 games</span></h3>
+  <p>Walk-forward across 37 test games spanning nine days and four slates, with
+  all parameters fitted on earlier games only:
+  <b>+0.842&cent;/share &plusmn;0.080&cent;</b> (2 s.e.), <b>t = 21.17</b>,
+  positive in every single test game, on 23,930 clean fills.</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <caption>By slate, chronological &mdash; and by trade-tape resolution</caption>
+    <thead><tr><th>Group</th><th class="n">Games</th><th class="n">Fills</th>
+      <th class="n">&cent;/share</th><th class="n">Positive</th></tr></thead>
+    <tbody>
+      <tr><td>2026-08-27</td><td class="n">3</td><td class="n">3,592</td><td class="n pos">+0.661</td><td class="n">3/3</td></tr>
+      <tr><td>2026-08-28</td><td class="n">15</td><td class="n">9,612</td><td class="n pos">+0.955</td><td class="n">15/15</td></tr>
+      <tr><td>2026-08-29</td><td class="n">4</td><td class="n">915</td><td class="n pos">+1.175</td><td class="n">4/4</td></tr>
+      <tr><td>2026-09-04</td><td class="n">15</td><td class="n">7,190</td><td class="n pos">+0.811</td><td class="n">15/15</td></tr>
+      <tr><td>backfill tape (second-resolution)</td><td class="n">22</td><td class="n">14,119</td><td class="n">+0.894</td><td class="n">22/22</td></tr>
+      <tr class="hi"><td>live tape (millisecond)</td><td class="n">15</td><td class="n">7,190</td><td class="n">+0.811</td><td class="n">15/15</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The two tape sources differ by 0.083&cent; in the predicted direction:
+  second-resolution timestamps blur the fill moment and average away part of
+  the immediate adverse move, overstating edge by about 10%. Treat
+  <b>+0.811&cent;</b> as the honest per-fill figure. That the bias appeared in
+  the right direction and the right magnitude is itself a check on the
+  measurement.</p>
+
+  <h3>Adverse selection <span class="tier ok"><span class="dot"></span>Measured</span></h3>
+  <p>On the millisecond tape, a maker captures a <b>+1.068&cent;</b> half-spread
+  and gives back <b>+0.293&cent;</b> to adverse drift over one second &mdash; about
+  27%, rising to ~65% at ten seconds. The reason it is not worse: roughly
+  <b>2,000 shares are cancelled for every share traded</b> on this venue, so
+  most fills are liquidity-motivated rather than informed.</p>
+
+  <h3>Full simulation <span class="tier thin"><span class="dot"></span>53% hit rate</span></h3>
+  <p>With inventory, latency and settlement modelled: <b>+$1,820 across 34
+  games</b>, +1.706&cent;/share. But only <b>36 of 68 tokens were
+  profitable</b> &mdash; essentially a coin flip, with PnL coming from winners
+  being larger than losers. A market-making book should show many small wins
+  and rare large losses; this shows the opposite, which suggests the result is
+  driven more by inventory outcomes than by systematic spread capture. This is
+  the weakest link in the evidence chain.</p>
+
+  <h3>Data integrity <span class="tier ok"><span class="dot"></span>Audited</span></h3>
+  <ul class="plain">
+    <li><b>Crossed books</b> (ask &le; bid) &mdash; 0.07% of rows, removed. They
+      fabricate risk-free arbitrage, and any filter written
+      <code>spread &lt;= X</code> <em>admits</em> them, since a crossed book has
+      negative spread.</li>
+    <li><b>Feed continuity</b> &mdash; 112 gap rows in 24.2M (0.0005%). The
+      recording is effectively continuous; no reconnect contamination.</li>
+    <li><b>Excluded:</b> the 2026-08-29 slate, whose recorder stopped before most
+      games started (5 of 15 games have in-game data, median 41% coverage).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Risk management</h2>
+
+  <h3>Position and drawdown</h3>
+  <div class="tbl-wrap">
+  <table>
+    <caption>Per token, best configuration, all games</caption>
+    <thead><tr><th>Measure</th><th class="n">Mean</th><th class="n">p95</th><th class="n">Worst</th></tr></thead>
+    <tbody>
+      <tr><td>Max drawdown (mark-to-mid)</td><td class="n">$140</td><td class="n">$385</td><td class="n neg">$2,146</td></tr>
+      <tr><td>Terminal inventory (shares)</td><td class="n">233</td><td class="n">1,094</td><td class="n">2,094</td></tr>
+      <tr><td>Peak inventory (shares)</td><td class="n">1,404</td><td class="n">2,501</td><td class="n">3,368</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>The three risks that actually matter</h3>
+  <ul class="plain">
+    <li><b>Settlement risk is the tail.</b> Inventory carried into resolution
+      pays 0 or 1, not the mid. It is unbounded by any spread and is the only
+      way this strategy loses badly. The 40% taper exists solely to retire it.</li>
+    <li><b>Fill clustering compounds inventory.</b> In the jumpiest quintile of
+      order flow, fills arrive a median <b>3.0 seconds</b> apart versus 38.7s in
+      the calmest. Positions build fastest exactly when price is running &mdash;
+      correlated bets, not independent ones. Cap inventory hardest there.</li>
+    <li><b>Spread compression under your own participation.</b> The 1.50&cent;
+      moneyline spread is wide because few compete. The tick is
+      <code>0.001</code>, so anyone can step ahead of you for a tenth of a cent.
+      Size expectations to a spread that narrows once you are in it.</li>
+  </ul>
+
+  <h3>Hard limits to run with</h3>
+  <ul class="plain">
+    <li>Never cross to exit; work inventory out passively or let the taper do it.</li>
+    <li>Stop-loss on terminal inventory, not on mark-to-market &mdash; the mid can
+      look fine while the settlement exposure is the whole position.</li>
+    <li>Kill the quoter if the feed gaps: a stale book is where fabricated edge
+      comes from.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What was tested and rejected</h2>
+  <p class="lede">Recorded so none of it is re-derived. Every one of these was
+  implemented, run on real data, and measured &mdash; not reasoned about.</p>
+
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Approach</th><th>Result</th><th>Why it fails</th></tr></thead>
+    <tbody>
+      <tr><td>Taker directional (imbalance, microprice, OFI, momentum, reversion, liquidity collapse)</td>
+        <td class="neg">&minus;1.1 to &minus;3.7&cent;/share</td>
+        <td>Pays the spread. Momentum and reversion lose <em>equally</em>, which is the signature of pure execution cost.</td></tr>
+      <tr><td>ML on the executable target (GBM, 34 features)</td>
+        <td class="neg">&minus;1.48&cent;/share</td>
+        <td>Test AUC 0.865 with 123&times; lift and still loses. Ranking rows correctly is not the same as finding moves larger than the spread.</td></tr>
+      <tr><td>Complete-set arbitrage</td>
+        <td class="neg">0 opportunities</td>
+        <td>Zero in 1,558,238 clean states. The apparent 8&ndash;16&cent; edge was entirely crossed books.</td></tr>
+      <tr><td>YES/NO lead-lag</td>
+        <td class="neg">Impossible</td>
+        <td>The two books are one book mirrored exactly, 100.0000% of the time. Corrects the repo README, which assumed ~99.7% with real asynchrony.</td></tr>
+      <tr><td>Cross-market lead-lag (moneyline / spread / total)</td>
+        <td class="neg">corr &asymp; 0.000</td>
+        <td>No co-movement at any lag &mdash; including lag zero.</td></tr>
+      <tr><td>Jump capture (Lee-Mykland, Hawkes, Kalman, PCA)</td>
+        <td class="neg">signed move +0.000&cent;</td>
+        <td>Timing is genuinely predictable (12.8&times; lift). Direction is not, at all. Polymarket has no options, so a volatility forecast has no instrument.</td></tr>
+      <tr><td>Perfect-foresight jump capture (oracle)</td>
+        <td class="neg">$656/slate ceiling</td>
+        <td>Even with the future known, taker costs cap it. No signal can beat an oracle.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>Open questions</h2>
+  <p class="lede">Two of these must be resolved before capital is committed.</p>
+
+  <h3>Fill rate <span class="tier open"><span class="dot"></span>Unverified &mdash; blocking</span></h3>
+  <p>Every figure in this report assumes you win <b>10% of moneyline flow</b>.
+  That number is an assumption, not a measurement, and it cannot be measured
+  from this data: cancellations outnumber trades ~2,000:1 and cancel queue
+  positions are unobservable, so no queue model is defensible here. The outcome
+  spans an order of magnitude &mdash; <b>$38/slate at 2% capture, $668 at
+  25%</b>. Only resting real orders settles it.</p>
+
+  <h3>The latency inversion <span class="tier open"><span class="dot"></span>Unexplained &mdash; blocking</span></h3>
+  <div class="note alarm">
+    <strong>Faster execution made the simulation worse:</strong> $848 at 20&nbsp;ms
+    versus $1,820 at 500&nbsp;ms. This contradicts the per-fill analysis, which
+    showed capture collapsing from +1.09&cent; to +0.22&cent; as latency rose.
+    The likely mechanism is that lower latency wins <em>more</em> fills and the
+    marginal fills lose money &mdash; which would mean the profit is not coming from
+    spread capture at all. <b>Do not spend on co-located infrastructure until
+    this is understood.</b>
+  </div>
+
+  <h3>Jump-intensity sizing <span class="tier thin"><span class="dot"></span>Contradictory</span></h3>
+  <p>Per-fill analysis said scale size down when Hawkes intensity is high
+  (mean IR 16.65 vs 12.69, better in 32/37 games, on 36% of the capital). The
+  full simulation reversed it ($1,199 vs $1,820). The simulation carries the
+  realistic constraints, so trust it &mdash; but the disagreement is unresolved and
+  is probably the same phenomenon as the latency inversion.</p>
+</section>
+
+<section>
+  <h2>Deployment sequence</h2>
+  <p class="lede">In order. Each step gates the next.</p>
+  <ol class="steps">
+    <li><b>Resolve the latency inversion.</b> Until faster execution stops
+      making things worse, the mechanism behind the profit is not understood
+      and the spec above rests on it.</li>
+    <li><b>Run a minimum-size live pilot</b> &mdash; rest 5-share orders, log every
+      fill. Measure two numbers: what fraction of flow you win, and what
+      fraction of inventory you unwind passively. Both are unobtainable from
+      historical data.</li>
+    <li><b>Size to the pilot's fill rate,</b> not to this report's 10%
+      assumption. Below ~5% capture the strategy is not worth operating.</li>
+    <li><b>Deploy at $15k&ndash;$30k</b> and no more. Return on capital is best
+      near $15k; total profit peaks near $30k; both decline after.</li>
+    <li><b>Keep recording with the millisecond tape.</b> Only 15 of 37 validated
+      games carry it, and it is the only source that measures adverse selection
+      correctly.</li>
+  </ol>
+
+  <div class="note">
+    <strong>Rough season scale, if the 10% assumption holds:</strong> ~$400 per
+    slate, ~160 slates in an MLB season, on $30k deployed. Treat that as the
+    optimistic branch of a distribution whose downside is "not worth running",
+    not as a forecast.
+  </div>
+</section>
+
+<footer>
+  Reproduce via <code>RESEARCH.md</code>. Core scripts:
+  <code>build_panel.py</code> &middot; <code>validate_strategy.py</code> &middot;
+  <code>validate_realistic.py</code> &middot; <code>mm_simulator.py</code> &middot;
+  <code>jump_models.py</code> &middot; <code>maker_adverse.py</code><br>
+  Data: 5 recorded slates (2026-08-27 &rarr; 2026-09-04), 52 games split by game,
+  92,719 backfilled trades, 16,305 millisecond-stamped trades, 5,054 timestamped plays.<br>
+  All results walk-forward, chronologically split, crossed-book and continuity gated.
+  No random train/test splits anywhere.
+</footer>
+
+</div>

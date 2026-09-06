@@ -1,0 +1,22 @@
+{
+ "config": {
+  "slate": "2026-09-04",
+  "market_type": "moneyline",
+  "capture": 0.1,
+  "size": 500.0,
+  "max_inv": 2000.0,
+  "skew": 1.0,
+  "latency": 0.5,
+  "intensity_sizing": false,
+  "intensity_floor": 0.3,
+  "tape": "auto",
+  "panel_dir": "D:\\plmkt\\polymarket_orderbook\\data\\panel",
+  "json": "data/analysis/mm_base.json",
+  "quiet": true
+ },
+ "tokens": 27,
+ "shares": 62702.930788000005,
+ "mtm_usd": -77.18816337959072,
+ "settled_usd": 8.88885814551773,
+ "settle_delta_usd": 86.07702152510845
+}
