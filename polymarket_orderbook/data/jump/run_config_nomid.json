@@ -1,0 +1,27 @@
+{
+  "market_types": [
+    "moneyline",
+    "total",
+    "spread"
+  ],
+  "fine": 24,
+  "coarse": 24,
+  "coarse_stride": 8,
+  "max_train": 400000,
+  "max_val": 200000,
+  "max_test": 200000,
+  "epochs": 4,
+  "target": "jump",
+  "pnl_weight": false,
+  "no_mid_path": true,
+  "skip_deep": false,
+  "skip_trivial": true,
+  "max_book_age_s": 5.0,
+  "tag": "_nomid",
+  "lookback": 200,
+  "suffix": "_nomid",
+  "n_train": 400000,
+  "n_val": 200000,
+  "n_test": 200000,
+  "ts": "2026-09-09T17:45:03"
+}

@@ -1,0 +1,300 @@
+[
+  {
+    "path": "..\\data\\live\\books_2026-08-30.jsonl",
+    "size_bytes": 27282578014,
+    "lines": 30741211,
+    "unparseable": 0,
+    "truncated": false,
+    "duration_s": 43294.859,
+    "first_ts": 1788101545840,
+    "last_ts": 1788144840699,
+    "event_types": {
+      "seed": 254,
+      "book": 31937,
+      "price_change": 30709020
+    },
+    "market_types": {
+      "total": 10472876,
+      "spread": 13040693,
+      "moneyline": 7028662,
+      "first_inning_run": 198980
+    },
+    "n_assets": 254,
+    "trade_prints": 0,
+    "lag_ms": {
+      "p50": 204,
+      "p90": 5349,
+      "p99": 31918,
+      "max": 128016
+    },
+    "asset_gap_s": {
+      "p50": 1018.642,
+      "p90": 1171.9154000000005,
+      "max": 3305.537
+    },
+    "reseeds": {
+      "max": 1,
+      "n_assets_over_1": 0
+    },
+    "ts_regressions": 4,
+    "ms_collisions": 5543827,
+    "ts_fallback": 0,
+    "ts_fallback_frac": 0.0,
+    "lag_by_hour": [
+      {
+        "hour": 0,
+        "n": 1758,
+        "p50": 112,
+        "p90": 249,
+        "p99": 835
+      },
+      {
+        "hour": 1,
+        "n": 5282,
+        "p50": 173,
+        "p90": 6536,
+        "p99": 25501
+      },
+      {
+        "hour": 2,
+        "n": 11794,
+        "p50": 304,
+        "p90": 8583,
+        "p99": 40511
+      },
+      {
+        "hour": 3,
+        "n": 20484,
+        "p50": 179,
+        "p90": 2391,
+        "p99": 14563
+      },
+      {
+        "hour": 4,
+        "n": 41369,
+        "p50": 179,
+        "p90": 4760,
+        "p99": 42697
+      },
+      {
+        "hour": 5,
+        "n": 38174,
+        "p50": 291,
+        "p90": 6461,
+        "p99": 27502
+      },
+      {
+        "hour": 6,
+        "n": 16793,
+        "p50": 228,
+        "p90": 4329,
+        "p99": 27475
+      },
+      {
+        "hour": 7,
+        "n": 9086,
+        "p50": 313,
+        "p90": 9337,
+        "p99": 31982
+      },
+      {
+        "hour": 8,
+        "n": 2473,
+        "p50": 205,
+        "p90": 4674,
+        "p99": 15511
+      },
+      {
+        "hour": 9,
+        "n": 4026,
+        "p50": 310,
+        "p90": 4884,
+        "p99": 16626
+      },
+      {
+        "hour": 10,
+        "n": 1808,
+        "p50": 190,
+        "p90": 567,
+        "p99": 2498
+      },
+      {
+        "hour": 11,
+        "n": 659,
+        "p50": 194,
+        "p90": 441,
+        "p99": 1375
+      }
+    ],
+    "parse_seconds": 228.9,
+    "lag_spread_ms": 5145,
+    "lag_sustained_spread_ms": 4574,
+    "fails": [],
+    "warns": [
+      "delivery lag dispersion 4,574ms (p90-p50) sustained past hour 1: the recorder ran with little headroom for the whole session. Event times still come from the exchange so timing is intact, and re-seeds are the check on whether anything was actually lost -- but this is close to the 20s keepalive that killed the sockets in the 2026-08-26 run",
+      "no trade prints: fine for book-dynamics work, but every size decrease at the touch is ambiguous between a fill and a cancel, and cancels carry no adverse selection -- so maker P&L from this file is biased optimistically",
+      "largest per-asset gap 3,306s -- a quiet market and a dead socket look identical here",
+      "4 timestamp regressions: the rebuild will fall back to the slow exact path for those assets (correct, just slower)"
+    ],
+    "verdict": "WARN",
+    "usable_for": {
+      "book_dynamics": true,
+      "maker_pnl": false,
+      "latency_analysis": false
+    }
+  },
+  {
+    "path": "data\\live\\books_hkt0909.jsonl",
+    "size_bytes": 3259100395,
+    "lines": 2784344,
+    "unparseable": 0,
+    "truncated": false,
+    "duration_s": 44369.704,
+    "first_ts": 1788861276780,
+    "last_ts": 1788905646484,
+    "event_types": {
+      "seed": 994,
+      "book": 6598,
+      "price_change": 2774210,
+      "trade": 2542
+    },
+    "market_types": {
+      "first_five_spread": 115441,
+      "first_five_total": 349360,
+      "total": 713498,
+      "moneyline": 400611,
+      "extra_innings": 147236,
+      "first_inning_run": 115088,
+      "spread": 943110
+    },
+    "n_assets": 510,
+    "trade_prints": 2542,
+    "lag_ms": {
+      "p50": -209,
+      "p90": 49,
+      "p99": 339,
+      "max": 179492
+    },
+    "asset_gap_s": {
+      "p50": 507.605,
+      "p90": 723.99,
+      "max": 1367.79
+    },
+    "reseeds": {
+      "max": 2,
+      "n_assets_over_1": 484
+    },
+    "ts_regressions": 235,
+    "ms_collisions": 522938,
+    "ts_fallback": 4206,
+    "ts_fallback_frac": 0.0015105892088046592,
+    "lag_by_hour": [
+      {
+        "hour": 0,
+        "n": 985,
+        "p50": 59,
+        "p90": 90,
+        "p99": 325
+      },
+      {
+        "hour": 1,
+        "n": 1097,
+        "p50": 17,
+        "p90": 52,
+        "p99": 406
+      },
+      {
+        "hour": 2,
+        "n": 1174,
+        "p50": -41,
+        "p90": -10,
+        "p99": 231
+      },
+      {
+        "hour": 3,
+        "n": 1075,
+        "p50": -98,
+        "p90": -70,
+        "p99": 130
+      },
+      {
+        "hour": 4,
+        "n": 1785,
+        "p50": -158,
+        "p90": 93,
+        "p99": 427
+      },
+      {
+        "hour": 5,
+        "n": 1906,
+        "p50": -214,
+        "p90": 84,
+        "p99": 471
+      },
+      {
+        "hour": 6,
+        "n": 1085,
+        "p50": -279,
+        "p90": -74,
+        "p99": 281
+      },
+      {
+        "hour": 7,
+        "n": 696,
+        "p50": -347,
+        "p90": -312,
+        "p99": -71
+      },
+      {
+        "hour": 8,
+        "n": 728,
+        "p50": -410,
+        "p90": -371,
+        "p99": -158
+      },
+      {
+        "hour": 9,
+        "n": 855,
+        "p50": -473,
+        "p90": -399,
+        "p99": -85
+      },
+      {
+        "hour": 10,
+        "n": 788,
+        "p50": -529,
+        "p90": -483,
+        "p99": 33
+      },
+      {
+        "hour": 11,
+        "n": 1143,
+        "p50": -588,
+        "p90": -542,
+        "p99": -195
+      },
+      {
+        "hour": 12,
+        "n": 604,
+        "p50": -635,
+        "p90": -600,
+        "p99": -206
+      }
+    ],
+    "parse_seconds": 22.1,
+    "lag_spread_ms": 258,
+    "lag_sustained_spread_ms": 42,
+    "fails": [],
+    "warns": [
+      "484 asset(s) re-seeded (max 2x): price_change messages were lost during those outages and cannot be recovered",
+      "largest per-asset gap 1,368s -- a quiet market and a dead socket look identical here",
+      "235 timestamp regressions: the rebuild will fall back to the slow exact path for those assets (correct, just slower)"
+    ],
+    "verdict": "WARN",
+    "usable_for": {
+      "book_dynamics": true,
+      "maker_pnl": true,
+      "latency_analysis": true
+    }
+  }
+]

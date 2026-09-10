@@ -102,7 +102,11 @@ class Writer(threading.Thread):
         self.q = queue.Queue()
         self.fsync_interval = fsync_interval
         self.batch = batch
-        self._stop = threading.Event()
+        # NOT `self._stop`: threading.Thread already defines a private _stop()
+        # method that join() calls internally, so assigning an Event over it
+        # makes every clean shutdown raise "'Event' object is not callable"
+        # after the data is written -- which also skips the final summary.
+        self._stop_evt = threading.Event()
         self.written = 0
         self.dropped = 0
         os.makedirs(OUT_DIR, exist_ok=True)
@@ -129,7 +133,7 @@ class Writer(threading.Thread):
             tw.writerow(TOP_HEADER)
         last_sync = time.monotonic()
         try:
-            while not (self._stop.is_set() and self.q.empty()):
+            while not (self._stop_evt.is_set() and self.q.empty()):
                 drained = 0
                 try:
                     kind, payload = self.q.get(timeout=0.5)
@@ -164,7 +168,7 @@ class Writer(threading.Thread):
             bf.close(); tf.close()
 
     def stop(self):
-        self._stop.set()
+        self._stop_evt.set()
 
 
 # ---------------------------------------------------------------------------
@@ -222,16 +226,18 @@ class Seq:
 class MatchRecorder:
     """One match, one websocket, its own reconnect loop and its own state."""
 
-    def __init__(self, slug, assets, writer, stop_event, seq):
+    def __init__(self, slug, assets, writer, stop_event, seq, depth_cents=None):
         self.seq = seq
         self.slug = slug
         self.assets = assets          # asset_id -> meta
         self.writer = writer
         self.stop_event = stop_event
+        self.depth_cents = depth_cents
         self.books = {aid: new_book() for aid in assets}
         self.last_top = {}
         self.msgs = 0
         self.snapshots = 0
+        self.trades = 0
         self.reconnects = 0
         self.unknown = 0
         self.last_msg_ms = None
@@ -246,6 +252,7 @@ class MatchRecorder:
         ba = asks[0][0] if asks else None
         bbs = bids[0][1] if bids else None
         bas = asks[0][1] if asks else None
+        stored_bids, stored_asks = self._stored_depth(bids, asks)
 
         self.writer.put("book", json.dumps({
             "seq": self.seq.next(),
@@ -255,7 +262,7 @@ class MatchRecorder:
             "market_question": meta.get("market_question"),
             "outcome_name": meta.get("outcome_name"),
             "line": meta["line"], "condition_id": meta["condition_id"],
-            "bids": bids, "asks": asks,
+            "bids": stored_bids, "asks": stored_asks,
         }, separators=(",", ":")))
         self.snapshots += 1
 
@@ -269,6 +276,88 @@ class MatchRecorder:
                 meta["line"], meta["outcome"], meta["condition_id"], asset_id,
                 bb, bbs, ba, bas, mid, spr,
             ])
+
+    def _stored_depth(self, bids, asks):
+        """Trim output around each touch without changing prices or ticks.
+
+        State remains full-depth internally. The cap is applied independently
+        to each side at write time: bids within N dollars below best bid and
+        asks within N dollars above best ask. Thus a moving touch never leaves
+        the reconstruction without its new local ladder.
+        """
+        if self.depth_cents is None:
+            return bids, asks
+        bb = bids[0][0] if bids else None
+        ba = asks[0][0] if asks else None
+        kept_bids = ([level for level in bids
+                      if level[0] >= bb - self.depth_cents - 1e-12]
+                     if bb is not None else [])
+        kept_asks = ([level for level in asks
+                      if level[0] <= ba + self.depth_cents + 1e-12]
+                     if ba is not None else [])
+        return kept_bids, kept_asks
+
+    # -- trades and metadata ------------------------------------------------
+    def emit_trade(self, msg, ts_ex, ts_recv):
+        """One row per print, carrying the book top as of that instant.
+
+        Shapes vary, so parse defensively the way the price_change handler
+        does: an unrecognised trade is logged once rather than silently
+        dropped, because a missing print is unrecoverable after the fact.
+        """
+        aid = msg.get("asset_id") or msg.get("market")
+        if aid not in self.books:
+            return
+        try:
+            price = float(msg["price"])
+            size = float(msg.get("size") or msg.get("amount") or 0.0)
+        except (KeyError, TypeError, ValueError):
+            self.unknown += 1
+            log(f"[{self.slug}] unrecognised last_trade_price shape, "
+                f"keys={sorted(msg.keys())}")
+            return
+
+        meta = self.assets[aid]
+        bids, asks = sorted_book(self.books[aid])
+        bb = bids[0][0] if bids else None
+        ba = asks[0][0] if asks else None
+        # `side` as sent is the maker's side on some feeds and the taker's on
+        # others, so keep it verbatim AND record what the touch implies.
+        at_bid = bb is not None and abs(price - bb) < 1e-9
+        at_ask = ba is not None and abs(price - ba) < 1e-9
+        aggressor = "sell" if at_bid and not at_ask else (
+            "buy" if at_ask and not at_bid else None)
+        stored_bids, stored_asks = self._stored_depth(bids, asks)
+
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": ts_ex, "recv": ts_recv, "et": "trade",
+            "slug": self.slug, "asset_id": aid,
+            "market_type": meta["market_type"], "outcome": meta["outcome"],
+            "market_question": meta.get("market_question"),
+            "outcome_name": meta.get("outcome_name"),
+            "line": meta["line"], "condition_id": meta["condition_id"],
+            "price": price, "size": size,
+            "side_raw": msg.get("side"), "aggressor": aggressor,
+            "fee_rate_bps": msg.get("fee_rate_bps"),
+            "bids": stored_bids, "asks": stored_asks,
+        }, separators=(",", ":")))
+        self.trades += 1
+
+    def emit_meta(self, msg, ts_ex, ts_recv, event_type):
+        aid = msg.get("asset_id") or msg.get("market")
+        if aid not in self.books:
+            return
+        meta = self.assets[aid]
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": ts_ex, "recv": ts_recv, "et": event_type,
+            "slug": self.slug, "asset_id": aid,
+            "market_type": meta["market_type"], "outcome": meta["outcome"],
+            "condition_id": meta["condition_id"],
+            "payload": {k: v for k, v in msg.items()
+                        if k not in ("bids", "asks")},
+        }, separators=(",", ":")))
 
     # -- message handling ---------------------------------------------------
     def handle(self, msg, ts_recv):
@@ -321,7 +410,28 @@ class MatchRecorder:
                 self.emit(aid, ts_ex, ts_recv, "price_change")
             return
 
-        # tick_size_change / last_trade_price / anything else: not book state.
+        if et == "last_trade_price":
+            # A genuine print. Not book state, so it gets its own row rather
+            # than being folded into the book -- but it must be recorded,
+            # because without it a size decrease at the touch is ambiguous
+            # between a fill and a cancel. That ambiguity was the single
+            # biggest limitation of snapshot-only recordings: ~45% of
+            # one-tick touch moves turned out to be reprices, and they carry
+            # a spurious edge (a pulled quote cannot be adversely selected).
+            #
+            # The book top is stamped onto the row so the aggressor side can
+            # be inferred later: a print at the bid is a taker selling, a
+            # print at the ask is a taker buying.
+            self.emit_trade(msg, ts_ex, ts_recv)
+            return
+
+        if et == "tick_size_change":
+            # Changes the minimum price increment, which rescales every
+            # spread and depth measurement taken after it.
+            self.emit_meta(msg, ts_ex, ts_recv, "tick_size_change")
+            return
+
+        # anything else: not book state and not a trade.
 
     # -- seeding ------------------------------------------------------------
     async def seed(self):
@@ -572,6 +682,64 @@ def assets_live_discover(limit):
     return per_match
 
 
+def assets_mlb_futures(shard_size=80):
+    """Discover active MLB-tagged non-game markets from the CLOB catalog.
+
+    The sampling-markets endpoint is cursor-paginated and already exposes the
+    exact token IDs accepted by the market WebSocket. Ordinary markets tagged
+    `Games` are excluded because the match recorder captures them separately.
+    Futures are sharded so one connection failure cannot affect every series.
+    """
+    url = "https://clob.polymarket.com/sampling-markets"
+    cursor = None
+    assets = []
+    seen = set()
+    while True:
+        params = {"next_cursor": cursor} if cursor else {}
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        payload = r.json()
+        for m in payload.get("data", []):
+            tags = {str(t).strip().lower() for t in (m.get("tags") or [])}
+            if "mlb" not in tags or "games" in tags:
+                continue
+            if (not m.get("active", True) or m.get("closed")
+                    or not m.get("accepting_orders", True)
+                    or not m.get("enable_order_book", True)):
+                continue
+            tokens = m.get("tokens") or []
+            if len(tokens) != 2:
+                continue
+            cid = m.get("condition_id")
+            for i, token in enumerate(tokens):
+                aid = str(token.get("token_id") or "")
+                if not aid or aid in seen:
+                    continue
+                seen.add(aid)
+                assets.append((aid, {
+                    "market_type": "mlb_future",
+                    "market_question": m.get("question"),
+                    "line": None,
+                    "condition_id": cid,
+                    "outcome": "YES" if i == 0 else "NO",
+                    "outcome_name": token.get("outcome"),
+                    "market_slug": m.get("market_slug"),
+                    "tags": sorted(tags),
+                    "seconds_delay": m.get("seconds_delay"),
+                }))
+        nxt = payload.get("next_cursor")
+        if not nxt or nxt == "LTE=" or nxt == cursor:
+            break
+        cursor = nxt
+
+    per_shard = defaultdict(dict)
+    for i, (aid, meta) in enumerate(assets):
+        per_shard[f"mlb-futures-{i // shard_size:02d}"][aid] = meta
+    log(f"[discovery] MLB futures: {len(assets)} assets / "
+        f"{len(assets)//2} markets across {len(per_shard)} websocket shards")
+    return per_shard
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -586,9 +754,10 @@ async def stats_loop(recs, writer, interval, stop_event, t0):
         el = time.monotonic() - t0
         tot_m = sum(r.msgs for r in recs)
         tot_s = sum(r.snapshots for r in recs)
+        tot_t = sum(r.trades for r in recs)
         rc = sum(r.reconnects for r in recs)
         log(f"[stats] {el:6.0f}s  msgs {tot_m:>8,} ({tot_m/max(el,1):>6.1f}/s)  "
-            f"snapshots {tot_s:>8,}  reconnects {rc}  "
+            f"snapshots {tot_s:>8,}  trades {tot_t:>6,}  reconnects {rc}  "
             f"queued {writer.q.qsize():>6,}  written {writer.written:>8,}")
         stale = []
         for r in recs:
@@ -600,7 +769,9 @@ async def stats_loop(recs, writer, interval, stop_event, t0):
 
 
 async def main_async(args):
-    if args.event_slugs:
+    if args.mlb_futures:
+        per_match = assets_mlb_futures(args.futures_shard_size)
+    elif args.event_slugs:
         per_match = assets_from_event_slugs(args.event_slugs, core_only=args.core_only)
     elif args.live_discover:
         per_match = assets_live_discover(args.live_discover)
@@ -615,7 +786,8 @@ async def main_async(args):
 
     stop_event = asyncio.Event()
     seq = Seq()
-    recs = [MatchRecorder(slug, assets, writer, stop_event, seq)
+    recs = [MatchRecorder(slug, assets, writer, stop_event, seq,
+                          depth_cents=args.depth_cents)
             for slug, assets in sorted(per_match.items())]
 
     log(f"Recording {len(recs)} matches / {sum(len(r.assets) for r in recs)} assets, "
@@ -659,9 +831,11 @@ async def main_async(args):
     for r in sorted(recs, key=lambda x: -x.snapshots):
         lag = (r.lag_sum / r.lag_n) if r.lag_n else float("nan")
         log(f"  {r.slug:<34} msgs {r.msgs:>7,}  snapshots {r.snapshots:>7,}  "
+            f"trades {r.trades:>6,}  "
             f"reconnects {r.reconnects:>3}  mean delivery lag {lag:>7.0f} ms")
     tot_s = sum(r.snapshots for r in recs)
-    log(f"  TOTAL {tot_s:,} snapshots in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
+    log(f"  TOTAL {tot_s:,} snapshots, {sum(r.trades for r in recs):,} trades "
+        f"in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
         f"{sum(r.reconnects for r in recs)} reconnects, "
         f"{writer.written:,} records written, {writer.q.qsize()} still queued")
 
@@ -674,6 +848,14 @@ def main():
     ap.add_argument("--event-slugs", nargs="*", default=None,
                      help="record these Gamma event slugs instead of matches.py "
                           "(any sport or non-sport event, one websocket each)")
+    ap.add_argument("--mlb-futures", action="store_true",
+                    help="record every active MLB-tagged non-game market from the "
+                         "CLOB catalog (World Series, awards, divisions, etc.)")
+    ap.add_argument("--futures-shard-size", type=int, default=80,
+                    help="maximum futures assets per independent websocket")
+    ap.add_argument("--depth-cents", type=float, default=None, metavar="DOLLARS",
+                    help="write only levels within this amount of each side's touch; "
+                         "prices/ticks and every update remain unresampled")
     ap.add_argument("--core-only", action="store_true",
                      help="record only moneyline/spread/total/first-inning-run. "
                           "Default records EVERY order-book market on the event, "

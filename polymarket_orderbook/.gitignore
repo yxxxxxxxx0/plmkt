@@ -16,6 +16,44 @@ data/*
 !data/collapse/
 !data/collapse/**
 
+# ---------------------------------------------------------------------------
+# Keeping small artifacts out of an excluded directory takes three steps, not
+# one. `data/*` above only matches one level deep, so un-ignoring a directory
+# makes git descend into it and NOTHING inside is excluded any more. A first
+# attempt at this used just `!data/jump/` and `!data/jump/*.csv`, which
+# un-ignored the directory and thereby staged lob_books_2026-08-30.npy
+# (1.4 GB) and feat_books_hkt0909.parquet (116 MB) -- both over GitHub's
+# 100 MB hard limit, so the push would have failed after uploading gigabytes.
+#
+# The correct shape is: un-ignore the directory, RE-ignore its contents, then
+# un-ignore only the specific files. Verify any change with
+#     git check-ignore -v <path>
+# rather than assuming, because the failure mode is silent until push.
+# ---------------------------------------------------------------------------
+
+# Jump-study result tables, run configs and logs. Small, and they are the
+# findings. feat_*.parquet and lob_*.npy stay out -- both rebuild from the
+# recorder output via jump_data.py.
+!data/jump/
+data/jump/*
+!data/jump/*.csv
+!data/jump/*.json
+!data/jump/*.txt
+
+# Trained model bundles: weights (2.4 MB across five models) plus the
+# manifests that make them reloadable -- architecture args, data spec,
+# preprocessing constants, decision threshold, metrics, source hashes. These
+# ARE the artifacts; a bare state_dict with no manifest is unusable, which is
+# how the first CNN-Transformer result was lost. The .npy prediction dumps
+# beside them (9.7 MB) stay out; regenerate with
+# `python model_registry.py --verify`.
+!data/models/
+data/models/*
+!data/models/*/
+data/models/*/*
+!data/models/*/weights.pt
+!data/models/*/manifest.json
+
 # Generated viewer page (rebuild with build_viewer_multi.py; it embeds the
 # manifest from data/viewer_full/index.json, so it churns on every rebuild).
 viewer_full.html

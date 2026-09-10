@@ -1,0 +1,229 @@
+{
+  "name": "cnn_depth_flow",
+  "version": 1,
+  "created": "2026-09-10T16:07:17",
+  "source_checkpoint": "data\\jump\\cnn_depth_flow.pt",
+  "source_checkpoint_mtime": "2026-09-09T19:31:06",
+  "nparam": 124697,
+  "train_config": {
+    "variant": "flow",
+    "in_ch": 4,
+    "L": 48,
+    "NB": 41,
+    "epochs": 4,
+    "lr": 0.001,
+    "batch": 384,
+    "seed": 0
+  },
+  "loss_history": [
+    0.554858922328949,
+    0.4752538768005371,
+    0.44439306171417237,
+    0.420035824508667
+  ],
+  "architecture": {
+    "builder": "collapse_cnn.build_model",
+    "sources": [
+      "collapse_cnn.py",
+      "jump_split.py",
+      "jump_data.py"
+    ],
+    "inputs": "depth image + precomputed per-price deltas (4 x 48 x 41)",
+    "target": "P(path-max |dmid| >= 2 ticks within 5s)"
+  },
+  "preprocessing": {
+    "tick": 0.01,
+    "grid_ms": 200,
+    "k_levels": 10,
+    "depth_bins": 41,
+    "depth_half_ticks": 20,
+    "scalar_clip_ticks": 30,
+    "scalar_scale": 5.0,
+    "lob_prices": "ticks relative to that row's own mid",
+    "lob_sizes": "log1p(size * price), i.e. log dollars",
+    "depth_image": "sizes binned on a price axis anchored at the mid at t",
+    "note": "the mid path is supplied separately because mid-centering removes it from the tensor entirely -- see jump_data.py docstring"
+  },
+  "data_spec": {
+    "feat_files": [
+      "feat_books_2026-08-30.parquet"
+    ],
+    "split": "temporal 60/20/20 by ts, 120s gap discarded at each interior boundary; threshold chosen on val, test scored once",
+    "lookback_rows": 200,
+    "receptive_field": "coarse 24x8 + fine 24 = 43.2s",
+    "market_types": [
+      "moneyline",
+      "total",
+      "spread"
+    ],
+    "max_book_age_s": 5.0,
+    "collapse_config_base.json": {
+      "market_types": [
+        "moneyline",
+        "total",
+        "spread"
+      ],
+      "variants": [
+        "raw",
+        "flow"
+      ],
+      "fine": 24,
+      "coarse": 24,
+      "coarse_stride": 8,
+      "max_train": 300000,
+      "max_val": 150000,
+      "max_test": 150000,
+      "epochs": 4,
+      "target": "jump",
+      "pnl_weight": false,
+      "skip_deep": false,
+      "max_book_age_s": 5.0,
+      "tag": "",
+      "lookback": 200,
+      "NB": 41,
+      "n_train": 300000,
+      "n_val": 150000,
+      "n_test": 150000,
+      "collapse_features": [
+        "d_bid_1",
+        "d_ask_1",
+        "d_bid_5",
+        "d_ask_5",
+        "d_bid_25",
+        "d_ask_25",
+        "sym_wd_5",
+        "sym_wd_25",
+        "asym_wd_5",
+        "d_touch_bid_1",
+        "d_touch_ask_1",
+        "touch_share_bid",
+        "touch_share_ask"
+      ],
+      "ts": "2026-09-09T19:36:42"
+    },
+    "taker_config.json": {
+      "market_types": [
+        "moneyline",
+        "total",
+        "spread"
+      ],
+      "fine": 24,
+      "coarse": 24,
+      "coarse_stride": 8,
+      "max_train": 300000,
+      "max_val": 150000,
+      "max_test": 150000,
+      "epochs": 4,
+      "horizon_s": 5.0,
+      "label_ticks": 4,
+      "max_spread": 2.0,
+      "min_backing": 200.0,
+      "category": "sports",
+      "max_book_age_s": 5.0,
+      "skip_deep": false,
+      "lookback": 200,
+      "n_train": 300000,
+      "n_val": 150000,
+      "n_test": 150000,
+      "ts": "2026-09-10T15:09:14"
+    },
+    "run_config_base.json": {
+      "market_types": [
+        "moneyline",
+        "total",
+        "spread"
+      ],
+      "fine": 24,
+      "coarse": 24,
+      "coarse_stride": 8,
+      "max_train": 400000,
+      "max_val": 200000,
+      "max_test": 200000,
+      "epochs": 4,
+      "target": "jump",
+      "pnl_weight": false,
+      "no_mid_path": false,
+      "skip_deep": false,
+      "skip_trivial": false,
+      "max_book_age_s": 5.0,
+      "tag": "",
+      "lookback": 200,
+      "suffix": "",
+      "n_train": 400000,
+      "n_val": 200000,
+      "n_test": 200000,
+      "ts": "2026-09-09T16:49:43"
+    }
+  },
+  "metrics": {
+    "magnitude": {
+      "model": "cnn_depth_flow",
+      "auc": 0.9311075724897604,
+      "brier": 0.1334805488586425,
+      "base_rate": 0.3903266666666666,
+      "pnl_always": -0.0953222662210464,
+      "threshold": 0.25,
+      "quote_frac": 0.38126,
+      "pnl_per_quote": 0.0022732950747013,
+      "pnl_per_opp": 0.0008667164947837,
+      "pnl_opp_lo": 0.0005260479578282,
+      "pnl_opp_hi": 0.0011894304014276,
+      "beats_zero": true,
+      "gain_per_quote": 0.0975955612957477,
+      "never_quotes": false,
+      "adverse": 0.0039506899192929,
+      "n_test": 150000,
+      "n_eff_test": 6000,
+      "val_auc": 0.9281042787394104,
+      "val_pnl_opp": 0.0012836130335927,
+      "nparam": 124697.0
+    }
+  },
+  "provenance": {
+    "recorded_by": "live_recorder.py",
+    "built_by": "jump_data.py",
+    "recordings": [
+      {
+        "path": "..\\data\\live\\books_2026-08-30.jsonl",
+        "verdict": "WARN",
+        "usable_for": {
+          "book_dynamics": true,
+          "maker_pnl": false,
+          "latency_analysis": false
+        },
+        "trade_prints": 0,
+        "lag_sustained_spread_ms": 4574,
+        "fails": [],
+        "warns": [
+          "delivery lag dispersion 4,574ms (p90-p50) sustained past hour 1: the recorder ran with little headroom for the whole session. Event times still come from the exchange so timing is intact, and re-seeds are the check on whether anything was actually lost -- but this is close to the 20s keepalive that killed the sockets in the 2026-08-26 run",
+          "no trade prints: fine for book-dynamics work, but every size decrease at the touch is ambiguous between a fill and a cancel, and cancels carry no adverse selection -- so maker P&L from this file is biased optimistically",
+          "largest per-asset gap 3,306s -- a quiet market and a dead socket look identical here",
+          "4 timestamp regressions: the rebuild will fall back to the slow exact path for those assets (correct, just slower)"
+        ]
+      },
+      {
+        "path": "data\\live\\books_hkt0909.jsonl",
+        "verdict": "WARN",
+        "usable_for": {
+          "book_dynamics": true,
+          "maker_pnl": true,
+          "latency_analysis": true
+        },
+        "trade_prints": 2542,
+        "lag_sustained_spread_ms": 42,
+        "fails": [],
+        "warns": [
+          "484 asset(s) re-seeded (max 2x): price_change messages were lost during those outages and cannot be recovered",
+          "largest per-asset gap 1,368s -- a quiet market and a dead socket look identical here",
+          "235 timestamp regressions: the rebuild will fall back to the slow exact path for those assets (correct, just slower)"
+        ]
+      }
+    ]
+  },
+  "code_sha256": {
+    "collapse_cnn.py": "deeaeddf26c8525b",
+    "jump_split.py": "03b05ac6c1e303dc",
+    "jump_data.py": "9377785ac7941023"
+  },
+  "notes": "Bundled after the timing/overfitting diagnostics: 35% of the 5s move lands within 200ms, train-test sign-AUC gap +0.112, and 93.5% of taker P&L comes from 10 of 49 series. Magnitude models survived their controls; the directional taker signal did not."
+}

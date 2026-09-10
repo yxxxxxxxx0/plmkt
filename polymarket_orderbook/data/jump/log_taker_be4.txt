@@ -1,0 +1,47 @@
+﻿[14:19:20]   window contiguity: 8,084,187 of 8,585,847 eligible samples have an unbroken 200-slot (40s) history
+[14:19:20]   staleness filter: 63.8% of rows carry a book <= 5.0s old; eligible samples 8,084,187 -> 5,303,255
+[14:19:21] loaded 8,604,972 rows from 1 session(s); usable 5,303,255 (lookback 200); target=jump
+[14:19:21]   train 2,427,688 rows (~ 97,107 independent)  base rate 0.1872  series 85
+[14:19:21]   val   1,370,247 rows (~ 54,809 independent)  base rate 0.3430  series 84
+[14:19:21]   test  1,431,067 rows (~ 57,242 independent)  base rate 0.3895  series 64
+[14:19:21]   discarded to gaps: 74,253 rows (120s either side of each boundary)
+[14:19:21] tight books only (spread <= 2 ticks): train 2,055,702 val 827,226 test 912,442
+[14:19:21] computing touch backing...
+[14:19:25]   touch backed >= $200 on both sides: train 1,325,999 val 440,969 test 497,494
+[14:19:25]     train: P(|move| >= 4) = 0.0452
+[14:19:25]     val: P(|move| >= 4) = 0.0806
+[14:19:25]     test: P(|move| >= 4) = 0.0960
+[14:19:25]   test: P(flat) 0.772  mean |move| 3.06 ticks  taker round trip 3.65 ticks (fee 1.03/leg)
+[14:19:25]   momentum control (mean reversion of dmid_25)...
+[14:19:26]   directional GBM on hand features...
+[14:19:30] directional depth-image CNN:
+[14:19:32]   DirCNN: 124,107 params; train class mix down 0.032 flat 0.955 up 0.013
+[14:30:40]     epoch 1/4 loss 0.3946 (666s)
+[14:42:26]     epoch 2/4 loss 0.2862 (706s)
+[14:53:49]     epoch 3/4 loss 0.2444 (684s)
+[15:06:15]     epoch 4/4 loss 0.2179 (745s)
+
+====================================================================================================================================
+TAKER SIGNAL  (P&L in TICKS per opportunity; 1 tick = $0.01/share)
+  tau            trade threshold on P(up)-P(down), chosen on VAL
+  pnl_per_opp    net of spread crossed twice AND both taker fees
+  [lo, hi]       95% moving-block bootstrap CI
+  pnl_maker_exit optimistic: passive exit, no exit fee (unverified)
+====================================================================================================================================
+          model  sign_auc    tau  trade_frac    hit  pnl_per_opp  pnl_lo  pnl_hi  profitable  pnl_per_trade  pnl_maker_exit  val_pnl_per_opp
+  cnn_direction    0.7896 0.9000      0.1671 0.8918       1.4764  0.8579  2.2244        True         8.8366          2.1692           1.2509
+momentum_dmid25    0.6109 0.9500      0.0500 0.7027       0.3265  0.1661  0.5265        True         6.5238          0.5251           0.3776
+  gbm_direction    0.6967 0.7500      0.2330 0.7801       0.2184 -0.1095  0.5380       False         0.9372          0.8911           0.0082
+
+  2 of 3 model(s) have a CI strictly above zero on full taker costs.
+
+  'cnn_direction' broken out (tau=0.90) -- does it survive slicing?
+                 slice        n   signAUC   trade%     hit   pnl/opp     CI lo     CI hi
+             moneyline   53,128    0.5195    0.001  0.5455   -0.0049   -0.0093   -0.0021
+                 total   59,736    0.6019    0.030  0.6763   -0.1477   -0.1869   -0.1022
+                spread   37,136    0.8107    0.625  0.9096    6.2083    4.4609    8.5807
+            $200-1,000   66,284    0.7878    0.233  0.8804    2.4247    1.4748    3.6287
+          $1,000-5,000   42,052    0.7852    0.152  0.8940    1.2334    0.5354    2.1779
+               >$5,000   41,664    0.8142    0.078  0.9596    0.2131    0.0358    0.5259
+  A signal that is real should hold in more than one row here.
+  Caveat that bounds all of this: the profitable rows are concentrated in very large moves, which look like a touch level vanishing. Without trade prints this data cannot say whether those levels were consumed (tradeable) or cancelled (not).

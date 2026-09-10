@@ -9,8 +9,30 @@ polymarket_orderbook/data/uniform/
 polymarket_orderbook/data/plots/
 polymarket_orderbook/data/discovery_cache.json
 
+# The recorder also writes to the ROOT data/live/, which this file listed only
+# under polymarket_orderbook/. That gap left 133 GB across four books_*.jsonl
+# visible to `git add -A`:
+#   data/live/books_2026-08-28.jsonl          43.63 GB
+#   data/live/books_2026-08-29.jsonl          43.01 GB
+#   data/live/books_2026-08-30.jsonl          25.41 GB
+#   data/live/books_2026-08-27.jsonl.jsonl    21.13 GB
+# Every one is far past GitHub's 100 MB per-file limit, so a push would have
+# failed after uploading gigabytes. Caught with:
+#   git status --porcelain -uall
+# which expands untracked directories -- plain `git status` collapses them to
+# a single line and hides the size entirely.
+data/live/
+
 # Generated viewer page: rebuilt by build_viewer_multi.py, churns every run.
 polymarket_orderbook/viewer_full.html
+
+# mlbmodel: API response cache and derived tables. Everything here is
+# reproducible from the free APIs with `python -m mlbmodel.collect` and
+# `python -m mlbmodel.odds`; only reports/ is worth committing.
+data/raw/
+data/processed/
+reports/predictions.parquet
+reports/slate_*.csv
 
 # Python
 __pycache__/
