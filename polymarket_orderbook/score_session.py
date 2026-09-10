@@ -91,17 +91,80 @@ def main():
         f"mean |move| {np.abs(signed[elig]).mean():.2f} ticks   "
         f"round trip {F.cost_taker.to_numpy()[elig].mean():.2f} ticks")
 
-    mb = batcher(T, F, OFF, STR, label3(signed, k))
+    # Directional models emit 3 classes and are scored as P(up) - P(down);
+    # magnitude models emit one logit and are scored as P(|move| >= 2 ticks).
+    # The manifest's builder is the discriminator, so this works for any
+    # bundle without a flag to get wrong.
+    builder = man["architecture"].get("builder", "")
+    is_direction = builder == "taker_signal.build_dircnn"
+    log(f"  model kind: {'directional (3-class)' if is_direction else 'magnitude (binary)'}")
+
+    if is_direction:
+        mb = batcher(T, F, OFF, STR, label3(signed, k))
+    else:
+        from collapse_cnn import make_batcher
+        mb0, _ = make_batcher(T, F, OFF, STR,
+                              cfg.get("variant", "raw"),
+                              np.zeros(len(F), np.float32))
+        mb = lambda j: mb0(j)[:2]
+
     log(f"scoring {len(elig):,} rows...")
     t0 = time.time()
     edges = []
     with torch.no_grad():
         for s in range(0, len(elig), 1024):
-            img, sc, _ = mb(elig[s:s + 1024])
-            q = torch.softmax(model(img, sc), dim=-1).numpy()
-            edges.append(q[:, 2] - q[:, 0])
+            out = mb(elig[s:s + 1024])
+            img, sc = out[0], out[1]
+            if is_direction:
+                q = torch.softmax(model(img, sc), dim=-1).numpy()
+                edges.append(q[:, 2] - q[:, 0])
+            else:
+                edges.append(torch.sigmoid(model(img, sc)).numpy())
     e = np.concatenate(edges)
     log(f"  done in {time.time()-t0:.0f}s")
+
+    if not is_direction:
+        # magnitude: report the maker-gate economics, which is the use that
+        # survived its controls, and stop -- the taker sweep below is
+        # meaningless for a model that does not predict a side
+        from jump_split import bootstrap_pnl_opp, econ_eval, save_row
+        y = F.y.to_numpy()[elig]
+        auc_m = (roc_auc_score(y, e) if len(np.unique(y)) > 1 else float("nan"))
+        R, base = econ_eval(e, F, elig)
+        best = R.loc[R.pnl_per_opportunity.idxmax()]
+        lo, hi = bootstrap_pnl_opp(e, F, elig, float(best.threshold))
+        log(f"\n{'='*100}\nOUT-OF-SAMPLE MAGNITUDE, session '{a.session}'"
+            f"\n{'='*100}")
+        log(f"  AUC {auc_m:.4f}   base rate {y.mean():.4f}   "
+            f"n {len(elig):,}")
+        log(f"  quote-blind {base:+.5f}/share   gated "
+            f"{best.pnl_per_opportunity:+.5f} at threshold "
+            f"{best.threshold:.2f}   CI [{lo:+.5f}, {hi:+.5f}]")
+        mt_m = F.mt.to_numpy().astype(str)[elig]
+        log(f"\n  by market type:")
+        log(f"  {'market':>12} {'n':>9} {'base':>7} {'AUC':>8} {'blind':>9} "
+            f"{'gated':>9}")
+        for m in ["moneyline", "total", "spread"]:
+            s = mt_m == m
+            if s.sum() < 500 or len(np.unique(y[s])) < 2:
+                continue
+            Rm, bm = econ_eval(e[s], F, elig[s],
+                               thresholds=np.array([float(best.threshold)]))
+            log(f"  {m:>12} {s.sum():>9,} {y[s].mean():>7.3f} "
+                f"{roc_auc_score(y[s], e[s]):>8.4f} {bm:>9.4f} "
+                f"{Rm.iloc[0].pnl_per_opportunity:>9.4f}")
+        tag_m = a.tag or f"_{a.session}"
+        np.save(os.path.join(JD, f"preds_{a.model}{tag_m}.npy"),
+                e.astype(np.float32))
+        np.save(os.path.join(JD, f"testidx_{a.model}{tag_m}.npy"), elig)
+        save_row(dict(model=f"{a.model}{tag_m}", auc=auc_m,
+                      base_rate=float(y.mean()), pnl_always=base,
+                      threshold=float(best.threshold),
+                      pnl_per_opp=float(best.pnl_per_opportunity),
+                      pnl_opp_lo=lo, pnl_opp_hi=hi, beats_zero=bool(lo > 0),
+                      n_test=len(elig), session=a.session))
+        log(f"\nsaved preds -> preds_{a.model}{tag_m}.npy")
+        return 0
 
     tag = a.tag or f"_{a.session}"
     np.save(os.path.join(JD, f"takeredge_{a.model}{tag}.npy"),

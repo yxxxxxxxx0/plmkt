@@ -63,6 +63,31 @@ def log(m):
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
+def open_recording(path):
+    """Open a raw recording, transparently handling xz archives.
+
+    `compress_raw.py` deletes the original after proving a bit-for-bit
+    round-trip, so a slate collected with compression enabled exists only as
+    books_<tag>.jsonl.xz. Streaming it through lzma costs CPU but no disk,
+    which is what makes collecting several nights on one machine possible --
+    a slate is 25-45 GB raw and about 10x smaller archived.
+    """
+    if path.endswith(".xz"):
+        import lzma
+        return lzma.open(path, "rb")
+    return open(path, "rb")
+
+
+def session_tag(path):
+    """books_<tag>.jsonl[.xz] -> <tag>, so archives name their outputs the
+    same way the raw file would have."""
+    name = os.path.basename(path)
+    for ext in (".xz", ".jsonl"):
+        if name.endswith(ext):
+            name = name[: -len(ext)]
+    return name.replace(" ", "_")
+
+
 def _levels(b, a, k):
     """One book's top-k levels as fixed-width arrays."""
     bp = np.full(k, np.nan); bs = np.zeros(k)
@@ -98,7 +123,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
     t0 = time.time()
     next_emit: dict[tuple, int] = {}
 
-    with open(path, "rb") as fh:
+    with open_recording(path) as fh:
         for raw in fh:
             n += 1
             try:
@@ -330,7 +355,7 @@ def main():
     a = ap.parse_args()
 
     for src in a.raw:
-        name = os.path.basename(src).replace(".jsonl", "").replace(" ", "_")
+        name = session_tag(src)
         fp = os.path.join(OUT, f"feat_{name}.parquet")
         tp = os.path.join(OUT, f"lob_{name}.npy")
         if os.path.exists(fp) and os.path.exists(tp):

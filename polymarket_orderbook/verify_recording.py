@@ -105,7 +105,14 @@ def verify(path, max_lines=None, lag_sample=200):
                                    trades=0, ms_collide=0))
     first_ts = last_ts = None
 
-    with open(path, "rb") as fh:
+    # xz archives are read transparently: compress_raw.py removes the original
+    # after proving a round-trip, so a compressed slate is the only copy.
+    if path.endswith(".xz"):
+        import lzma
+        opener = lambda p: lzma.open(p, "rb")
+    else:
+        opener = lambda p: open(p, "rb")
+    with opener(path) as fh:
         for raw in fh:
             n += 1
             if max_lines and n > max_lines:
