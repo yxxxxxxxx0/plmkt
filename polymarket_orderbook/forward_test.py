@@ -1,4 +1,4 @@
-"""Forward test: take a freshly recorded slate and report what the models earn.
+﻿"""Forward test: take a freshly recorded slate and report what the models earn.
 
 Runs the whole chain unattended, on games that did not exist when the models
 were trained:
@@ -112,10 +112,117 @@ def message_rate(path, sample_lines=200_000):
     return n / ((last - first) / 1000.0)
 
 
+def one_night(a, hkt_date=None, session_tag_arg=None):
+    """Record (or reuse) one slate, then build, score, simulate and archive.
+
+    Returns the session tag on success, None on failure. Failures are logged
+    and returned rather than raised so a bad night does not abort the rest of
+    the schedule.
+    """
+    t_start = time.time()
+    log("=" * 78)
+    log(f"NIGHT {hkt_date or session_tag_arg}")
+    log("=" * 78)
+
+    # ---- 1. record --------------------------------------------------------
+    if session_tag_arg:
+        books = next((p for p in (
+            os.path.join(LIVE, f"books_{session_tag_arg}.jsonl"),
+            os.path.join(LIVE, f"books_{session_tag_arg}.jsonl.xz"))
+            if os.path.exists(p)), None)
+        if not books:
+            log(f"  no recording for tag '{session_tag_arg}'")
+            return None
+    else:
+        # --no-compress deliberately: building from the raw file is far faster
+        # than streaming 45 GB through lzma. The slate is archived at the END
+        # of this function instead, which reclaims the disk just as well.
+        rc = run([PY, "-u", "collect_days.py", "--hkt-dates", hkt_date,
+                  "--duration-hours", a.duration_hours, "--no-compress"],
+                 "collect", timeout=(a.duration_hours + 8) * 3600)
+        if rc != 0:
+            log("  collection failed; skipping this night")
+            return None
+        books = newest_books(before=t_start)
+        if not books:
+            log("  collection produced no new recording; skipping")
+            return None
+
+    sys.path.insert(0, BASE)
+    from jump_data import session_tag as _stag
+    tag = _stag(books).replace("books_", "", 1)
+    log(f"recording: {books}  ({os.path.getsize(books)/1e9:.2f} GB"
+        f"{' archived' if books.endswith('.xz') else ''}, tag '{tag}')")
+
+    # ---- 2. health --------------------------------------------------------
+    hp = books + ".health.json"
+    if not os.path.exists(hp):
+        run([PY, "-u", "verify_recording.py", books, "--json", hp],
+            "verify", timeout=4 * 3600)
+    if os.path.exists(hp):
+        with open(hp, encoding="utf-8") as fh:
+            rep = json.load(fh)[0]
+        log(f"health: {rep['verdict']}   usable_for={rep.get('usable_for')}")
+        for f in rep.get("fails", []):
+            log(f"  [FAIL] {f}")
+        for w in rep.get("warns", []):
+            log(f"  [warn] {w}")
+        if rep["verdict"] == "FAIL":
+            log("  recording failed its health check; not scoring it")
+            return None
+
+    # ---- 3. build ---------------------------------------------------------
+    feat = os.path.join(JD, f"feat_books_{tag}.parquet")
+    if os.path.exists(feat):
+        log(f"dataset already built: {os.path.basename(feat)}")
+    else:
+        cap = a.max_fill_s
+        if cap is None:
+            r = message_rate(books)
+            cap = 60.0 if (r or 0) > 300 else (30.0 if (r or 0) > 100 else 15.0)
+            log(f"message rate ~{(r or 0):,.0f}/s -> forward-fill cap {cap:.0f}s")
+        rc = run([PY, "-u", "jump_data.py", "--raw", books,
+                  "--max-fill-s", cap], "jump_data", timeout=6 * 3600)
+        if rc != 0 or not os.path.exists(feat):
+            log("  dataset build failed; skipping this night")
+            return None
+
+    # ---- 4/5. score -------------------------------------------------------
+    for m in a.models:
+        if run([PY, "-u", "score_session.py", "--session", tag,
+                "--model", m, "--min-backing", a.min_backing],
+               f"score {m}", timeout=4 * 3600) != 0:
+            log(f"  scoring {m} failed; continuing")
+
+    # ---- 6. walk the clock ------------------------------------------------
+    for m in a.models:
+        if not os.path.exists(os.path.join(JD, f"takeredge_{m}_{tag}.npy")):
+            log(f"no directional edges for {m}; magnitude models pick no side")
+            continue
+        run([PY, "-u", "simulate_taker.py", "--model", f"{m}_{tag}",
+             "--session-file", tag, "--capital", a.capital,
+             "--flat-stake", a.flat_stake, "--min-backing", a.min_backing],
+            f"simulate {m}", timeout=3 * 3600)
+
+    # ---- 7. archive -------------------------------------------------------
+    # Now that the dataset is built, the raw file is redundant: ~42x smaller
+    # archived, and compress_raw only deletes the original after proving a
+    # bit-for-bit round-trip. Every reader handles .xz, so nothing downstream
+    # breaks.
+    if not a.no_archive and books.endswith(".jsonl"):
+        run([PY, "-u", "compress_raw.py", books], f"archive {tag}",
+            timeout=8 * 3600)
+
+    log(f"NIGHT {tag} DONE in {(time.time()-t_start)/3600:.2f}h")
+    return tag
+
+
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--hkt-dates", nargs="*", default=None,
+                    help="slates to record and analyse, in order")
     ap.add_argument("--hkt-date", default=None,
-                    help="slate to record; omit with --skip-collect")
+                    help="single slate; omit with --skip-collect")
     ap.add_argument("--duration-hours", type=float, default=14.0)
     ap.add_argument("--skip-collect", action="store_true",
                     help="use an existing recording instead of recording one")
@@ -128,6 +235,9 @@ def main():
     ap.add_argument("--capital", type=float, default=50.0)
     ap.add_argument("--flat-stake", type=float, default=5.0)
     ap.add_argument("--min-backing", type=float, default=200.0)
+    ap.add_argument("--no-archive", action="store_true",
+                    help="keep the raw recording instead of compressing it "
+                         "after the dataset is built")
     a = ap.parse_args()
     os.makedirs(LOGS, exist_ok=True)
 
@@ -135,95 +245,36 @@ def main():
     log("FORWARD TEST")
     log("=" * 78)
 
-    # ---- 1. record ------------------------------------------------------- #
-    t_start = time.time()
+    dates = list(a.hkt_dates or ([a.hkt_date] if a.hkt_date else []))
     if a.skip_collect:
         if not a.session_tag:
             raise SystemExit("--skip-collect needs --session-tag")
-        books = next((p for p in (
-            os.path.join(LIVE, f"books_{a.session_tag}.jsonl"),
-            os.path.join(LIVE, f"books_{a.session_tag}.jsonl.xz"))
-            if os.path.exists(p)), None)
-        if not books:
-            raise SystemExit(
-                f"no recording for tag '{a.session_tag}' "
-                f"(looked for books_{a.session_tag}.jsonl and .jsonl.xz)")
+        done = [one_night(a, session_tag_arg=a.session_tag)]
     else:
-        if not a.hkt_date:
-            raise SystemExit("pass --hkt-date or --skip-collect")
-        rc = run([PY, "-u", "collect_days.py", "--hkt-dates", a.hkt_date,
-                  "--duration-hours", a.duration_hours, "--no-compress"],
-                 "collect", timeout=(a.duration_hours + 6) * 3600)
-        if rc != 0:
-            raise SystemExit("collection failed; stopping")
-        books = newest_books(before=t_start)
-        if not books:
-            raise SystemExit("collection produced no new books_*.jsonl")
-    sys.path.insert(0, BASE)
-    from jump_data import session_tag as _stag
-    stem = _stag(books)                      # e.g. books_2026-09-10
-    tag = stem.replace("books_", "", 1)
-    log(f"recording: {books}  ({os.path.getsize(books)/1e9:.2f} GB"
-        f"{' archived' if books.endswith('.xz') else ''}, tag '{tag}')")
+        if not dates:
+            raise SystemExit("pass --hkt-dates, --hkt-date, or --skip-collect")
+        log(f"schedule: {len(dates)} night(s) -- {', '.join(dates)}")
+        log(f"models: {', '.join(a.models)}")
+        done = []
+        for d in dates:
+            # a failed night must not abort the schedule -- the remaining
+            # slates are independent and each is a separate chance to see
+            # whether the models generalise
+            try:
+                done.append(one_night(a, hkt_date=d))
+            except Exception as e:
+                log(f"NIGHT {d} raised {type(e).__name__}: {e}")
+                done.append(None)
 
-    # ---- 2. health ------------------------------------------------------- #
-    hp = books + ".health.json"
-    if not os.path.exists(hp):
-        run([PY, "-u", "verify_recording.py", books, "--json", hp],
-            "verify", timeout=3600)
-    if os.path.exists(hp):
-        with open(hp, encoding="utf-8") as fh:
-            rep = json.load(fh)[0]
-        log(f"health: {rep['verdict']}   usable_for={rep.get('usable_for')}")
-        for f in rep.get("fails", []):
-            log(f"  [FAIL] {f}")
-        for w in rep.get("warns", []):
-            log(f"  [warn] {w}")
-        if rep["verdict"] == "FAIL":
-            raise SystemExit("recording failed its health check; not scoring it")
-
-    # ---- 3. build -------------------------------------------------------- #
-    feat = os.path.join(JD, f"feat_books_{tag}.parquet")
-    if os.path.exists(feat):
-        log(f"dataset already built: {os.path.basename(feat)}")
-    else:
-        cap = a.max_fill_s
-        if cap is None:
-            r = message_rate(books)
-            # 60s is fine for a busy slate (~700 msg/s); a sparse one needs
-            # far less or the grid rows will not fit in memory
-            cap = 60.0 if (r or 0) > 300 else (30.0 if (r or 0) > 100 else 15.0)
-            log(f"message rate ~{r:,.0f}/s -> forward-fill cap {cap:.0f}s")
-        rc = run([PY, "-u", "jump_data.py", "--raw", books,
-                  "--max-fill-s", cap], "jump_data", timeout=4 * 3600)
-        if rc != 0 or not os.path.exists(feat):
-            raise SystemExit("dataset build failed; stopping")
-
-    # ---- 4/5. score ------------------------------------------------------ #
-    for m in a.models:
-        rc = run([PY, "-u", "score_session.py", "--session", tag,
-                  "--model", m, "--min-backing", a.min_backing],
-                 f"score {m}", timeout=3 * 3600)
-        if rc != 0:
-            log(f"  scoring {m} failed; continuing with the others")
-
-    # ---- 6. walk the clock ----------------------------------------------- #
-    for m in a.models:
-        if not os.path.exists(os.path.join(JD, f"takeredge_{m}_{tag}.npy")):
-            log(f"no directional edges for {m}; skipping the simulator "
-                f"(magnitude models do not pick a side)")
-            continue
-        run([PY, "-u", "simulate_taker.py", "--model", f"{m}_{tag}",
-             "--session-file", tag, "--capital", a.capital,
-             "--flat-stake", a.flat_stake, "--min-backing", a.min_backing],
-            f"simulate {m}", timeout=2 * 3600)
-
+    ok = [t for t in done if t]
     log("=" * 78)
-    log(f"FORWARD TEST DONE in {(time.time()-t_start)/3600:.2f}h")
-    log(f"  session tag      {tag}")
+    log(f"ALL NIGHTS DONE: {len(ok)} of {len(done)} produced results")
+    for t in ok:
+        log(f"  {t}")
     log(f"  P&L summaries    data/jump/sim_summary_*.json")
     log(f"  OOS scores       data/jump/oos_*.json")
     log(f"  magnitude table  data/jump/model_comparison.csv")
+    log(f"  this log         logs/forward_test.txt")
     log("=" * 78)
     return 0
 
