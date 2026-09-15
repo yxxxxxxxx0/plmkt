@@ -1,0 +1,545 @@
+{
+  "generated": "2026-09-15 17:16:30",
+  "max_lines_per_file": 4000000,
+  "raw": [
+    {
+      "file": "..\\data\\live\\books_2026-08-27.jsonl.jsonl.xz",
+      "size_bytes": 314177192,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 234,
+        "book": 8370,
+        "price_change": 3991396
+      },
+      "market_types": {
+        "total": 1467494,
+        "spread": 1386004,
+        "first_five_total": 112232,
+        "first_five_spread": 40774,
+        "moneyline": 882704,
+        "first_inning_run": 92188,
+        "extra_innings": 18604
+      },
+      "book_records": 3828390,
+      "trade_prints": 0,
+      "n_tokens": 126,
+      "n_markets": 7,
+      "ts_min": 1787826307472,
+      "ts_max": 1787856396959,
+      "span_hours": 8.358190833333333,
+      "obs_per_token": 30384.04761904762,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 8.0,
+        "p75": 37.0,
+        "p90": 458.0,
+        "p99": 31802.0
+      },
+      "interval_mean_ms": 1256.8867670756536,
+      "frac_faster_than_grid": 0.869599535646931,
+      "frac_slower_than_1s": 0.07647431764668863,
+      "frac_stale_over_60s": 0.0046515644802037365,
+      "crossed_books": 560,
+      "locked_books": 5028,
+      "empty_side": 7196,
+      "duplicate_ts": 840881,
+      "backwards_ts": 1,
+      "frac_full_10_levels": 0.9264683065204956,
+      "feed_lag_ms_p50": 85.0,
+      "feed_lag_ms_p99": 568.0,
+      "nonunique_legacy_keys": 49,
+      "nonunique_key_types": {
+        "total": 21,
+        "spread": 14,
+        "moneyline": 7,
+        "first_inning_run": 7
+      }
+    },
+    {
+      "file": "..\\data\\live\\books_2026-08-28.jsonl.xz",
+      "size_bytes": 764045880,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 505,
+        "book": 9496,
+        "price_change": 3989999
+      },
+      "market_types": {
+        "moneyline": 565986,
+        "total": 1637526,
+        "first_five_spread": 78468,
+        "spread": 1307147,
+        "first_five_total": 237697,
+        "first_inning_run": 125820,
+        "extra_innings": 47356
+      },
+      "book_records": 3636479,
+      "trade_prints": 0,
+      "n_tokens": 270,
+      "n_markets": 15,
+      "ts_min": 1787911847168,
+      "ts_max": 1787945391262,
+      "span_hours": 9.31780388888889,
+      "obs_per_token": 13468.440740740742,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 17.0,
+        "p75": 137.0,
+        "p90": 3283.0,
+        "p99": 71986.0
+      },
+      "interval_mean_ms": 3071.6133731812324,
+      "frac_faster_than_grid": 0.7703495633452252,
+      "frac_slower_than_1s": 0.1514556641936241,
+      "frac_stale_over_60s": 0.0127858649911752,
+      "crossed_books": 38,
+      "locked_books": 286,
+      "empty_side": 3940,
+      "duplicate_ts": 713740,
+      "backwards_ts": 23,
+      "frac_full_10_levels": 0.9642800082167393,
+      "feed_lag_ms_p50": 143.0,
+      "feed_lag_ms_p99": 687.0,
+      "nonunique_legacy_keys": 105,
+      "nonunique_key_types": {
+        "moneyline": 15,
+        "total": 45,
+        "spread": 30,
+        "first_inning_run": 15
+      }
+    },
+    {
+      "file": "..\\data\\live\\books_2026-08-29.jsonl.xz",
+      "size_bytes": 717667212,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 510,
+        "book": 6736,
+        "price_change": 3992754
+      },
+      "market_types": {
+        "first_five_spread": 17264,
+        "first_five_total": 125942,
+        "first_inning_run": 82404,
+        "spread": 1315518,
+        "total": 1457220,
+        "moneyline": 981176,
+        "extra_innings": 20476
+      },
+      "book_records": 3836318,
+      "trade_prints": 0,
+      "n_tokens": 270,
+      "n_markets": 15,
+      "ts_min": 1788017270178,
+      "ts_max": 1788028517697,
+      "span_hours": 3.1243108333333334,
+      "obs_per_token": 14208.585185185186,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 9.0,
+        "p75": 42.0,
+        "p90": 429.0,
+        "p99": 21836.0
+      },
+      "interval_mean_ms": 989.185113604912,
+      "frac_faster_than_grid": 0.8704077075766606,
+      "frac_slower_than_1s": 0.0733999290234613,
+      "frac_stale_over_60s": 0.0031643989832356133,
+      "crossed_books": 22,
+      "locked_books": 220,
+      "empty_side": 9680,
+      "duplicate_ts": 891413,
+      "backwards_ts": 0,
+      "frac_full_10_levels": 0.8891971416342441,
+      "feed_lag_ms_p50": 122.0,
+      "feed_lag_ms_p99": 590.0,
+      "nonunique_legacy_keys": 105,
+      "nonunique_key_types": {
+        "first_inning_run": 15,
+        "spread": 30,
+        "total": 45,
+        "moneyline": 15
+      }
+    },
+    {
+      "file": "..\\data\\live\\books_2026-08-30.jsonl.xz",
+      "size_bytes": 455938228,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 254,
+        "book": 9136,
+        "price_change": 3990610
+      },
+      "market_types": {
+        "total": 1489072,
+        "spread": 1491382,
+        "moneyline": 905784,
+        "first_inning_run": 113762
+      },
+      "book_records": 4000000,
+      "trade_prints": 0,
+      "n_tokens": 254,
+      "n_markets": 14,
+      "ts_min": 1788101545840,
+      "ts_max": 1788114644902,
+      "span_hours": 3.638628333333333,
+      "obs_per_token": 15748.031496062993,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 12.0,
+        "p75": 49.0,
+        "p90": 567.0,
+        "p99": 18966.0
+      },
+      "interval_mean_ms": 985.5359938985574,
+      "frac_faster_than_grid": 0.8558035975139081,
+      "frac_slower_than_1s": 0.07892665044945858,
+      "frac_stale_over_60s": 0.002731502695521406,
+      "crossed_books": 9424,
+      "locked_books": 2206,
+      "empty_side": 13842,
+      "duplicate_ts": 748052,
+      "backwards_ts": 4,
+      "frac_full_10_levels": 0.833755625,
+      "feed_lag_ms_p50": 113.0,
+      "feed_lag_ms_p99": 856.0200000000186,
+      "nonunique_legacy_keys": 99,
+      "nonunique_key_types": {
+        "total": 43,
+        "spread": 28,
+        "moneyline": 14,
+        "first_inning_run": 14
+      }
+    },
+    {
+      "file": "data\\live\\books_2026-09-10.jsonl.xz",
+      "size_bytes": 147038232,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 170,
+        "book": 7282,
+        "price_change": 3988904,
+        "trade": 3508,
+        "tick_size_change": 136
+      },
+      "market_types": {
+        "first_five_total": 50346,
+        "total": 1450606,
+        "first_five_spread": 17674,
+        "spread": 1339478,
+        "moneyline": 1058562,
+        "first_inning_run": 63542,
+        "extra_innings": 16148
+      },
+      "book_records": 3912188,
+      "trade_prints": 3508,
+      "n_tokens": 90,
+      "n_markets": 5,
+      "ts_min": 1789054002656,
+      "ts_max": 1789070221735,
+      "span_hours": 4.505299722222222,
+      "obs_per_token": 43468.75555555556,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 10.0,
+        "p75": 33.0,
+        "p90": 129.0,
+        "p99": 6663.770000000019
+      },
+      "interval_mean_ms": 399.74898866708713,
+      "frac_faster_than_grid": 0.9201729199754408,
+      "frac_slower_than_1s": 0.03083787435774376,
+      "frac_stale_over_60s": 0.0012183868701460508,
+      "crossed_books": 62,
+      "locked_books": 262,
+      "empty_side": 72648,
+      "duplicate_ts": 569974,
+      "backwards_ts": 0,
+      "frac_full_10_levels": 0.6649302129652256,
+      "feed_lag_ms_p50": -136.0,
+      "feed_lag_ms_p99": 273.0,
+      "nonunique_legacy_keys": 35,
+      "nonunique_key_types": {
+        "total": 15,
+        "spread": 10,
+        "moneyline": 5,
+        "first_inning_run": 5
+      }
+    },
+    {
+      "file": "data\\live\\books_2026-09-11.jsonl.xz",
+      "size_bytes": 475844428,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 510,
+        "book": 9498,
+        "price_change": 3985919,
+        "trade": 3989,
+        "tick_size_change": 84
+      },
+      "market_types": {
+        "first_five_spread": 57690,
+        "total": 1330548,
+        "first_five_total": 228000,
+        "first_inning_run": 150478,
+        "spread": 1281441,
+        "moneyline": 906284,
+        "extra_innings": 41486
+      },
+      "book_records": 3668751,
+      "trade_prints": 3989,
+      "n_tokens": 270,
+      "n_markets": 15,
+      "ts_min": 1789147992637,
+      "ts_max": 1789168844141,
+      "span_hours": 5.792084444444445,
+      "obs_per_token": 13587.966666666667,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 3.0,
+        "p50": 17.0,
+        "p75": 62.0,
+        "p90": 1338.0,
+        "p99": 41583.25999999978
+      },
+      "interval_mean_ms": 1782.161023034729,
+      "frac_faster_than_grid": 0.820230100576485,
+      "frac_slower_than_1s": 0.11157657546525876,
+      "frac_stale_over_60s": 0.0045776692242534885,
+      "crossed_books": 5514,
+      "locked_books": 1618,
+      "empty_side": 68656,
+      "duplicate_ts": 628496,
+      "backwards_ts": 10,
+      "frac_full_10_levels": 0.7354786410961115,
+      "feed_lag_ms_p50": -200.0,
+      "feed_lag_ms_p99": 755.0,
+      "nonunique_legacy_keys": 105,
+      "nonunique_key_types": {
+        "total": 45,
+        "first_inning_run": 15,
+        "spread": 30,
+        "moneyline": 15
+      }
+    },
+    {
+      "file": "data\\live\\books_2026-09-12.jsonl.xz",
+      "size_bytes": 394315964,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 510,
+        "book": 6706,
+        "price_change": 3989631,
+        "trade": 3065,
+        "tick_size_change": 88
+      },
+      "market_types": {
+        "total": 1345749,
+        "first_five_total": 128030,
+        "first_five_spread": 35176,
+        "moneyline": 986454,
+        "extra_innings": 7920,
+        "spread": 1434126,
+        "first_inning_run": 59392
+      },
+      "book_records": 3825721,
+      "trade_prints": 3065,
+      "n_tokens": 270,
+      "n_markets": 15,
+      "ts_min": 1789230109486,
+      "ts_max": 1789240570155,
+      "span_hours": 2.905741388888889,
+      "obs_per_token": 14169.337037037038,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 2.0,
+        "p50": 10.0,
+        "p75": 38.0,
+        "p90": 264.0,
+        "p99": 20594.459999999963
+      },
+      "interval_mean_ms": 867.3159213791075,
+      "frac_faster_than_grid": 0.8877800462085139,
+      "frac_slower_than_1s": 0.0541794035274713,
+      "frac_stale_over_60s": 0.003112511880269028,
+      "crossed_books": 4950,
+      "locked_books": 2800,
+      "empty_side": 31190,
+      "duplicate_ts": 663696,
+      "backwards_ts": 0,
+      "frac_full_10_levels": 0.729371927539933,
+      "feed_lag_ms_p50": -133.0,
+      "feed_lag_ms_p99": 536.0100000000093,
+      "nonunique_legacy_keys": 105,
+      "nonunique_key_types": {
+        "total": 45,
+        "moneyline": 15,
+        "spread": 30,
+        "first_inning_run": 15
+      }
+    },
+    {
+      "file": "data\\live\\books_2026-09-13.jsonl.xz",
+      "size_bytes": 438071748,
+      "lines_scanned": 4000000,
+      "truncated": true,
+      "record_types": {
+        "seed": 510,
+        "book": 6756,
+        "price_change": 3989546,
+        "trade": 3096,
+        "tick_size_change": 92
+      },
+      "market_types": {
+        "first_five_spread": 35952,
+        "first_five_total": 110310,
+        "total": 1630562,
+        "spread": 1167010,
+        "first_inning_run": 89834,
+        "extra_innings": 14194,
+        "moneyline": 948950
+      },
+      "book_records": 3836356,
+      "trade_prints": 3096,
+      "n_tokens": 270,
+      "n_markets": 15,
+      "ts_min": 1789312973666,
+      "ts_max": 1789322960141,
+      "span_hours": 2.774020833333333,
+      "obs_per_token": 14208.725925925926,
+      "interval_ms": {
+        "p1": 1.0,
+        "p5": 1.0,
+        "p25": 3.0,
+        "p50": 13.0,
+        "p75": 39.0,
+        "p90": 342.0,
+        "p99": 19984.640000000596
+      },
+      "interval_mean_ms": 823.1326538510757,
+      "frac_faster_than_grid": 0.8775146617726466,
+      "frac_slower_than_1s": 0.05854471567553396,
+      "frac_stale_over_60s": 0.002788779959487002,
+      "crossed_books": 338,
+      "locked_books": 490,
+      "empty_side": 89010,
+      "duplicate_ts": 632176,
+      "backwards_ts": 0,
+      "frac_full_10_levels": 0.6704831355588481,
+      "feed_lag_ms_p50": -1227.0,
+      "feed_lag_ms_p99": 804.0,
+      "nonunique_legacy_keys": 105,
+      "nonunique_key_types": {
+        "total": 45,
+        "spread": 30,
+        "first_inning_run": 15,
+        "moneyline": 15
+      }
+    }
+  ],
+  "grid": [
+    {
+      "session": "books_2026-08-28",
+      "rows": 30481811,
+      "rows_in_game": 5599167,
+      "tensor_bytes": 4877089888,
+      "n_series": 120,
+      "n_markets": 15,
+      "market_types": {
+        "total": 45,
+        "moneyline": 15,
+        "spread": 60
+      },
+      "hours_of_grid": 1693.4339444444445
+    },
+    {
+      "session": "books_2026-08-30",
+      "rows": 11653622,
+      "rows_in_game": 4459338,
+      "tensor_bytes": 1864579648,
+      "n_series": 97,
+      "n_markets": 12,
+      "market_types": {
+        "moneyline": 12,
+        "spread": 48,
+        "total": 37
+      },
+      "hours_of_grid": 647.4234444444444
+    },
+    {
+      "session": "books_2026-09-10",
+      "rows": 4857353,
+      "rows_in_game": 1784419,
+      "tensor_bytes": 777176608,
+      "n_series": 40,
+      "n_markets": 5,
+      "market_types": {
+        "total": 15,
+        "moneyline": 5,
+        "spread": 20
+      },
+      "hours_of_grid": 269.85294444444446
+    },
+    {
+      "session": "books_2026-09-11",
+      "rows": 18105340,
+      "rows_in_game": 5474888,
+      "tensor_bytes": 2896854528,
+      "n_series": 112,
+      "n_markets": 14,
+      "market_types": {
+        "total": 42,
+        "spread": 56,
+        "moneyline": 14
+      },
+      "hours_of_grid": 1005.8522222222222
+    },
+    {
+      "session": "books_2026-09-12",
+      "rows": 14404892,
+      "rows_in_game": 5269717,
+      "tensor_bytes": 2304782848,
+      "n_series": 120,
+      "n_markets": 15,
+      "market_types": {
+        "total": 45,
+        "moneyline": 15,
+        "spread": 60
+      },
+      "hours_of_grid": 800.2717777777779
+    },
+    {
+      "session": "books_2026-09-13",
+      "rows": 11812566,
+      "rows_in_game": 5414754,
+      "tensor_bytes": 1890010688,
+      "n_series": 112,
+      "n_markets": 14,
+      "market_types": {
+        "total": 42,
+        "spread": 56,
+        "moneyline": 14
+      },
+      "hours_of_grid": 656.2536666666667
+    }
+  ]
+}

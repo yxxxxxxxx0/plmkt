@@ -1,0 +1,83 @@
+# Experiment configuration for the LOB-trajectory jump-prediction study.
+#
+# Hypothesis under test:
+#   P(jump soon | recent LOB trajectory) carries materially more information
+#   than P(jump soon | current LOB state alone).
+#
+# Everything downstream reads this file, so a change here changes the whole
+# pipeline rather than one script.
+
+paths:
+  # Raw recordings. READ ONLY -- nothing in this study writes to these.
+  raw_dirs:
+    - ../../data/live          # relative to research/jump_prediction
+    - ../../../data/live       # the recorder also wrote to the repo-root data/live
+  # Derived 200ms-grid datasets built by ../../jump_data.py (already verified
+  # clean by ../../audit_datasets.py; see ../../FINDINGS_SERIES_KEY.md).
+  grid_dir: ../../data/jump
+  game_windows: ../../data/game_windows.json
+  cache_dir: cache                       # generated datasets, never raw
+  results_dir: ../../results/jump_prediction
+
+data:
+  tick: 0.01
+  # The 200ms grid is a backward-only as-of resampling of the event stream:
+  # each slot carries the most recent book at or before it, never the next
+  # one, and silences past 60s are left as real gaps rather than filled.
+  grid_ms: 200
+  k_levels: 10
+  # Two tracks. The grid track is the primary experiment; the event track
+  # exists because 85% of raw book updates arrive faster than 200ms, so the
+  # grid cannot address sub-second horizons honestly.
+  tracks:
+    grid:
+      horizons_s: [10, 30, 60]
+      history_s: 60                      # section 4: previous 60 seconds
+    event:
+      horizons_s: [1, 5, 10]
+      history_updates: 100               # section 4: previous 100 updates
+
+labels:
+  # Jump thresholds on the 0-1 probability scale.
+  thresholds: [0.01, 0.02, 0.03, 0.05]
+  # future_move(t,H) = max over t < u <= t+H of |mid_u - mid_t|
+  # Strictly forward: the window EXCLUDES t itself.
+  definition: path_max_excluding_t
+  three_class_min_ticks: 2               # for the secondary up/flat/down task
+
+filters:
+  # Post-resolution and pre-game quotes are excluded: they are stale or
+  # structurally different from in-play trading.
+  in_game_only: true
+  drop_broken_matches: true
+  max_book_age_s: 5.0                    # row must carry a reasonably fresh book
+  # Entry-eligibility filters are NOT applied for the prediction study -- the
+  # question is whether jumps are predictable, not whether they are tradeable.
+  max_spread_ticks: null
+
+split:
+  # Whole markets/games only, never individual timestamps: neighbouring
+  # windows overlap by construction and a random split would leak heavily.
+  by: match
+  chronological: true
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  seed: 0
+
+models:
+  baselines: [prevalence, logreg_state, tree_state, tree_trajectory]
+  deep: [cnn, cnn_lstm, cnn_transformer]
+  d_model: 64
+  batch_size: 256
+  max_epochs: 12
+  patience: 3
+  lr: 1.0e-3
+  class_weighting: inverse_frequency_train_only
+
+evaluation:
+  primary_metric: pr_auc
+  topk_precision: [0.01, 0.05, 0.10]
+  # Thresholds are selected on validation and frozen before the test set is
+  # touched even once.
+  threshold_selection: validation_only

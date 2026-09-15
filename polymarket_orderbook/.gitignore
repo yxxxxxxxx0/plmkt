@@ -71,3 +71,9 @@ env/
 
 # Unattended run logs
 logs/
+
+# Research caches: generated datasets, rebuilt by build_dataset.py.
+# The prediction-point parquets are ~1 GB; the .npy prediction dumps beside
+# the metrics are regenerable from train.py.
+research/*/cache/
+results/jump_prediction/*.npy

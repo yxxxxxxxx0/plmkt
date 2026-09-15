@@ -9,12 +9,12 @@
   "coarse_stride": 8,
   "max_train": 300000,
   "max_val": 150000,
-  "max_test": 250000,
-  "epochs": 6,
+  "max_test": 150000,
+  "epochs": 4,
   "horizon_s": 5.0,
   "label_ticks": 4,
   "max_spread": 2.0,
-  "min_backing": 200.0,
+  "min_backing": 0.0,
   "category": "sports",
   "max_book_age_s": 5.0,
   "split": "group",
@@ -28,6 +28,6 @@
   "lookback": 200,
   "n_train": 300000,
   "n_val": 150000,
-  "n_test": 250000,
-  "ts": "2026-09-15T14:11:05"
+  "n_test": 150000,
+  "ts": "2026-09-15T17:14:24"
 }
