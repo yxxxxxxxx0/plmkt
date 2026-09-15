@@ -99,6 +99,89 @@ def _levels(b, a, k):
     return bp, bs, ap, asz
 
 
+class _RowBuffer:
+    """Accumulates grid rows into preallocated blocks, not per-row arrays.
+
+    The original version appended a tuple per row holding four separate
+    numpy arrays (bid px, bid sz, ask px, ask sz). At ~10M rows that is ~40M
+    tiny array objects, and numpy's per-object overhead (~100 bytes each,
+    dwarfing the 40 bytes of actual payload) runs to several GB on its own --
+    which is what made building the 2026-09-12 session OOM with 5GB free.
+
+    Writing straight into preallocated (BLOCK, k) arrays removes that
+    overhead entirely: memory becomes the data itself plus one partly filled
+    block. Blocks are concatenated once at the end.
+    """
+
+    BLOCK = 500_000
+
+    def __init__(self, k):
+        self.k = k
+        self.blocks = []
+        self._new_block()
+
+    def _new_block(self):
+        b = self.BLOCK
+        self.i = 0
+        self.slug = np.empty(b, dtype=object)
+        self.mt = np.empty(b, dtype=object)
+        self.line = np.empty(b, np.float32)
+        self.ts = np.empty(b, np.int64)
+        self.tsb = np.empty(b, np.int64)
+        self.BP = np.full((b, self.k), np.nan, np.float32)
+        self.BS = np.zeros((b, self.k), np.float32)
+        self.AP = np.full((b, self.k), np.nan, np.float32)
+        self.AS = np.zeros((b, self.k), np.float32)
+
+    def _seal(self):
+        if self.i == 0:
+            return
+        self.blocks.append(dict(
+            slug=self.slug[:self.i].copy(), mt=self.mt[:self.i].copy(),
+            line=self.line[:self.i].copy(), ts=self.ts[:self.i].copy(),
+            tsb=self.tsb[:self.i].copy(),
+            BP=self.BP[:self.i].copy(), BS=self.BS[:self.i].copy(),
+            AP=self.AP[:self.i].copy(), AS=self.AS[:self.i].copy()))
+
+    def add(self, slug, mt, line, slot, ts_book, bids, asks):
+        if self.i >= self.BLOCK:
+            self._seal()
+            self._new_block()
+        i = self.i
+        self.slug[i] = slug
+        self.mt[i] = mt
+        self.line[i] = np.nan if line is None else line
+        self.ts[i] = slot
+        self.tsb[i] = ts_book
+        # write levels directly into the block rows; the row was preset to
+        # NaN price / 0 size by _new_block, so short books need no padding
+        self.BP[i, :] = np.nan
+        self.BS[i, :] = 0.0
+        self.AP[i, :] = np.nan
+        self.AS[i, :] = 0.0
+        for j, (p, s) in enumerate(bids[:self.k]):
+            self.BP[i, j] = p
+            self.BS[i, j] = s
+        for j, (p, s) in enumerate(asks[:self.k]):
+            self.AP[i, j] = p
+            self.AS[i, j] = s
+        self.i += 1
+
+    def __len__(self):
+        return sum(len(b["ts"]) for b in self.blocks) + self.i
+
+    def finish(self):
+        self._seal()
+        if not self.blocks:
+            raise SystemExit("no grid rows produced")
+        cat = lambda key: np.concatenate([b[key] for b in self.blocks], axis=0)
+        out = dict(slug=cat("slug"), mt=cat("mt"), line=cat("line"),
+                   ts=cat("ts"), ts_book=cat("tsb"),
+                   BP=cat("BP"), BS=cat("BS"), AP=cat("AP"), AS=cat("AS"))
+        self.blocks.clear()
+        return out
+
+
 def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
     """Raw JSONL -> one row per (series, grid tick) with top-k depth.
 
@@ -118,7 +201,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
     capped = 0
     # series key -> last snapshot seen, so the grid can be forward-filled
     cur: dict[tuple, tuple] = {}
-    rows = []
+    rows = _RowBuffer(k)
     n = 0
     t0 = time.time()
     next_emit: dict[tuple, int] = {}
@@ -167,8 +250,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
             pts, pb, pa = cur[key]
             filled = 0
             while slot < ts and filled < max_fill_slots:
-                bp, bs, ap, asz = _levels(pb, pa, k)
-                rows.append((key[0], mt, key[2], slot, pts, bp, bs, ap, asz))
+                rows.add(key[0], mt, key[2], slot, pts, pb, pa)
                 slot += grid_ms
                 filled += 1
             if slot < ts:
@@ -181,8 +263,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
             cur[key] = (ts, bids[:k], asks[:k])
             # a slot landing exactly on this message does see the new book
             if slot == ts:
-                bp, bs, ap, asz = _levels(bids[:k], asks[:k], k)
-                rows.append((key[0], mt, key[2], slot, ts, bp, bs, ap, asz))
+                rows.add(key[0], mt, key[2], slot, ts, bids[:k], asks[:k])
                 slot += grid_ms
             next_emit[key] = slot
 
@@ -192,22 +273,13 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
 
     log(f"  {n:,} lines -> {len(rows):,} grid rows in {time.time()-t0:.0f}s "
         f"({capped:,} silences truncated at {max_fill_s:.0f}s)")
-    slug = np.array([r[0] for r in rows])
-    mt = np.array([r[1] for r in rows])
-    line = np.array([r[2] if r[2] is not None else np.nan for r in rows],
-                    dtype=np.float32)
-    ts = np.array([r[3] for r in rows], dtype=np.int64)
-    # exchange time of the book each row carries. ts - ts_book is how stale
-    # the row genuinely is, which makes the forward-fill auditable instead of
-    # something you have to infer from run lengths.
-    ts_book = np.array([r[4] for r in rows], dtype=np.int64)
-    BP = np.stack([r[5] for r in rows]).astype(np.float32)
-    BS = np.stack([r[6] for r in rows]).astype(np.float32)
-    AP = np.stack([r[7] for r in rows]).astype(np.float32)
-    AS = np.stack([r[8] for r in rows]).astype(np.float32)
-    assert (ts_book <= ts).all(), "a row carries a book from its own future"
-    return dict(slug=slug, mt=mt, line=line, ts=ts, ts_book=ts_book,
-                BP=BP, BS=BS, AP=AP, AS=AS)
+    # ts_book is the exchange time of the book each row carries; ts - ts_book
+    # is how stale the row genuinely is, which makes the forward-fill
+    # auditable instead of something you have to infer from run lengths.
+    d = rows.finish()
+    assert (d["ts_book"] <= d["ts"]).all(), \
+        "a row carries a book from its own future"
+    return d
 
 
 # --------------------------------------------------------------------------- #

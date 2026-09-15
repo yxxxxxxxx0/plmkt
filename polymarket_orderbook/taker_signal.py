@@ -289,7 +289,7 @@ def batcher(T, F, OFF, STR, y3):
 
 
 def run_deep(T, F, tr, va, te, out, OFF, STR, k, epochs=4, batch=384,
-             lr=1e-3, seed=0, d_model=64):
+             lr=1e-3, seed=0, d_model=64, patience=2, tag=""):
     import torch
     import torch.nn as nn
 
@@ -313,6 +313,7 @@ def run_deep(T, F, tr, va, te, out, OFF, STR, k, epochs=4, batch=384,
         pct_start=0.25)
     rng = np.random.default_rng(seed)
     hist = []
+    best_val, best_state, best_epoch, bad = float("inf"), None, 0, 0
 
     for ep in range(epochs):
         model.train(); tot = n = 0; t0 = time.time()
@@ -340,10 +341,34 @@ def run_deep(T, F, tr, va, te, out, OFF, STR, k, epochs=4, batch=384,
             for s0 in range(0, len(vsub), 1024):
                 img, sc, yb = make_batch(vsub[s0:s0 + 1024])
                 vt += lossf(model(img, sc), yb).item() * len(yb); vn += len(yb)
-        hist.append(dict(epoch=ep + 1, train=tot / n, val=vt / max(vn, 1)))
-        log(f"    epoch {ep+1}/{epochs} train {tot/n:.4f} "
-            f"val {vt/max(vn,1):.4f} "
-            f"gap {vt/max(vn,1) - tot/n:+.4f} ({time.time()-t0:.0f}s)")
+        vloss = vt / max(vn, 1)
+        hist.append(dict(epoch=ep + 1, train=tot / n, val=vloss))
+        log(f"    epoch {ep+1}/{epochs} train {tot/n:.4f} val {vloss:.4f} "
+            f"gap {vloss - tot/n:+.4f} ({time.time()-t0:.0f}s)")
+
+        # Early stopping. The previous run trained a fixed 4 epochs with the
+        # train loss still falling (0.395 -> 0.218) and ended with a +0.112
+        # train-to-test AUC gap -- it was past the point of learning anything
+        # that transfers. Keeping the best-validation weights costs nothing
+        # and removes the guesswork from choosing an epoch count.
+        if vloss < best_val - 1e-4:
+            best_val = vloss
+            best_state = {k: v.detach().clone()
+                          for k, v in model.state_dict().items()}
+            best_epoch = ep + 1
+            bad = 0
+        else:
+            bad += 1
+            if bad >= patience:
+                log(f"    early stop: no val improvement for {patience} "
+                    f"epoch(s); reverting to epoch {best_epoch} "
+                    f"(val {best_val:.4f})")
+                break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+        log(f"  restored best-validation weights from epoch {best_epoch} "
+            f"(val {best_val:.4f})")
 
     def edge(idx):
         model.eval()
@@ -359,8 +384,8 @@ def run_deep(T, F, tr, va, te, out, OFF, STR, k, epochs=4, batch=384,
                     loss_history=hist,
                     config=dict(L=L, NB=NB, k=k, epochs=epochs, lr=lr,
                                 batch=batch, seed=seed)),
-               os.path.join(JD, "cnn_direction.pt"))
-    report("cnn_direction", edge(va), edge(te), F, va, te, out,
+               os.path.join(JD, f"cnn_direction{tag}.pt"))
+    report(f"cnn_direction{tag}", edge(va), edge(te), F, va, te, out,
            extra=dict(nparam=nparam))
 
 
@@ -387,14 +412,43 @@ def main():
                          "sub-$50 touches, which are cancellable and untakeable")
     ap.add_argument("--category", default="sports")
     ap.add_argument("--max-book-age-s", type=float, default=5.0)
+    ap.add_argument("--split", choices=["time", "group"], default="group",
+                    help="'group' holds out whole MATCHES, which is the only "
+                         "split that tests generalisation to unseen games")
+    ap.add_argument("--in-game-only", action="store_true", default=True,
+                    help="keep only kickoff..final-out rows; pregame is "
+                         "53-83%% of raw rows and 4-7x less likely to jump")
+    ap.add_argument("--keep-pregame", dest="in_game_only",
+                    action="store_false")
+    ap.add_argument("--drop-broken", action="store_true", default=True,
+                    help="exclude matches whose recording stops early")
+    ap.add_argument("--patience", type=int, default=2,
+                    help="early-stop after this many epochs without a "
+                         "validation improvement")
+    ap.add_argument("--use-trimmed", action="store_true", default=True,
+                    help="read the small in-game-trimmed caches from "
+                         "trim_sessions.py rather than the full parquets")
+    ap.add_argument("--use-raw", dest="use_trimmed", action="store_false")
+    ap.add_argument("--max-rows-per-session", type=int, default=900_000,
+                    help="cap rows per session, applied PER MATCH as a "
+                         "contiguous prefix so history windows survive. "
+                         "Bounds peak RAM: this machine OOMs concatenating "
+                         "all four sessions uncapped")
     ap.add_argument("--skip-deep", action="store_true")
+    ap.add_argument("--tag", default="",
+                    help="suffix on every saved model/row name, so a smoke "
+                         "run cannot overwrite a real one")
     a = ap.parse_args()
 
     pd.set_option("display.width", 250)
     OFF, STR, _, lookback = frame_offsets(a.fine, a.coarse, a.coarse_stride)
     F, T, tr, va, te = load(a.market_types, lookback=lookback, log=log,
                             max_book_age_s=(None if a.max_book_age_s < 0
-                                            else a.max_book_age_s))
+                                            else a.max_book_age_s),
+                            in_game_only=a.in_game_only,
+                            drop_broken=a.drop_broken, split=a.split,
+                            use_trimmed=a.use_trimmed,
+                            max_rows_per_session=a.max_rows_per_session)
     F, h = prepare(F, a.horizon_s, a.category, a.max_spread)
 
     tight = F.tight.to_numpy()
@@ -433,7 +487,7 @@ def main():
     if not a.skip_deep:
         log("directional depth-image CNN:")
         run_deep(T, F, tr, va, te, out, OFF, STR, a.label_ticks,
-                 epochs=a.epochs)
+                 epochs=a.epochs, patience=a.patience, tag=a.tag)
 
     R = pd.DataFrame(out).sort_values("pnl_per_opp", ascending=False)
     print("\n" + "=" * 132)

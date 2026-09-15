@@ -71,6 +71,12 @@ OUT_DIR = os.path.join(BASE_DIR, "data", "live")
 
 CLOB_REST_BOOK_URL = "https://clob.polymarket.com/book"
 CLOB_WS_MARKET_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+
+# How often each match's socket asserts liveness into the data stream when no
+# messages are arriving. Must be well under the shortest gap worth attributing
+# -- 30s means any silence longer than that is provably either covered by
+# heartbeats (the market was quiet) or not (the feed was down).
+HEARTBEAT_S = 30.0
 GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 
 TOP_HEADER = [
@@ -241,6 +247,7 @@ class MatchRecorder:
         self.reconnects = 0
         self.unknown = 0
         self.last_msg_ms = None
+        self.last_rx = time.monotonic()   # for the heartbeat task
         self.lag_sum = 0.0
         self.lag_n = 0
 
@@ -359,6 +366,62 @@ class MatchRecorder:
                         if k not in ("bids", "asks")},
         }, separators=(",", ":")))
 
+    def emit_status(self, kind, **fields):
+        """Write a connection/liveness record INTO the data stream.
+
+        `kind` is the record type written to `et` ("conn" or "heartbeat").
+        It is deliberately NOT called `event`: callers pass an `event=` field
+        (connected / disconnected / outage_end) through **fields, and naming
+        the positional parameter `event` made every such call raise
+        "got multiple values for argument 'event'" -- which surfaced as an
+        immediate disconnect on every socket right after a successful
+        handshake.
+
+        Why this exists: outages were only ever written to the text log, which
+        is gitignored and never travels with the recording. So downstream a
+        46-minute hole in an asset's updates was indistinguishable from a
+        market that simply did not trade for 46 minutes -- verify_recording.py
+        could only say 'a quiet market and a dead socket look identical here'.
+
+        That ambiguity is not cosmetic. On reconnect only the current book is
+        recovered; every price_change during an outage is gone for good. A
+        gap that is really an outage means missing data, and a gap that is
+        really quiet means the market was genuinely still. Any analysis that
+        conflates them is measuring its own coverage, not the market.
+
+        Two record types make gaps attributable after the fact:
+          conn        connect / disconnect / reconnect, with the outage length
+          heartbeat   periodic proof that the socket was alive and the market
+                      was merely quiet
+
+        Both carry no bids/asks, so every existing consumer skips them: the
+        readers in jump_data.py require a non-empty book.
+        """
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": now_ms(), "recv": now_ms(), "et": kind,
+            "slug": self.slug, "n_assets": len(self.assets),
+            "reconnects": self.reconnects,
+            "snapshots": self.snapshots, "trades": self.trades,
+            **fields,
+        }, separators=(",", ":")))
+
+    async def _heartbeat_loop(self):
+        """Emit a liveness record while the socket is connected but silent.
+
+        Separate task on purpose: the read loop must never have its `recv()`
+        cancelled (see the comment in run()). This only observes `last_rx`,
+        so it cannot interfere with the connection at all.
+        """
+        try:
+            while not self.stop_event.is_set():
+                await asyncio.sleep(HEARTBEAT_S)
+                quiet = time.monotonic() - self.last_rx
+                if quiet >= HEARTBEAT_S:
+                    self.emit_status("heartbeat", quiet_s=round(quiet, 1))
+        except asyncio.CancelledError:
+            pass
+
     # -- message handling ---------------------------------------------------
     def handle(self, msg, ts_recv):
         if not isinstance(msg, dict):
@@ -463,29 +526,58 @@ class MatchRecorder:
                     CLOB_WS_MARKET_URL,
                     ping_interval=20,
                     ping_timeout=60,      # generous: a slow moment must not kill the feed
+                    # The library default open_timeout is 10s, and the CLOB
+                    # handshake intermittently takes longer than that -- a
+                    # probe measured the same endpoint failing at exactly
+                    # 10.0s and then connecting in 1.8s and 0.7s moments
+                    # later. Left at the default, every socket on the slate
+                    # failed its handshake, the recorder logged "timed out
+                    # during opening handshake" for each, and a 100s test
+                    # captured ZERO messages while still writing seed rows --
+                    # so the run looks superficially alive but records nothing.
+                    open_timeout=45,
                     max_queue=None,       # buffer bursts instead of back-pressuring
                     max_size=None,
                     close_timeout=5,
                 ) as ws:
                     await ws.send(json.dumps({"assets_ids": ids, "type": "market"}))
                     log(f"[{self.slug}] connected, {len(ids)} assets")
+                    self.emit_status("conn", event="connected")
                     backoff = 1
-                    while not self.stop_event.is_set():
-                        raw = await ws.recv()
-                        ts_recv = now_ms()
-                        try:
-                            payload = json.loads(raw)
-                        except json.JSONDecodeError:
-                            self.unknown += 1
-                            continue
-                        if isinstance(payload, dict):
-                            payload = [payload]
-                        self.msgs += len(payload)
-                        for m in payload:
+                    self.last_rx = time.monotonic()
+                    # Heartbeats run in their OWN task rather than by putting a
+                    # timeout on recv(). Wrapping `ws.recv()` in
+                    # asyncio.wait_for cancels the pending read when it fires,
+                    # and cancelling a websockets read leaves the connection
+                    # unusable -- a 90s live test recorded ZERO messages and
+                    # reconnected on every heartbeat interval, because each
+                    # timeout silently tore down the socket that had just been
+                    # rebuilt. The read below must stay an uninterrupted await.
+                    hb = asyncio.create_task(self._heartbeat_loop())
+                    try:
+                        while not self.stop_event.is_set():
+                            raw = await ws.recv()
+                            ts_recv = now_ms()
+                            self.last_rx = time.monotonic()
                             try:
-                                self.handle(m, ts_recv)
-                            except Exception as e:
-                                log(f"[{self.slug}] handler error: {e}")
+                                payload = json.loads(raw)
+                            except json.JSONDecodeError:
+                                self.unknown += 1
+                                continue
+                            if isinstance(payload, dict):
+                                payload = [payload]
+                            self.msgs += len(payload)
+                            for m in payload:
+                                try:
+                                    self.handle(m, ts_recv)
+                                except Exception as e:
+                                    log(f"[{self.slug}] handler error: {e}")
+                    finally:
+                        hb.cancel()
+                        try:
+                            await hb
+                        except (asyncio.CancelledError, Exception):
+                            pass
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -494,14 +586,21 @@ class MatchRecorder:
                 self.reconnects += 1
                 down_since = time.monotonic()
                 log(f"[{self.slug}] disconnected ({e}); retry in {backoff}s")
+                self.emit_status("conn", event="disconnected",
+                                 reason=str(e)[:200], retry_in_s=backoff)
                 try:
                     await asyncio.sleep(backoff)
                 except asyncio.CancelledError:
                     raise
                 backoff = min(backoff * 2, 20)
                 if down_since:
-                    log(f"[{self.slug}] outage ~{time.monotonic()-down_since:.1f}s "
+                    out_s = time.monotonic() - down_since
+                    log(f"[{self.slug}] outage ~{out_s:.1f}s "
                         f"-- price_changes during it are unrecoverable")
+                    # the length goes into the data, so a downstream gap of
+                    # this size can be attributed to loss rather than quiet
+                    self.emit_status("conn", event="outage_end",
+                                     outage_s=round(out_s, 3))
 
 
 # ---------------------------------------------------------------------------

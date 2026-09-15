@@ -114,17 +114,68 @@ class TensorView:
 
 
 # --------------------------------------------------------------------------- #
+def group_split(F, ok, q_train=0.60, q_val=0.80, seed=0, log=print):
+    """Split by MATCH, not by time. The fix for the overfitting we measured.
+
+    The temporal split put 79 of 85 series on both sides, so the model saw the
+    same games in training and test and only had to generalise across hours.
+    It duly overfit: sign AUC 0.9001 on train against 0.7883 on test, a +0.112
+    gap, with 93.5% of taker P&L coming from 10 of 49 series and only 15 of 49
+    profitable. Neither number is visible to a temporal split.
+
+    Holding out whole matches makes the question the honest one: does this work
+    on a game it has never seen? Matches are assigned to blocks by a hash of
+    the slug, so the split is deterministic and stable as sessions are added.
+    """
+    slug = F.series.astype(str).str.split("|").str[0].to_numpy()
+    uniq = np.array(sorted(set(slug[ok])))
+    rng = np.random.default_rng(seed)
+    order = rng.permutation(len(uniq))
+    n_tr = int(len(uniq) * q_train)
+    n_va = int(len(uniq) * q_val)
+    tr_s = set(uniq[order[:n_tr]])
+    va_s = set(uniq[order[n_tr:n_va]])
+    te_s = set(uniq[order[n_va:]])
+    log(f"  group split by match: {len(tr_s)} train / {len(va_s)} val / "
+        f"{len(te_s)} test matches, disjoint")
+    return (ok & np.isin(slug, list(tr_s)),
+            ok & np.isin(slug, list(va_s)),
+            ok & np.isin(slug, list(te_s)))
+
+
 def load(market_types=None, lookback=1, gap_s=120, target="jump",
          q_train=0.60, q_val=0.80, max_book_age_s=5.0, sessions=None,
-         log=print):
+         in_game_only=False, drop_broken=False, split="time",
+         max_rows_per_session=None, use_trimmed=False, log=print):
     """Load the jump dataset.
 
     `sessions` restricts which feat_*.parquet files are read (substring
     match). Worth using whenever you only need one session: with a single
-    file the tensor stays a memmap via TensorView, whereas concatenating two
-    sessions materialises ~3GB of RAM and this machine has 15.6GB total.
+    unfiltered file the tensor stays a memmap via TensorView, whereas
+    concatenating several sessions -- or filtering/subsampling one -- has to
+    materialise the kept rows into RAM. This machine has 15.6GB total and has
+    OOM'd loading 4 full sessions (7.51GB for the tensor alone) more than
+    once, so `max_rows_per_session` exists to bound that: filtering happens
+    PER FILE before concatenation, so trimming to kickoff..final-out (which
+    drops 53-83% of rows on its own) or capping rows shrinks what needs to be
+    concatenated instead of shrinking it after the expensive part already
+    happened.
     """
-    fs = sorted(glob.glob(os.path.join(JD, "feat_*.parquet")))
+    if use_trimmed:
+        # Read the small caches trim_sessions.py already produced (one file
+        # at a time, filtered, freed) instead of the full raw parquets. This
+        # is the memory-safe path: reading several full feat_*.parquet at
+        # once measured free RAM down to 0.2GB on this machine even before
+        # any tensor concat, whereas the trimmed files are already 5-8x
+        # smaller (in-game trimming alone drops 53-83% of rows).
+        fs = sorted(glob.glob(os.path.join(JD, "feat_*_trimmed.parquet")))
+        if not fs:
+            raise SystemExit(
+                "no trimmed caches found -- run trim_sessions.py first")
+        in_game_only = drop_broken = False   # already applied when trimmed
+    else:
+        fs = sorted(f for f in glob.glob(os.path.join(JD, "feat_*.parquet"))
+                   if "_trimmed" not in f)
     if sessions:
         want = [s for s in ([sessions] if isinstance(sessions, str)
                             else sessions)]
@@ -133,34 +184,122 @@ def load(market_types=None, lookback=1, gap_s=120, target="jump",
             raise SystemExit(f"no feat file matches {want}")
     if not fs:
         raise SystemExit("run jump_data.py first")
-    parts, tensors = [], []
-    for f in fs:
-        parts.append(pd.read_parquet(f))
-        tensors.append(np.load(f.replace("feat_", "lob_")
-                                .replace(".parquet", ".npy"), mmap_mode="r"))
-    # sid is per-file, so offset it to keep series distinct across sessions
-    off = 0
-    for p in parts:
-        p["sid"] = p["sid"].to_numpy() + off
-        off = int(p["sid"].max()) + 1
-    F = pd.concat(parts, ignore_index=True)
-    if len(tensors) > 1:
-        # more than one session: the memmaps cannot be viewed as one array
-        # without copying, so accept the cost here and note it
-        T = np.concatenate([np.asarray(t) for t in tensors], axis=0)
-        log(f"  {len(tensors)} sessions concatenated into RAM "
-            f"({T.nbytes/1e9:.2f} GB)")
-    else:
-        T = tensors[0]                      # stays a memmap
-    assert len(F) == len(T), f"feature/tensor length mismatch {len(F)} vs {len(T)}"
+    # Filter and subsample EACH file BEFORE concatenating, not after. Reading
+    # all sessions in full and then filtering (the previous version) needs
+    # every session's tensor resident in RAM at once -- 4 sessions hit 7.51GB
+    # for the tensor alone, and this machine has crashed under that load more
+    # than once (an OOM here, a killed forward_test job there, a crashed
+    # editor here). in-game trimming alone drops 53-83% of rows per session,
+    # so applying it first shrinks what ever needs to be concatenated instead
+    # of shrinking it after the expensive part already happened.
+    from match_filter import masks as _match_masks
 
-    F["mt"] = F.series.str.split("|").str[1].astype("category")
-    if market_types:
-        keep = F.mt.isin(market_types).to_numpy()
-        F = F[keep].reset_index(drop=True)
-        T = TensorView(T, np.where(keep)[0])
+    import gc
+
+    parts, tvecs, tmaps = [], [], []
+    off = 0
+    any_filtered = False
+    for f in fs:
+        p = pd.read_parquet(f)
+        n0 = len(p)
+        # series arrives as a mix of dtypes across files (object in one
+        # parquet, category in another), which breaks .str operations on the
+        # merged column with an opaque overflow deep inside pandas' type
+        # inference. Force it to plain string per-file, before any concat.
+        p["series"] = p["series"].astype(str)
+        p["mt"] = p["series"].str.split("|").str[1]
+
+        # Downcast float64 -> float32 and series -> category IMMEDIATELY per
+        # file, before this file's DataFrame is held alongside the others in
+        # `parts` for the eventual concat. Doing this only after the concat
+        # (the previous version) meant every session's frame sat at full
+        # float64 width simultaneously -- 4 sessions of even the already
+        # in-game-trimmed caches (2.38GB on disk) drove free RAM to 0.22GB,
+        # because the resting pandas representation of 29 float64 columns
+        # runs close to 2x the on-disk (already-compressed) parquet size.
+        keep_int = {"ts", "ts_book", "sid", "pos", "y", "y_jump", "y_econ"}
+        for c in p.columns:
+            if c in keep_int or p[c].dtype.name in ("category", "object", "bool"):
+                continue
+            if p[c].dtype == np.float64:
+                p[c] = p[c].astype(np.float32)
+        p["series"] = p["series"].astype("category")
+
+        # keep_idx tracks, at every step, which ORIGINAL row (0..n0-1) each
+        # surviving row of `p` came from -- required to gather the matching
+        # tensor rows correctly. Each filter below is applied as a boolean
+        # mask over the CURRENT `p` and used to subset keep_idx in the same
+        # step, before p itself is reduced, so the two never drift apart.
+        keep_idx = np.arange(n0)
+        if market_types:
+            m = p["mt"].isin(market_types).to_numpy()
+            p = p[m].reset_index(drop=True)
+            keep_idx = keep_idx[m]
+        if in_game_only or drop_broken:
+            keep, _rep = _match_masks(p, in_game_only=in_game_only,
+                                      drop_broken=drop_broken, log=log)
+            p = p[keep].reset_index(drop=True)
+            keep_idx = keep_idx[keep]
+        if max_rows_per_session and len(p) > max_rows_per_session:
+            # Cap PER MATCH (per sid), keeping each match's rows as one
+            # CONTIGUOUS prefix -- not a random sample of individual rows.
+            # The deep models need `lookback` (200) contiguous grid steps of
+            # history per sample, verified later by an exact-timestamp-
+            # spacing check. A random single-row sample very rarely has 200
+            # of its neighbours also survive the same random draw, so nearly
+            # every row fails that check -- this is what silently produced
+            # 0 usable rows the first time this was tried, not a crash but a
+            # wrong answer. Truncating each match's own contiguous block
+            # keeps full history within the kept portion and represents
+            # every match evenly, which random subsampling of the whole file
+            # would not (this parquet stores each match's rows as one
+            # contiguous run, not time-interleaved across matches).
+            per_sid_cap = max(max_rows_per_session // max(p["sid"].nunique(), 1),
+                              lookback + 50)
+            keep_mask = np.zeros(len(p), bool)
+            for _, idxs in p.groupby("sid", sort=False).groups.items():
+                a = np.asarray(idxs)
+                keep_mask[a[:per_sid_cap]] = True
+            p = p[keep_mask].reset_index(drop=True)
+            keep_idx = keep_idx[keep_mask]
+
+        # sid is per-file and parquet stores it narrowly (int8 when a session
+        # has under 128 series), so offsetting across sessions overflows
+        # unless it is widened first.
+        p["sid"] = p["sid"].to_numpy().astype(np.int64) + off
+        off = int(p["sid"].max()) + 1 if len(p) else off
+
+        tm = np.load(f.replace("feat_", "lob_").replace(".parquet", ".npy"),
+                    mmap_mode="r")
+        trivial = len(keep_idx) == n0 and np.array_equal(
+            keep_idx, np.arange(n0))
+        any_filtered = any_filtered or not trivial
+        tmaps.append((tm, keep_idx, trivial))
+        parts.append(p)
+        log(f"  {os.path.basename(f)}: kept {len(p):,} of {n0:,} rows")
+
+    F = pd.concat(parts, ignore_index=True)
+    F["mt"] = F["mt"].astype("category")
+
+    if len(fs) == 1 and not any_filtered:
+        # the common case: one session, nothing dropped. Keep the tensor as a
+        # memmap so its pages live in the evictable OS cache instead of
+        # process RSS -- see TensorView's docstring for why this matters.
+        T = TensorView(tmaps[0][0], np.arange(len(F)))
+        log(f"  1 session(s) -> {len(F):,} rows (tensor stays memory-mapped)")
     else:
+        # filtered and/or multi-session: gather only the KEPT rows from each
+        # file's memmap. Indexing a memmap with an integer array copies just
+        # those rows rather than the whole file, so a session trimmed to 20%
+        # of its rows costs 20% of its tensor size in RAM, not 100% -- this is
+        # what makes in-game trimming a genuine memory fix rather than only a
+        # data-quality one.
+        tvecs = [np.asarray(tm[idx]) for tm, idx, _ in tmaps]
+        T = tvecs[0] if len(tvecs) == 1 else np.concatenate(tvecs, axis=0)
+        log(f"  {len(fs)} session(s) -> {len(F):,} rows total "
+            f"({T.nbytes/1e9:.2f} GB tensor materialised)")
         T = TensorView(T, np.arange(len(F)))
+    assert len(F) == len(T), f"feature/tensor length mismatch {len(F)} vs {len(T)}"
 
     # F is ~2GB at float64 across 29 columns and every model reads it while
     # the tensor pages are also live. float32 is ample for book features and
@@ -233,12 +372,22 @@ def load(market_types=None, lookback=1, gap_s=120, target="jump",
     elif max_book_age_s is not None:
         log("  no book_age_ms column (pre-fix dataset); staleness filter off")
 
+    # NOTE: in-game trimming and broken-match exclusion already happened
+    # PER FILE, before concatenation (see the load loop above) -- doing it
+    # here as well would be redundant (every row is already 100% in-game by
+    # this point) and, worse, would re-materialise the whole `series` column
+    # again. Left as a comment rather than silently removed so it is obvious
+    # this is deliberate, not an oversight.
+
     ts = F.ts.to_numpy()
-    c1, c2 = F.ts.quantile(q_train), F.ts.quantile(q_val)
-    g = gap_s * 1000
-    tr = ok & (ts < c1 - g)
-    va = ok & (ts >= c1) & (ts < c2 - g)
-    te = ok & (ts >= c2)
+    if split == "group":
+        tr, va, te = group_split(F, ok, q_train, q_val, log=log)
+    else:
+        c1, c2 = F.ts.quantile(q_train), F.ts.quantile(q_val)
+        g = gap_s * 1000
+        tr = ok & (ts < c1 - g)
+        va = ok & (ts >= c1) & (ts < c2 - g)
+        te = ok & (ts >= c2)
 
     h = int(5000 / GRID_MS)
     log(f"loaded {len(F):,} rows from {len(fs)} session(s); "

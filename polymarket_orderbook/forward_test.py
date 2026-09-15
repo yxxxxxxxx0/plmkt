@@ -137,9 +137,22 @@ def one_night(a, hkt_date=None, session_tag_arg=None):
         # --no-compress deliberately: building from the raw file is far faster
         # than streaming 45 GB through lzma. The slate is archived at the END
         # of this function instead, which reclaims the disk just as well.
+        # The timeout must cover the WAIT as well as the recording.
+        # collect_days sleeps until 45 min before first pitch, which can be up
+        # to ~24h away when a night finishes in the morning and the next slate
+        # starts late that evening. The first version allowed duration + 8h =
+        # 22h, so nights 2-5 of the 2026-09-11 schedule were killed mid-
+        # recording at exactly 79,200s. The recordings survived only because
+        # live_recorder is a grandchild and outlived the kill -- three full
+        # slates sat unprocessed on disk as a result.
+        #
+        # run_slate and live_recorder both enforce their own duration limits,
+        # so this outer timeout is only a backstop against a wedged process.
+        # It should be generous: up to 24h of sleep + the recording + settle
+        # and archive.
         rc = run([PY, "-u", "collect_days.py", "--hkt-dates", hkt_date,
                   "--duration-hours", a.duration_hours, "--no-compress"],
-                 "collect", timeout=(a.duration_hours + 8) * 3600)
+                 "collect", timeout=(a.duration_hours + 30) * 3600)
         if rc != 0:
             log("  collection failed; skipping this night")
             return None
