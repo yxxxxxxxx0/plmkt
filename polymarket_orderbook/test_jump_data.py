@@ -119,7 +119,8 @@ def test_series_are_independent():
     finally:
         os.unlink(path)
     mid = (d["BP"][:, 0] + d["AP"][:, 0]) / 2.0
-    a, b = d["slug"] == "a", d["slug"] == "b"
+    sl = jd.key_column(d, "slug")
+    a, b = sl == "a", sl == "b"
     ok = check("series a filled from a's own book",
                np.allclose(mid[a & (d["ts"] < 2000)], 0.50))
     ok &= check("series b filled from b's own book",
@@ -191,9 +192,107 @@ def test_fill_cap_truncates_long_silences():
     return ok
 
 
+def test_two_assets_one_line_stay_separate():
+    """Both legs of a spread bet must not collapse into one series.
+
+    The two sides of a spread carry the SAME slug, market_type and line, and
+    both are outcome "YES" -- they are distinguished only by asset_id. Keying
+    without it merged them, so one forward-filled book alternated between two
+    unrelated price levels (measured at 0.195 vs 0.545 on a real market) and
+    manufactured a ~35-tick move on every switch. Spread markets were the
+    only affected type, and they carried every apparent edge in the study.
+    """
+    print("two assets, one line")
+    recs, t = [], 1_000
+    for _ in range(300):
+        # leg A near 0.20, leg B near 0.55, interleaved, identical key fields
+        a = book(t, 0.195, 0.205); a["asset_id"] = "AAA"; a["line"] = -1.5
+        a["market_type"] = "spread"
+        recs.append(a)
+        t += 200
+        b = book(t, 0.545, 0.555); b["asset_id"] = "BBB"; b["line"] = -1.5
+        b["market_type"] = "spread"
+        recs.append(b)
+        t += 200
+    p = write(recs)
+    try:
+        d = jd.extract(p, grid_ms=200, k=10)
+    finally:
+        os.unlink(p)
+
+    aid = jd.key_column(d, "asset_id")
+    assets = set(a for a in aid if a)
+    ok = check("both asset_ids survive into the rows", assets == {"AAA", "BBB"},
+               f"got {assets}")
+    mid = (d["BP"][:, 0] + d["AP"][:, 0]) / 2.0
+    for tag, lo, hi in (("AAA", 0.15, 0.25), ("BBB", 0.50, 0.60)):
+        m = aid == tag
+        if m.any():
+            ok &= check(f"{tag} rows stay near their own price",
+                        bool(((mid[m] > lo) & (mid[m] < hi)).all()),
+                        f"range {mid[m].min():.3f}-{mid[m].max():.3f}")
+    # the giveaway symptom: a single series swinging across both levels
+    for tag in ("AAA", "BBB"):
+        m = aid == tag
+        if m.any():
+            ok &= check(f"{tag} shows no fabricated cross-level jump",
+                        bool((np.abs(np.diff(mid[m])) < 0.10).all()))
+    return ok
+
+
+def test_scratch_spill_matches_in_memory():
+    """Spilling blocks to disk must change nothing about the output.
+
+    The largest session's row buffer is ~8 GB, which cannot sit in RAM beside
+    the feature frames, so `extract(scratch=...)` writes each sealed block to
+    disk and streams it back into a memmap. That path only ever runs on the
+    sessions too big to check by eye, so it is checked here instead, against
+    the in-memory path on the same input.
+    """
+    print("scratch spill == in memory")
+    rng = np.random.default_rng(7)
+    recs, t, mid = [], 1_000, 0.40
+    for i in range(1500):
+        t += int(rng.choice([200, 400, 1_100]))
+        mid = float(np.clip(mid + rng.choice([-0.01, 0, 0.01]), 0.05, 0.95))
+        r = book(t, round(mid - 0.005, 4), round(mid + 0.005, 4),
+                 slug=f"g{i % 3}", mt="spread")
+        r["asset_id"] = f"A{i % 2}"
+        r["line"] = -1.5
+        recs.append(r)
+    path = write(recs)
+    scratch = tempfile.mkdtemp()
+    try:
+        # BLOCK is 500k rows; shrink it so this input spans several blocks
+        old = jd._RowBuffer.BLOCK
+        jd._RowBuffer.BLOCK = 256
+        try:
+            mem = jd.extract(path, grid_ms=200, k=10)
+            spl = jd.extract(path, grid_ms=200, k=10, scratch=scratch)
+        finally:
+            jd._RowBuffer.BLOCK = old
+    finally:
+        os.unlink(path)
+
+    ok = check("same row count", len(mem["ts"]) == len(spl["ts"]),
+               f"{len(mem['ts'])} vs {len(spl['ts'])}")
+    ok &= check("same key table", mem["keys"] == spl["keys"])
+    for key in ("code", "ts", "ts_book", "BP", "BS", "AP", "AS"):
+        same = (np.array_equal(np.asarray(mem[key]), np.asarray(spl[key]),
+                               equal_nan=key in ("BP", "AP")))
+        ok &= check(f"{key} identical", same)
+    ok &= check("the spill actually wrote files", len(spl["_scratch_files"]) > 0,
+                f"{len(spl['_scratch_files'])} files")
+    import shutil
+    shutil.rmtree(scratch, ignore_errors=True)
+    return ok
+
+
 if __name__ == "__main__":
     print("jump_data grid construction\n" + "=" * 60)
-    results = [test_backfill_uses_previous_book(),
+    results = [test_scratch_spill_matches_in_memory(),
+               test_two_assets_one_line_stay_separate(),
+               test_backfill_uses_previous_book(),
                test_no_row_sees_its_own_future(),
                test_series_are_independent(),
                test_path_max_excursion_persisted(),

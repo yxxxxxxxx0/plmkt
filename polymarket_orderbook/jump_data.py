@@ -115,17 +115,31 @@ class _RowBuffer:
 
     BLOCK = 500_000
 
-    def __init__(self, k):
+    def __init__(self, k, scratch=None):
         self.k = k
         self.blocks = []
+        # Where the four big level arrays land when the rows are concatenated.
+        # On the largest session these are ~11 GB together, which does not fit
+        # alongside the feature frames on a 16 GB machine; handing them to a
+        # memmap keeps them on disk and lets the OS page them, at no cost to
+        # build_features, which only ever reads one series' rows at a time.
+        self.scratch = scratch
+        self.tmpfiles = []
         self._new_block()
+
+    NAMES = ("code", "ts", "tsb", "BP", "BS", "AP", "AS")
+    BIG = ("BP", "BS", "AP", "AS")
 
     def _new_block(self):
         b = self.BLOCK
         self.i = 0
-        self.slug = np.empty(b, dtype=object)
-        self.mt = np.empty(b, dtype=object)
-        self.line = np.empty(b, np.float32)
+        # One int32 per row instead of three object pointers and a float for
+        # (slug, market_type, asset_id, line). A session has a few dozen
+        # series, so the key table is tiny and the per-row cost drops from
+        # 28 bytes to 4 -- and, more importantly, build_features no longer has
+        # to materialise tens of millions of Python strings to build the
+        # series categorical, which was several GB of transient allocation.
+        self.code = np.empty(b, np.int32)
         self.ts = np.empty(b, np.int64)
         self.tsb = np.empty(b, np.int64)
         self.BP = np.full((b, self.k), np.nan, np.float32)
@@ -136,21 +150,34 @@ class _RowBuffer:
     def _seal(self):
         if self.i == 0:
             return
-        self.blocks.append(dict(
-            slug=self.slug[:self.i].copy(), mt=self.mt[:self.i].copy(),
-            line=self.line[:self.i].copy(), ts=self.ts[:self.i].copy(),
-            tsb=self.tsb[:self.i].copy(),
-            BP=self.BP[:self.i].copy(), BS=self.BS[:self.i].copy(),
-            AP=self.AP[:self.i].copy(), AS=self.AS[:self.i].copy()))
+        n = self.i
+        if self.scratch:
+            # Spill to disk instead of holding every sealed block in RAM. The
+            # buffer is the whole session's order book -- ~8 GB on the largest
+            # one -- and holding it alongside the feature frames is what made
+            # that session unbuildable on a 16 GB machine. Resident memory is
+            # now one partly filled block regardless of session size.
+            os.makedirs(self.scratch, exist_ok=True)
+            j = len(self.blocks)
+            rec = {"n": n, "_spilled": True}
+            for key in self.NAMES:
+                fn = os.path.join(self.scratch, f"blk{j:05d}_{key}.npy")
+                np.save(fn, getattr(self, key)[:n])
+                rec[key] = fn
+                self.tmpfiles.append(fn)
+            self.blocks.append(rec)
+        else:
+            rec = {"n": n, "_spilled": False}
+            for key in self.NAMES:
+                rec[key] = getattr(self, key)[:n].copy()
+            self.blocks.append(rec)
 
-    def add(self, slug, mt, line, slot, ts_book, bids, asks):
+    def add(self, code, slot, ts_book, bids, asks):
         if self.i >= self.BLOCK:
             self._seal()
             self._new_block()
         i = self.i
-        self.slug[i] = slug
-        self.mt[i] = mt
-        self.line[i] = np.nan if line is None else line
+        self.code[i] = code
         self.ts[i] = slot
         self.tsb[i] = ts_book
         # write levels directly into the block rows; the row was preset to
@@ -168,21 +195,68 @@ class _RowBuffer:
         self.i += 1
 
     def __len__(self):
-        return sum(len(b["ts"]) for b in self.blocks) + self.i
+        return sum(b["n"] for b in self.blocks) + self.i
+
+    def _read(self, b, key):
+        return np.load(b[key]) if b["_spilled"] else b[key]
 
     def finish(self):
         self._seal()
         if not self.blocks:
             raise SystemExit("no grid rows produced")
-        cat = lambda key: np.concatenate([b[key] for b in self.blocks], axis=0)
-        out = dict(slug=cat("slug"), mt=cat("mt"), line=cat("line"),
-                   ts=cat("ts"), ts_book=cat("tsb"),
-                   BP=cat("BP"), BS=cat("BS"), AP=cat("AP"), AS=cat("AS"))
+        # np.concatenate over the whole block list would hold the sources and
+        # the destination alive at once, i.e. twice the data. Copying block by
+        # block and dropping each as it lands keeps the peak at the result
+        # plus one 500k-row block. The four level arrays -- by far the largest
+        # -- go to a memmap rather than RAM, so build_features can read one
+        # series at a time and let the OS page the rest.
+        sizes = [b["n"] for b in self.blocks]
+        n = sum(sizes)
+        out = {}
+        for key in self.NAMES:
+            sample = self._read(self.blocks[0], key)
+            shape = (n,) + sample.shape[1:]
+            if self.scratch and key in self.BIG:
+                os.makedirs(self.scratch, exist_ok=True)
+                fn = os.path.join(self.scratch, f"{key}.npy")
+                buf = np.lib.format.open_memmap(fn, mode="w+",
+                                                dtype=sample.dtype, shape=shape)
+                self.tmpfiles.append(fn)
+            else:
+                buf = np.empty(shape, sample.dtype)
+            pos = 0
+            for b, m in zip(self.blocks, sizes):
+                buf[pos:pos + m] = self._read(b, key)
+                if b["_spilled"]:
+                    try:
+                        os.unlink(b[key])       # reclaim scratch as we go
+                    except OSError:
+                        pass
+                b[key] = None
+                pos += m
+            out[key] = buf
         self.blocks.clear()
+        out["ts_book"] = out.pop("tsb")
         return out
 
 
-def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
+KEY_FIELDS = ("slug", "market_type", "line", "asset_id")
+
+
+def key_column(d: dict, field: str):
+    """Expand the compact series code back into one value per grid row.
+
+    Rows carry an integer code into `d["keys"]` rather than the key itself, so
+    this is the accessor for anything that wants a per-row slug or asset id.
+    It materialises a full-length object array -- exactly what the codes exist
+    to avoid -- so it is for inspection and tests, not for the build path.
+    """
+    lut = np.array([k[KEY_FIELDS.index(field)] for k in d["keys"]], dtype=object)
+    return lut[d["code"]]
+
+
+def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S,
+            scratch=None):
     """Raw JSONL -> one row per (series, grid tick) with top-k depth.
 
     Forward-fill direction is the subtle part, and the first version of this
@@ -201,7 +275,11 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
     capped = 0
     # series key -> last snapshot seen, so the grid can be forward-filled
     cur: dict[tuple, tuple] = {}
-    rows = _RowBuffer(k)
+    # series key -> small integer, so each row stores 4 bytes rather than a
+    # slug, a market type, an asset id and a line
+    key_ids: dict[tuple, int] = {}
+    keys: list[tuple] = []
+    rows = _RowBuffer(k, scratch=scratch)
     n = 0
     t0 = time.time()
     next_emit: dict[tuple, int] = {}
@@ -224,7 +302,24 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
             if asks[0][0] <= bids[0][0]:
                 continue
 
-            key = (r.get("slug"), mt, r.get("line"))
+            # The key MUST include asset_id. Keying on (slug, market_type,
+            # line) alone merged both sides of a spread bet into one series:
+            # both legs carry outcome == "YES" and the SAME line (e.g. -1.5),
+            # so their updates interleaved into a single forward-filled book
+            # and the resulting "mid" alternated between two unrelated levels
+            # -- measured at 0.195 vs 0.545 on one market, a fabricated
+            # ~35-tick move every time the interleaving switched.
+            #
+            # 10 of 35 keys in one session were affected and every one was a
+            # spread market, which is exactly where every apparent edge in
+            # this study lived; moneyline keys were already unique and showed
+            # chance-level AUC. Any result computed on spread markets before
+            # this fix is an artifact of the merge, not a market signal.
+            key = (r.get("slug"), mt, r.get("line"), r.get("asset_id"))
+            code = key_ids.get(key)
+            if code is None:
+                code = key_ids[key] = len(key_ids)
+                keys.append(key)
             ts = r["ts"]
 
             slot = next_emit.get(key)
@@ -250,7 +345,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
             pts, pb, pa = cur[key]
             filled = 0
             while slot < ts and filled < max_fill_slots:
-                rows.add(key[0], mt, key[2], slot, pts, pb, pa)
+                rows.add(code, slot, pts, pb, pa)
                 slot += grid_ms
                 filled += 1
             if slot < ts:
@@ -263,7 +358,7 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
             cur[key] = (ts, bids[:k], asks[:k])
             # a slot landing exactly on this message does see the new book
             if slot == ts:
-                rows.add(key[0], mt, key[2], slot, ts, bids[:k], asks[:k])
+                rows.add(code, slot, ts, bids[:k], asks[:k])
                 slot += grid_ms
             next_emit[key] = slot
 
@@ -277,6 +372,8 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
     # is how stale the row genuinely is, which makes the forward-fill
     # auditable instead of something you have to infer from run lengths.
     d = rows.finish()
+    d["keys"] = keys              # code -> (slug, market_type, line, asset_id)
+    d["_scratch_files"] = rows.tmpfiles
     assert (d["ts_book"] <= d["ts"]).all(), \
         "a row carries a book from its own future"
     return d
@@ -284,12 +381,26 @@ def extract(path: str, grid_ms=GRID_MS, k=K_LEVELS, max_fill_s=MAX_FILL_S):
 
 # --------------------------------------------------------------------------- #
 def build_features(d: dict, tick=0.01, horizon_s=5, jump_ticks=2,
-                   vol_windows=(5, 25, 150)):
+                   vol_windows=(5, 25, 150), tensor_path=None):
     """Per-series features, labels and the normalised LOB tensor."""
-    slug, mt, ts = d["slug"], d["mt"], d["ts"]
+    ts = d["ts"]
     BP, BS, AP, AS = d["BP"], d["BS"], d["AP"], d["AS"]
-    series_id = pd.Series([f"{s}|{m}|{l}" for s, m, l in
-                           zip(slug, mt, d["line"])]).astype("category")
+    # asset_id is part of the series identity, not decoration: without it the
+    # two legs of a spread bet (same slug, same market_type, same line, both
+    # outcome "YES") collapse into one series and their interleaved updates
+    # fabricate enormous moves. Downstream code splits this on "|" and reads
+    # field 0 as the slug and field 1 as the market type, so appending a
+    # fourth field is safe.
+    # The label is built once per series, not once per row: `keys` has a few
+    # dozen entries, so this replaces a list comprehension over every grid row
+    # (tens of millions of Python strings, several GB of transient memory on a
+    # big session) with a lookup table and an integer code array.
+    cats = pd.Index([f"{s}|{m}|{l}|{a if a else ''}" for s, m, l, a in d["keys"]])
+    codes = d["code"].astype(np.int32)
+    if not cats.is_unique:
+        raise SystemExit(f"series labels are not unique: {len(cats)} keys, "
+                         f"{cats.nunique()} labels -- two assets would merge")
+    series_id = pd.Categorical.from_codes(codes, categories=cats)
 
     bid, ask = BP[:, 0], AP[:, 0]
     mid = (bid + ask) / 2.0
@@ -319,15 +430,35 @@ def build_features(d: dict, tick=0.01, horizon_s=5, jump_ticks=2,
                            / np.maximum(BS[:, 0] + AS[:, 0], 1e-9) - mid) / tick,
     }
 
-    out_rows, labels, tensors, meta = [], [], [], []
-    codes = series_id.cat.codes.to_numpy()
+    out_rows = []
     F = pd.DataFrame(feats)
+    book_age_ms = ts - d["ts_book"]        # once, not once per series
 
-    for sid in np.unique(codes):
-        m = codes == sid
-        if m.sum() < 400:
-            continue
-        idx = np.where(m)[0]
+    # Which series clear the >=400-row minimum, and how many rows each
+    # contributes. Knowing the total up front lets the LOB tensor be written
+    # straight into its final buffer -- a memmap on disk when `tensor_path` is
+    # given -- instead of accumulating one array per series and concatenating
+    # at the end, which held three copies of a multi-GB tensor simultaneously
+    # and was the main cause of the out-of-memory crashes on big sessions.
+    counts = np.bincount(codes, minlength=len(cats))
+    keep = np.where(counts >= 400)[0]
+    n_keep = int(counts[keep].sum())
+    if n_keep == 0:
+        raise SystemExit(
+            f"no series survived the >=400-row minimum "
+            f"({len(counts)} series seen, longest {counts.max() if len(counts) else 0} "
+            f"rows). Nothing to build.")
+    nlev = BP.shape[1]
+    if tensor_path:
+        T = np.lib.format.open_memmap(tensor_path, mode="w+",
+                                      dtype=np.float32, shape=(n_keep, 4, nlev))
+    else:
+        T = np.empty((n_keep, 4, nlev), np.float32)
+    S = np.empty(n_keep, np.int32)
+    pos = 0
+
+    for sid in keep:
+        idx = np.where(codes == sid)[0]
         sub = F.iloc[idx].reset_index(drop=True)
         t = ts[idx]
         md = mid[idx]
@@ -382,10 +513,17 @@ def build_features(d: dict, tick=0.01, horizon_s=5, jump_ticks=2,
         # measure the same thing.
         sub["path_exc_ticks"] = exc / tick
         # how stale the carried book genuinely is, in ms
-        sub["book_age_ms"] = (ts - d["ts_book"])[idx]
+        sub["book_age_ms"] = book_age_ms[idx]
         sub["valid"] = valid
         sub["ts"] = t
-        sub["series"] = series_id.cat.categories[sid]
+        sub["series"] = cats[sid]
+        # float32 halves the frame, and the concat at the end of this function
+        # transiently holds two copies of it. jump_split downcasts to float32
+        # on load anyway, so no consumer sees a different value; ts and
+        # book_age_ms are integer columns and are left alone.
+        for c, dt in sub.dtypes.items():
+            if dt == np.float64:
+                sub[c] = sub[c].astype(np.float32)
         out_rows.append(sub)
 
         # ---- LOB tensor: prices in ticks from mid, sizes in log dollars ----
@@ -397,18 +535,23 @@ def build_features(d: dict, tick=0.01, horizon_s=5, jump_ticks=2,
         apt = (np.nan_to_num(AP[idx]) - md[:, None]) / tick
         bsl = np.log1p(BS[idx] * np.nan_to_num(BP[idx]))
         asl = np.log1p(AS[idx] * np.nan_to_num(AP[idx]))
-        tensors.append(np.stack([bpt, bsl, apt, asl], axis=1).astype(np.float32))
-        meta.append(np.full(len(idx), sid))
+        n = len(idx)
+        T[pos:pos + n] = np.stack([bpt, bsl, apt, asl], axis=1).astype(np.float32)
+        S[pos:pos + n] = sid
+        pos += n
 
-    if not out_rows:
-        raise SystemExit(
-            f"no series survived the >=400-row minimum "
-            f"({len(np.unique(codes))} series seen, longest "
-            f"{max((int((codes == s).sum()) for s in np.unique(codes)), default=0)} "
-            f"rows). Nothing to build.")
+    assert pos == n_keep, f"tensor filled {pos} of {n_keep} rows"
+    # The grid arrays are the largest block of memory in the process and are
+    # not needed past this point, while the concat below transiently holds two
+    # copies of the feature frame. Drop them first -- including the caller's
+    # reference, which is why `d` is mutated rather than just rebound.
+    del BP, BS, AP, AS, F, feats, bid, ask, mid, spread
+    del bs_tot, as_tot, bid_usd, ask_usd, book_age_ms, series_id, codes
+    for key in ("BP", "BS", "AP", "AS"):
+        d.pop(key, None)
     Fall = pd.concat(out_rows, ignore_index=True)
-    T = np.concatenate(tensors, axis=0)
-    S = np.concatenate(meta, axis=0)
+    out_rows.clear()
+    assert len(Fall) == n_keep, f"{len(Fall)} feature rows vs {n_keep} tensor rows"
     return Fall, T, S
 
 
@@ -434,13 +577,25 @@ def main():
             log(f"skip {name}")
             continue
         log(f"=== {src} ===")
-        d = extract(src, max_fill_s=a.max_fill_s)
+        scratch = os.path.join(OUT, f"_scratch_{name}")
+        d = extract(src, max_fill_s=a.max_fill_s, scratch=scratch)
+        # The tensor is written straight into its .npy through a memmap, so a
+        # multi-GB session never has to hold it in RAM. A .part name keeps a
+        # killed run from leaving a half-written file that main() would then
+        # treat as a finished session and skip.
+        part = tp + ".part.npy"
         F, T, S = build_features(d, horizon_s=a.horizon_s,
-                                 jump_ticks=a.jump_ticks)
+                                 jump_ticks=a.jump_ticks, tensor_path=part)
+        tshape = T.shape
+        T.flush()
+        del T, d
+        import gc, shutil
+        gc.collect()
+        shutil.rmtree(scratch, ignore_errors=True)
         F["sid"] = S
         F.to_parquet(fp, index=False)
-        np.save(tp, T)
-        log(f"  features {F.shape}, tensor {T.shape}")
+        os.replace(part, tp)
+        log(f"  features {F.shape}, tensor {tshape}")
         v = F[F.valid]
         log(f"  jump base rate: {v.y.mean():.4f}  "
             f"({v.y.sum():,} of {len(v):,} samples)")

@@ -1,0 +1,24 @@
+[16:16:01]   feat_books_2026-08-28_trimmed.parquet: kept 900,000 of 5,599,167 rows
+[16:16:09]   feat_books_2026-08-30_trimmed.parquet: kept 899,966 of 4,459,338 rows
+[16:16:11]   feat_books_2026-09-10_trimmed.parquet: kept 900,000 of 1,784,419 rows
+[16:16:21]   feat_books_2026-09-11_trimmed.parquet: kept 899,920 of 5,474,888 rows
+[16:16:30]   feat_books_2026-09-12_trimmed.parquet: kept 900,000 of 5,269,717 rows
+[16:16:39]   feat_books_2026-09-13_trimmed.parquet: kept 899,920 of 5,414,754 rows
+[16:16:45]   6 session(s) -> 5,399,806 rows total (0.86 GB tensor materialised)
+[16:16:45]   window contiguity: 5,207,318 of 5,279,606 eligible samples have an unbroken 200-slot (40s) history
+[16:16:46]   staleness filter: 84.0% of rows carry a book <= 5.0s old; eligible samples 5,207,318 -> 4,436,841
+[16:16:57]   group split by match: 45 train / 15 val / 15 test matches, disjoint
+[16:17:05] loaded 5,399,806 rows from 6 session(s); usable 4,436,841 (lookback 200); target=jump
+[16:17:05]   train 2,697,284 rows (~107,891 independent)  base rate 0.2028  series 360
+[16:17:05]   val     840,136 rows (~ 33,605 independent)  base rate 0.1805  series 120
+[16:17:05]   test    899,421 rows (~ 35,976 independent)  base rate 0.2071  series 121
+[16:17:05]   discarded to gaps: 0 rows (120s either side of each boundary)
+[16:17:06] tight books only (spread <= 2 ticks): train 1,570,656 val 515,525 test 505,865
+[16:17:06]   test: P(flat) 0.759  mean |move| 0.44 ticks  taker round trip 3.99 ticks (fee 1.11/leg)
+[16:17:06]   momentum control (mean reversion of dmid_25)...
+[16:17:08]   directional GBM on hand features...
+[16:17:12] directional depth-image CNN:
+[16:17:15]   DirCNN: 124,107 params; train class mix down 0.006 flat 0.972 up 0.022
+[16:28:03]     epoch 1/4 train 0.7627 val 0.8374 gap +0.0747 (646s)
+[16:41:56]     epoch 2/4 train 0.6352 val 0.6268 gap -0.0084 (833s)
+[16:56:24]     epoch 3/4 train 0.5652 val 0.6497 gap +0.0845 (868s)
