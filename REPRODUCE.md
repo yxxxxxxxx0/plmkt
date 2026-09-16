@@ -35,19 +35,25 @@ Both are your own recorder's output. Neither can be downloaded or regenerated
 by anyone. Everything else in this project is derived from them or is a public
 download.
 
-The August archives live at the root because the recorder has always written
+Contents of each, so you can check nothing is missed:
+
+    # repo ROOT -- data/live/            (2.25 GB, August sessions)
+    books_2026-08-27.jsonl.jsonl.xz      0.31 GB
+    books_2026-08-28.jsonl.xz            0.76 GB
+    books_2026-08-29.jsonl.xz            0.72 GB
+    books_2026-08-30.jsonl.xz            0.46 GB
+
+    # polymarket_orderbook/data/live/    (12.15 GB, September sessions)
+    books_2026-09-10..13.jsonl.xz       ~1.46 GB   full 10-level books
+    top_of_book_2026-09-10..13.csv      ~6.30 GB   event-level L1 feed
+    books_2026-09-16-late2.jsonl         4.10 GB   salvage run, uncompressed
+    top_of_book_2026-09-16-late2.csv     0.28 GB
+    sessions.json                                  recording manifest
+
+The August archives sit at the root because the recorder has always written
 there as well -- the same gap that once left 133 GB visible to `git add -A`
-(see .gitignore). They are:
-
-    data/live/books_2026-08-27.jsonl.jsonl.xz   0.31 GB
-    data/live/books_2026-08-28.jsonl.xz         0.76 GB
-    data/live/books_2026-08-29.jsonl.xz         0.72 GB
-    data/live/books_2026-08-30.jsonl.xz         0.46 GB
-
-    data/live/top_of_book_2026-09-10..13.csv     ~6.3 GB   event-level L1 feed
-    data/live/books_2026-09-10..13.jsonl.xz     ~1.2 GB   full 10-level books
-    data/live/top_of_book_2026-09-16-late2.csv   2.1 GB   today's salvage run
-    data/live/sessions.json                               recording manifest
+(see .gitignore). It is easy to copy only the September folder and silently
+lose four sessions.
 
 An external drive or `robocopy` is the sane way to move it. If you only want
 the newer studies working, the four September `top_of_book_*.csv` files are
@@ -64,7 +70,7 @@ enough; the `.xz` books are needed only to rebuild the 10-level grid.
     .venv\Scripts\python -m pip install numpy pandas pyarrow scikit-learn ^
         lightgbm xgboost torch matplotlib scipy requests tabulate
 
-    # 3. copy data/live across by hand (12.15 GB), then:
+    # 3. copy BOTH data/live folders across by hand (14.40 GB total), then:
 
     # 4. rebuild the 200ms grid -- ~37 GB out, one command per session
     cd polymarket_orderbook
