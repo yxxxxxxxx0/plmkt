@@ -1,0 +1,31 @@
+dataset_category,event_title,question,seconds_delay,outcome,minimum_order_size,reward_min_size,reward_max_spread,best_bid,best_ask,spread_cents,best_bid_size,best_ask_size
+NHL,Maple Leafs vs. Canadiens,Maple Leafs vs. Canadiens,1,Maple Leafs,5,50,4.5,0.44,0.46,2.0000000000000018,35.31,528.42
+NHL,Maple Leafs vs. Canadiens,Maple Leafs vs. Canadiens,1,Canadiens,5,50,4.5,0.54,0.56,2.0000000000000018,528.42,35.31
+Dota 2,Dota 2: Inner Circle vs Yellow Submarine (BO3) - European Pro League Group B,Dota 2: Inner Circle vs Yellow Submarine (BO3) - European Pro League Group B,1,Inner Circle,5,50,4.5,0.31,0.48,17.0,35.0,30.0
+Dota 2,Dota 2: Inner Circle vs Yellow Submarine (BO3) - European Pro League Group B,Dota 2: Inner Circle vs Yellow Submarine (BO3) - European Pro League Group B,1,Yellow Submarine,5,50,4.5,0.52,0.69,16.999999999999993,30.0,35.0
+Premier League,Brentford FC vs. Chelsea FC,Will Brentford FC win on 2026-09-18?,1,Yes,5,50,4.5,0.32,0.33,1.0000000000000009,12645.9,2614.29
+Premier League,Brentford FC vs. Chelsea FC,Will Brentford FC win on 2026-09-18?,1,No,5,50,4.5,0.67,0.68,1.0000000000000009,2614.29,12645.9
+MLS,Seattle Sounders FC vs. Real Salt Lake,Will Seattle Sounders FC win on 2026-04-12?,1,Yes,5,50,4.5,0.3,0.64,34.0,9.39,34.85
+MLS,Seattle Sounders FC vs. Real Salt Lake,Will Seattle Sounders FC win on 2026-04-12?,1,No,5,50,4.5,0.36,0.7,34.0,34.85,9.39
+UFC,"UFC 331: Gable Steveson vs. Sean Sharaf (Heavyweight, Prelims)","UFC 331: Gable Steveson vs. Sean Sharaf (Heavyweight, Prelims)",1,Gable Steveson,5,50,4.5,0.91,0.92,1.0000000000000009,2404.01,305.18
+UFC,"UFC 331: Gable Steveson vs. Sean Sharaf (Heavyweight, Prelims)","UFC 331: Gable Steveson vs. Sean Sharaf (Heavyweight, Prelims)",1,Sean Sharaf,5,50,4.5,0.08,0.09,0.9999999999999996,305.18,2404.01
+NFL,Lions vs. Bills,Lions vs. Bills,1,Lions,5,50,4.5,0.33,0.34,1.0000000000000009,11410.93,134423.83
+NFL,Lions vs. Bills,Lions vs. Bills,1,Bills,5,50,4.5,0.66,0.67,1.0000000000000009,134423.83,11410.93
+Ligue 1,AS Monaco FC vs. Racing Club de Lens,Will AS Monaco FC win on 2026-09-18?,1,Yes,5,50,4.5,0.47,0.48,1.0000000000000009,941.4,8247.41
+Ligue 1,AS Monaco FC vs. Racing Club de Lens,Will AS Monaco FC win on 2026-09-18?,1,No,5,50,4.5,0.52,0.53,1.0000000000000009,8247.41,941.4
+La Liga,RC Deportivo A Coruña vs. Sevilla FC,Will RC Deportivo A Coruña win on 2026-09-16?,1,Yes,5,50,4.5,0.37,0.38,1.0000000000000009,12939.94,49506.86
+La Liga,RC Deportivo A Coruña vs. Sevilla FC,Will RC Deportivo A Coruña win on 2026-09-16?,1,No,5,50,4.5,0.62,0.63,1.0000000000000009,49506.86,12939.94
+Bundesliga,FC Bayern München vs. 1. FC Union Berlin,Will FC Bayern München win on 2026-09-18?,1,Yes,5,50,4.5,0.91,0.92,1.0000000000000009,64393.28,3310.39
+Bundesliga,FC Bayern München vs. 1. FC Union Berlin,Will FC Bayern München win on 2026-09-18?,1,No,5,50,4.5,0.08,0.09,0.9999999999999996,3310.39,64393.28
+EPL,Brentford FC vs. Chelsea FC,Will Brentford FC win on 2026-09-18?,1,Yes,5,50,4.5,0.32,0.33,1.0000000000000009,12645.9,2614.29
+EPL,Brentford FC vs. Chelsea FC,Will Brentford FC win on 2026-09-18?,1,No,5,50,4.5,0.67,0.68,1.0000000000000009,2614.29,12645.9
+Baseball,Tampa Bay Rays vs. New York Yankees,Tampa Bay Rays vs. New York Yankees,0,Tampa Bay Rays,5,1000,2.5,0.42,0.43,1.0000000000000009,376901.52,4906.59
+Baseball,Tampa Bay Rays vs. New York Yankees,Tampa Bay Rays vs. New York Yankees,0,New York Yankees,5,1000,2.5,0.57,0.58,1.0000000000000009,4906.59,376901.52
+Football,Lions vs. Bills,Lions vs. Bills,1,Lions,5,50,4.5,0.33,0.34,1.0000000000000009,11410.93,134423.83
+Football,Lions vs. Bills,Lions vs. Bills,1,Bills,5,50,4.5,0.66,0.67,1.0000000000000009,134423.83,11410.93
+Rugby,Premiership Rugby: Harlequins vs Bath,Will Harlequins win?,1,Yes,5,50,4.5,0.03,0.75,72.0,13.84,30.0
+Rugby,Premiership Rugby: Harlequins vs Bath,Will Harlequins win?,1,No,5,50,4.5,0.25,0.97,72.0,30.0,13.84
+WNBA,Connecticut Sun vs. Atlanta Dream,Connecticut Sun vs. Atlanta Dream,1,Connecticut Sun,5,50,4.5,0.09,0.1,1.0000000000000009,1785.89,83.38
+WNBA,Connecticut Sun vs. Atlanta Dream,Connecticut Sun vs. Atlanta Dream,1,Atlanta Dream,5,50,4.5,0.9,0.91,1.0000000000000009,83.38,1785.89
+MLB,Tampa Bay Rays vs. New York Yankees,Tampa Bay Rays vs. New York Yankees,0,Tampa Bay Rays,5,1000,2.5,0.42,0.43,1.0000000000000009,376901.52,4906.59
+MLB,Tampa Bay Rays vs. New York Yankees,Tampa Bay Rays vs. New York Yankees,0,New York Yankees,5,1000,2.5,0.57,0.58,1.0000000000000009,4906.59,376901.52

@@ -1,0 +1,7 @@
+pair,relationship,threshold,candidate_signals,executable_entries
+Gen.G vs LYON -> Gen.G LCK playoffs,cross-tournament strength signal,0.03,0,0
+Gen.G vs LYON -> Gen.G LCK playoffs,cross-tournament strength signal,0.05,0,0
+Gen.G vs LYON -> Gen.G LCK playoffs,cross-tournament strength signal,0.1,0,0
+Gen.G vs G2 -> Gen.G LCK playoffs,cross-tournament strength signal,0.03,14,4
+Gen.G vs G2 -> Gen.G LCK playoffs,cross-tournament strength signal,0.05,7,4
+Gen.G vs G2 -> Gen.G LCK playoffs,cross-tournament strength signal,0.1,2,0

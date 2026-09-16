@@ -26,18 +26,50 @@ opened read-only; every generated artefact lands in `cache/` (datasets) or
 | `evaluate.py` | rare-event metrics; the only place a threshold is chosen |
 | `leadtime.py` | phase 6: how much warning a correct prediction gives |
 
+### Second pass: the label audit and the corrected experiment
+
+The first pass concluded that the hypothesis was supported. Re-auditing the
+label showed that most of that result was an artefact, so these files were
+added. **They supersede the first pass; read `summary.md` for what changed.**
+
+| file | role |
+|---|---|
+| `audit_label.py` | is the label measuring price movement, or the spread? |
+| `plot_examples.py` | draws labelled jumps — this is what exposed the artefact |
+| `audit_durability.py` | decomposes each move into raw / clean / durable / endpoint and caches `moves_H*.parquet` |
+| `audit_mechanism.py` | which feature family carries the gain; anticipation gaps |
+| `clean_prevalence.py` | prevalence and artefact share for every (J, H) |
+| `run_clean.py` | the corrected headline experiment |
+| `per_market.py` | per-market consistency on held-out games |
+
+`train.py`, `event_study.py` and `leadtime.py` all take `--label
+{raw,clean,durable,both}`; `raw` reproduces the first pass, `both` is the
+corrected label. Every output is tagged with the label, so a corrected run
+never silently overwrites an original one.
+
 ## Order to run
 
 ```bash
 python inspect_data.py                       # data quality report
 python test_features.py                      # must be 6/6 before anything else
 python build_dataset.py                      # ~10 min, writes cache/
-python event_study.py --J 0.02 --H 30
-python event_study.py --J 0.02 --H 30 --tight-only
-python baselines.py --all-settings
+
+# --- label audit: do this before believing any model number ---
+python audit_label.py --J 0.02 --H 30        # spread-only control
+python plot_examples.py --J 0.02 --H 30      # look at the actual price
+python audit_durability.py --H 10            # writes cache/moves_H10.parquet
+python audit_durability.py --H 30
+python audit_durability.py --H 60
+python clean_prevalence.py
+
+# --- corrected experiment ---
+python event_study.py --J 0.02 --H 30 --tight-only --label both
+python run_clean.py --J 0.02 --H 30 --label both --shuffle-control
+python run_clean.py --J 0.02 --H 30 --label both --max-train 120000   # matched
+python per_market.py --J 0.02 --H 30 --label both
 python train.py --smoke                      # plumbing check
-python train.py --J 0.02 --H 30 --ablations
-python leadtime.py --J 0.02 --H 30
+python train.py --J 0.02 --H 30 --tight-only --label both --ablations
+python leadtime.py --J 0.02 --H 30 --tight-only --label both
 ```
 
 ## Data

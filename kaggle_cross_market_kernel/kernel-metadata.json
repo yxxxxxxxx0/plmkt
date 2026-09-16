@@ -1,0 +1,15 @@
+{
+  "id": "yxxxxxxxx0/polymarket-cross-market-extraction",
+  "title": "Polymarket Cross Market Extraction",
+  "code_file": "kaggle_cross_market_extract.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_internet": false,
+  "dataset_sources": [
+    "marvingozo/polymarket-tick-level-orderbook-dataset"
+  ],
+  "competition_sources": [],
+  "kernel_sources": []
+}

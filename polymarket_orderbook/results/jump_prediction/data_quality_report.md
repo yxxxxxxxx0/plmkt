@@ -63,3 +63,48 @@ Backward-only as-of resampling: each slot carries the most recent book at or bef
 
 Total 91,315,584 grid rows, 28,002,283 in-game.
 
+
+---
+
+## Addendum, 2026-09-16: a defect in the *label*, not the feed
+
+The raw feed above is sound. The defect found on the second pass is in how the
+label was derived from it, and it is large enough to belong in this report.
+
+`future_move(t,H) = max |mid_u - mid_t|` is computed on the midpoint, and the
+midpoint is not robust: when one side of the book is briefly emptied, the next
+resting order can be tens of ticks away, so the mid moves mechanically and
+reverts as soon as a quote returns. No trade occurs. The "integrity" table above
+already hints at this — 31k–89k **empty-side** observations per session, and
+66.5%–96.4% of books carrying a full 10 levels — but the consequence was not
+traced through to the label until now.
+
+Measured share of labelled jumps that are these artefacts rather than
+repricings (`jump_prevalence_clean.csv`, `audit_durability_J*.csv`):
+
+| regime | J | H | P(jump) raw | P(jump) clean+durable | artefact share |
+|---|---|---|---|---|---|
+| tight at t | 0.01 | 10s | 0.331 | 0.051 | 84.7% |
+| tight at t | 0.02 | 30s | 0.479 | 0.111 | 76.9% |
+| tight at t | 0.05 | 10s | 0.112 | 0.0013 | **98.8%** |
+| all books | 0.02 | 30s | 0.595 | 0.174 | 70.7% |
+| all books | 0.01 | 60s | 0.835 | 0.505 | 39.6% |
+
+The artefact share is worst exactly where the event is rarest, which is the
+regime an interesting study would want to work in.
+
+**Practical consequence for anyone reusing this cache**: the `jump_*` and
+`future_move_*` columns in `cache/points_books_*.parquet` are the raw
+definition and should not be used as-is. Use the decomposition in
+`cache/moves_H*.parquet` (`clean_move`, `durable_move`, `endpoint_move`), or
+pass `--label both` to `train.py` / `event_study.py` / `leadtime.py`.
+
+Two further notes on resolution:
+
+* The cached label is computed on the 200ms grid while the 1 Hz recomputation in
+  `audit_durability.py` is a strict lower bound — cached ≥ recomputed in
+  **100.0%** of 503,159 compared rows. The extra excursions are sub-second, so
+  the artefact share above is conservative.
+* This is a labelling problem, so it does **not** affect the recorder, the
+  compressed `.jsonl.xz` archives, or the 200ms grid tensors. Nothing in this
+  study writes to any of them.

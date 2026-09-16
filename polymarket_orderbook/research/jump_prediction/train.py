@@ -272,15 +272,46 @@ def main():
     ap.add_argument("--tight-only", action="store_true")
     ap.add_argument("--ablations", action="store_true")
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--label", default="raw",
+                    choices=["raw", "clean", "durable", "both"],
+                    help="'raw' is the original max-|mid| label. The others use "
+                         "the artefact-free decomposition from "
+                         "audit_durability.py (cache/moves_H*.parquet): 'clean' "
+                         "requires the displaced price to be seen while the "
+                         "book is still tight, 'durable' requires it to "
+                         "persist, 'both' requires both. See run_clean.py.")
     a = ap.parse_args()
     if a.smoke:
         a.epochs, a.max_train, a.max_val, a.max_test = 1, 4000, 2000, 2000
     os.makedirs(RES, exist_ok=True)
     rng = np.random.default_rng(a.seed)
+    # every artefact of this run carries the regime and label, so a corrected
+    # run never silently overwrites the original one
+    run_tag = (("_tight" if a.tight_only else "")
+               + ("" if a.label == "raw" else f"_{a.label}")
+               + ("_smoke" if a.smoke else ""))
 
     D = load_points(a.sessions)
     ycol, vcol = f"jump_{a.J:g}_H{a.H}", f"valid_label_H{a.H}"
     D = D[D[vcol].to_numpy(bool)].reset_index(drop=True)
+    if a.label != "raw":
+        # Swap in the artefact-free label. The raw max-|mid| label counts a mid
+        # excursion however briefly it existed and however broken the book was
+        # at the time; only ~25% of tight-book raw jumps are ever observed while
+        # the book is still tight (audit_durability.py).
+        mv = os.path.join(CACHE, f"moves_H{a.H}.parquet")
+        if not os.path.exists(mv):
+            raise SystemExit(f"run audit_durability.py --H {a.H} first")
+        M = pd.read_parquet(mv)
+        n0 = len(D)
+        D = D.merge(M[["sid", "ts", "clean_move", "durable_move"]],
+                    on=["sid", "ts"], how="inner")
+        clean = D.clean_move >= a.J
+        durable = D.durable_move >= a.J
+        D[ycol] = (clean if a.label == "clean" else
+                   durable if a.label == "durable" else clean & durable)
+        D = D.drop(columns=["clean_move", "durable_move"])
+        log(f"label '{a.label}': {n0:,} -> {len(D):,} rows after move join")
     if a.tight_only:
         D = D[D.spread_ticks <= 2.0].reset_index(drop=True)
     log(f"{len(D):,} points, prevalence {D[ycol].mean():.4f}")
@@ -318,16 +349,17 @@ def main():
         log(f"  {kind+tag}: TEST PR-AUC {r['pr_auc']:.4f} "
             f"(lift {r['pr_auc_lift']:.2f}x) ROC {r['roc_auc']:.4f} "
             f"P@1% {r['prec_top1pct']:.3f}")
-        np.save(os.path.join(RES, f"preds_{kind}{tag}_J{a.J:g}_H{a.H}.npy"), pt)
-        np.save(os.path.join(RES, f"testidx_{kind}{tag}_J{a.J:g}_H{a.H}.npy"),
+        np.save(os.path.join(RES, f"preds_{kind}{tag}{run_tag}_J{a.J:g}_H{a.H}.npy"),
+                pt)
+        np.save(os.path.join(RES, f"testidx_{kind}{tag}{run_tag}_J{a.J:g}_H{a.H}.npy"),
                 idx["test"])
         calibration(yt, pt).to_csv(
-            os.path.join(RES, f"calibration_{kind}{tag}_J{a.J:g}_H{a.H}.csv"),
+            os.path.join(RES,
+                         f"calibration_{kind}{tag}{run_tag}_J{a.J:g}_H{a.H}.csv"),
             index=False)
 
     R = pd.DataFrame(rows)
-    tag = ("_tight" if a.tight_only else "") + ("_smoke" if a.smoke else "")
-    p = os.path.join(RES, f"deep_metrics_J{a.J:g}_H{a.H}{tag}.csv")
+    p = os.path.join(RES, f"deep_metrics_J{a.J:g}_H{a.H}{run_tag}.csv")
     R.to_csv(p, index=False)
     log(f"wrote {p}")
     print("\n" + R[["model", "prevalence", "pr_auc", "pr_auc_lift", "roc_auc",

@@ -1,0 +1,6 @@
+pair,status,match_rows,future_rows,relationship,match_start_utc,match_end_utc,future_start_utc,future_end_utc
+MOUZ vs FUT Esports -> FUT ESL Pro League,missing rows,0,0,,,,,
+NAVI vs FUT Esports -> FUT ESL Pro League,missing rows,176776,0,,,,,
+FUT Esports vs Astralis -> FUT ESL Pro League,missing rows,696,0,,,,,
+Gen.G vs LYON -> Gen.G LCK playoffs,tested,287,14341,cross-tournament strength signal,2026-03-19 00:00:13.177000046+00:00,2026-03-19 00:05:27.967000008+00:00,2026-03-19 00:00:15.289999962+00:00,2026-03-19 23:59:50.684999943+00:00
+Gen.G vs G2 -> Gen.G LCK playoffs,tested,119209,10957,cross-tournament strength signal,2026-03-21 00:01:37.887000084+00:00,2026-03-21 18:38:27.980999947+00:00,2026-03-21 00:00:02.625000+00:00,2026-03-21 23:59:53.239000082+00:00

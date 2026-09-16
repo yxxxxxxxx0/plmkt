@@ -1,0 +1,243 @@
+{
+  "created_utc": "2026-09-16T03:38:09.982943+00:00",
+  "dataset_root": "/kaggle/input/datasets/marvingozo/polymarket-tick-level-orderbook-dataset",
+  "polars_version": "1.35.2",
+  "sports_method": "conservative keyword fallback (no explicit Sports metadata label found)",
+  "sports_fields": [
+    "question",
+    "category"
+  ],
+  "mappings": {
+    "orderbook": {
+      "metadata_key": "condition_id",
+      "raw_key": "market_id",
+      "best": {
+        "dataset": "orderbook",
+        "metadata_column": "condition_id",
+        "raw_column": "market_id",
+        "overlap": 12665,
+        "raw_unique": 24465,
+        "metadata_unique": 123895,
+        "raw_coverage": 0.5176783159615778,
+        "metadata_coverage": 0.10222365712902054,
+        "same_name": false,
+        "examples": [
+          "0x00000977017fa72fb6b1908ae694000d3b51f442c2552656b10bdbbfd16ff707",
+          "0x0001cb8c0b39aeb614ab9a43867595317f06ede9c011661513065c638fbbefda",
+          "0x000700e60667799243ad236f8c279eba1690b6eded94a3a0083c3565b4c957ea"
+        ]
+      },
+      "candidates": [
+        {
+          "dataset": "orderbook",
+          "metadata_column": "condition_id",
+          "raw_column": "market_id",
+          "overlap": 12665,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.5176783159615778,
+          "metadata_coverage": 0.10222365712902054,
+          "same_name": false,
+          "examples": [
+            "0x00000977017fa72fb6b1908ae694000d3b51f442c2552656b10bdbbfd16ff707",
+            "0x0001cb8c0b39aeb614ab9a43867595317f06ede9c011661513065c638fbbefda",
+            "0x000700e60667799243ad236f8c279eba1690b6eded94a3a0083c3565b4c957ea"
+          ]
+        },
+        {
+          "dataset": "orderbook",
+          "metadata_column": "clob_token_id_yes",
+          "raw_column": "token_id",
+          "overlap": 11608,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.4744737379930513,
+          "metadata_coverage": 0.09369223939626296,
+          "same_name": false,
+          "examples": [
+            "100043934323667825194130777434947686412039410569098345011976985320094345448236",
+            "100053070271083919715825174428042762682570047698117969561192721260051515162849",
+            "100056746834128416164930948997077585493567809510254530136963197251606762201238"
+          ]
+        },
+        {
+          "dataset": "orderbook",
+          "metadata_column": "clob_token_id_no",
+          "raw_column": "token_id",
+          "overlap": 1057,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.04320457796852647,
+          "metadata_coverage": 0.008531417732757576,
+          "same_name": false,
+          "examples": [
+            "10027488165735143739193010483818970800417047770157814763506454967846745326009",
+            "100360293035961619981548971936342887019274450286220623311092320948436838863752",
+            "100401055284504110444295221507219728493318656750391958213344344981870335966126"
+          ]
+        },
+        {
+          "dataset": "orderbook",
+          "metadata_column": "clob_token_id_yes",
+          "raw_column": "market_id",
+          "overlap": 0,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        },
+        {
+          "dataset": "orderbook",
+          "metadata_column": "clob_token_id_no",
+          "raw_column": "market_id",
+          "overlap": 0,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        },
+        {
+          "dataset": "orderbook",
+          "metadata_column": "condition_id",
+          "raw_column": "token_id",
+          "overlap": 0,
+          "raw_unique": 24465,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        }
+      ]
+    },
+    "snapshots": {
+      "metadata_key": "condition_id",
+      "raw_key": "market_id",
+      "best": {
+        "dataset": "snapshots",
+        "metadata_column": "condition_id",
+        "raw_column": "market_id",
+        "overlap": 12686,
+        "raw_unique": 24384,
+        "metadata_unique": 123895,
+        "raw_coverage": 0.520259186351706,
+        "metadata_coverage": 0.10239315549457202,
+        "same_name": false,
+        "examples": [
+          "0x00000977017fa72fb6b1908ae694000d3b51f442c2552656b10bdbbfd16ff707",
+          "0x0001cb8c0b39aeb614ab9a43867595317f06ede9c011661513065c638fbbefda",
+          "0x000700e60667799243ad236f8c279eba1690b6eded94a3a0083c3565b4c957ea"
+        ]
+      },
+      "candidates": [
+        {
+          "dataset": "snapshots",
+          "metadata_column": "condition_id",
+          "raw_column": "market_id",
+          "overlap": 12686,
+          "raw_unique": 24384,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.520259186351706,
+          "metadata_coverage": 0.10239315549457202,
+          "same_name": false,
+          "examples": [
+            "0x00000977017fa72fb6b1908ae694000d3b51f442c2552656b10bdbbfd16ff707",
+            "0x0001cb8c0b39aeb614ab9a43867595317f06ede9c011661513065c638fbbefda",
+            "0x000700e60667799243ad236f8c279eba1690b6eded94a3a0083c3565b4c957ea"
+          ]
+        },
+        {
+          "dataset": "snapshots",
+          "metadata_column": "clob_token_id_yes",
+          "raw_column": "market_id",
+          "overlap": 0,
+          "raw_unique": 24384,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        },
+        {
+          "dataset": "snapshots",
+          "metadata_column": "clob_token_id_no",
+          "raw_column": "market_id",
+          "overlap": 0,
+          "raw_unique": 24384,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        }
+      ]
+    },
+    "trades": {
+      "metadata_key": "condition_id",
+      "raw_key": "condition_id",
+      "best": {
+        "dataset": "trades",
+        "metadata_column": "condition_id",
+        "raw_column": "condition_id",
+        "overlap": 23016,
+        "raw_unique": 23016,
+        "metadata_unique": 123895,
+        "raw_coverage": 1.0,
+        "metadata_coverage": 0.18577020864441665,
+        "same_name": true,
+        "examples": [
+          "0x0000dbb9f89318fa1324d4eed3dbc1ff192e764138c7f9e9be6e9079e1fb3d4f",
+          "0x00028df20b436a1302c1bb0a3857cb314cd1d955bf498b63641680b3c14730d4",
+          "0x0008170abff822fc0673128798cf9c82ad210ecd24ff8bdbc14f2befa307a50a"
+        ]
+      },
+      "candidates": [
+        {
+          "dataset": "trades",
+          "metadata_column": "condition_id",
+          "raw_column": "condition_id",
+          "overlap": 23016,
+          "raw_unique": 23016,
+          "metadata_unique": 123895,
+          "raw_coverage": 1.0,
+          "metadata_coverage": 0.18577020864441665,
+          "same_name": true,
+          "examples": [
+            "0x0000dbb9f89318fa1324d4eed3dbc1ff192e764138c7f9e9be6e9079e1fb3d4f",
+            "0x00028df20b436a1302c1bb0a3857cb314cd1d955bf498b63641680b3c14730d4",
+            "0x0008170abff822fc0673128798cf9c82ad210ecd24ff8bdbc14f2befa307a50a"
+          ]
+        },
+        {
+          "dataset": "trades",
+          "metadata_column": "clob_token_id_yes",
+          "raw_column": "condition_id",
+          "overlap": 0,
+          "raw_unique": 23016,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        },
+        {
+          "dataset": "trades",
+          "metadata_column": "clob_token_id_no",
+          "raw_column": "condition_id",
+          "overlap": 0,
+          "raw_unique": 23016,
+          "metadata_unique": 123895,
+          "raw_coverage": 0.0,
+          "metadata_coverage": 0.0,
+          "same_name": false,
+          "examples": []
+        }
+      ]
+    }
+  },
+  "output_root": "/kaggle/working/polymarket_sports"
+}

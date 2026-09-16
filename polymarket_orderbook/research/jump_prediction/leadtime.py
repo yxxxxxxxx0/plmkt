@@ -75,6 +75,18 @@ def rebuild_filtered(a):
     import train as TR
     D = TR.load_points(None)
     D = D[D[f"valid_label_H{a.H}"].to_numpy(bool)].reset_index(drop=True)
+    if getattr(a, "label", "raw") != "raw":
+        # mirror train.py's label swap exactly, including the inner join, or
+        # the saved test indices will not line up with these rows
+        M = pd.read_parquet(os.path.join(CACHE, f"moves_H{a.H}.parquet"))
+        D = D.merge(M[["sid", "ts", "clean_move", "durable_move"]],
+                    on=["sid", "ts"], how="inner")
+        clean = D.clean_move >= a.J
+        durable = D.durable_move >= a.J
+        D[f"jump_{a.J:g}_H{a.H}"] = (clean if a.label == "clean" else
+                                     durable if a.label == "durable"
+                                     else clean & durable)
+        D = D.drop(columns=["clean_move", "durable_move"])
     if a.tight_only:
         D = D[D.spread_ticks <= 2.0].reset_index(drop=True)
     offs = TR.frame_offsets()
@@ -93,6 +105,8 @@ def main():
                     default=["cnn", "cnn_lstm", "cnn_transformer"])
     ap.add_argument("--max-lead-s", type=float, default=60.0)
     ap.add_argument("--tight-only", action="store_true")
+    ap.add_argument("--label", default="raw",
+                    choices=["raw", "clean", "durable", "both"])
     ap.add_argument("--top-frac", type=float, default=None,
                     help="instead of the F1 threshold, alert on the top X of "
                          "predicted probabilities. At 61%% prevalence the F1 "
@@ -100,12 +114,14 @@ def main():
                          "any 'lead time' meaningless; a strict operating "
                          "point is the only one worth quoting.")
     a = ap.parse_args()
+    run_tag = (("_tight" if a.tight_only else "")
+               + ("" if a.label == "raw" else f"_{a.label}"))
 
     rows, dists = [], {}
     D_filtered = None
     for m in a.models:
-        pp = os.path.join(RES, f"preds_{m}_J{a.J:g}_H{a.H}.npy")
-        ip = os.path.join(RES, f"testidx_{m}_J{a.J:g}_H{a.H}.npy")
+        pp = os.path.join(RES, f"preds_{m}{run_tag}_J{a.J:g}_H{a.H}.npy")
+        ip = os.path.join(RES, f"testidx_{m}{run_tag}_J{a.J:g}_H{a.H}.npy")
         if not (os.path.exists(pp) and os.path.exists(ip)):
             print(f"  {m}: no saved predictions, skipped")
             continue
@@ -126,7 +142,8 @@ def main():
         # sid is unique within a session only
         sid = (sub.session.astype(str) + "#" + sub.sid.astype(str)).to_numpy()
         _, sid = np.unique(sid, return_inverse=True)
-        met = pd.read_csv(os.path.join(RES, f"deep_metrics_J{a.J:g}_H{a.H}.csv"))
+        met = pd.read_csv(os.path.join(RES,
+                                       f"deep_metrics_J{a.J:g}_H{a.H}{run_tag}.csv"))
         r = met[met.model == m]
         if not len(r):
             continue
@@ -152,7 +169,7 @@ def main():
     if not rows:
         raise SystemExit("no model predictions found; run train.py first")
     R = pd.DataFrame(rows)
-    p = os.path.join(RES, f"lead_time_J{a.J:g}_H{a.H}.csv")
+    p = os.path.join(RES, f"lead_time_J{a.J:g}_H{a.H}{run_tag}.csv")
     R.to_csv(p, index=False)
 
     fig, ax = plt.subplots(figsize=(7.4, 4.2))
@@ -167,7 +184,8 @@ def main():
     ax.legend(fontsize=8)
     ax.grid(alpha=0.25)
     fig.tight_layout()
-    fig.savefig(os.path.join(RES, "plots", f"lead_time_J{a.J:g}_H{a.H}.png"),
+    fig.savefig(os.path.join(RES, "plots",
+                             f"lead_time_J{a.J:g}_H{a.H}{run_tag}.png"),
                 dpi=130)
     print(f"\nwrote {p}")
     print(R.to_string(index=False, float_format=lambda v: f"{v:.3f}"))

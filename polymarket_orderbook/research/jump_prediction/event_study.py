@@ -207,6 +207,11 @@ def main():
                     help="restrict to books with spread <= 2 ticks, where a "
                          "mid move is a repricing rather than an illiquid "
                          "quote wobbling")
+    ap.add_argument("--label", default="raw",
+                    choices=["raw", "clean", "durable", "both"],
+                    help="'raw' is the original max-|mid| label; the others "
+                         "use the artefact-free decomposition built by "
+                         "audit_durability.py")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     os.makedirs(os.path.join(RES, "plots"), exist_ok=True)
@@ -217,6 +222,22 @@ def main():
     if col not in D.columns:
         raise SystemExit(f"{col} not in cache")
     D = D[D[f"valid_label_H{a.H}"].to_numpy(bool)].reset_index(drop=True)
+    if a.label != "raw":
+        # See audit_durability.py: the raw max-|mid| label is dominated by
+        # transient quote vacuums, so an event study built on it is largely an
+        # event study of the mid breaking rather than of the price moving.
+        mv = os.path.join(CACHE, f"moves_H{a.H}.parquet")
+        if not os.path.exists(mv):
+            raise SystemExit(f"run audit_durability.py --H {a.H} first")
+        M = pd.read_parquet(mv)
+        D = D.merge(M[["sid", "ts", "clean_move", "durable_move"]],
+                    on=["sid", "ts"], how="inner")
+        clean = D.clean_move >= a.J
+        durable = D.durable_move >= a.J
+        D[col] = (clean if a.label == "clean" else
+                  durable if a.label == "durable" else clean & durable)
+        D = D.drop(columns=["clean_move", "durable_move"])
+        log(f"using '{a.label}' label: {len(D):,} rows after move join")
     if a.tight_only:
         D = D[D.spread_ticks <= 2.0].reset_index(drop=True)
     log(f"{len(D):,} valid prediction points, "
@@ -273,7 +294,8 @@ def main():
         ax.legend(fontsize=8)
         ax.grid(alpha=0.25)
         fig.tight_layout()
-        tag = f"J{a.J:g}_H{a.H}" + ("_tight" if a.tight_only else "")
+        tag = (f"J{a.J:g}_H{a.H}" + ("_tight" if a.tight_only else "")
+               + ("" if a.label == "raw" else f"_{a.label}"))
         fig.savefig(os.path.join(RES, "plots", f"event_{k}_{tag}.png"), dpi=130)
         plt.close(fig)
 
@@ -288,7 +310,8 @@ def main():
             rows_out.append(e)
 
     R = pd.DataFrame(rows_out)
-    tag = f"J{a.J:g}_H{a.H}" + ("_tight" if a.tight_only else "")
+    tag = (f"J{a.J:g}_H{a.H}" + ("_tight" if a.tight_only else "")
+               + ("" if a.label == "raw" else f"_{a.label}"))
     p = os.path.join(RES, f"event_study_effects_{tag}.csv")
     R.to_csv(p, index=False)
     log(f"wrote {p} and {len(TRACK)} plots")

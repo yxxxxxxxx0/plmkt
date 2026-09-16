@@ -43,3 +43,40 @@ venv/
 # Logs
 *.log
 polymarket_orderbook/logs/
+
+# ---------------------------------------------------------------------------
+# 2026-09-16: a second round of oversized artefacts. `git status --porcelain
+# -uall` showed 14.17 GB across 391 untracked files, several individually past
+# GitHub's 100 MB per-file limit. All of it is either downloaded or
+# regenerable, so none of it belongs in the repo.
+# ---------------------------------------------------------------------------
+
+# Kaggle downloads and their extraction scratch space (4.3 GB + 2.9 GB + 780 MB
+# of zips, plus duplicated parquet trees under the pipeline run dirs).
+kaggle_sports_download/
+kaggle_cross_market_download/
+kaggle_sports_pipeline/
+kaggle_metadata_full/
+cross_market_universe/
+
+# The polymarket_sports tick dataset: ~4.0 GB of orderbook parquet and 0.32 GB
+# of snapshots. Reproducible from the Kaggle source. The small metadata table
+# and the reports ARE kept (see the negations below).
+polymarket_sports/orderbook/
+polymarket_sports/snapshots/
+polymarket_sports/trades/
+
+# Generated research caches: minute panels, sequence tensors, move tables.
+# Rebuilt by the build_* scripts in each research folder.
+polymarket_orderbook/research/*/cache/
+
+# Per-row jump tables. lee_mykland_jumps.csv is 175-176 MB per variant, past
+# the per-file limit; the summaries and metric tables next to it are kept.
+polymarket_orderbook/results/lee_mykland/**/lee_mykland_jumps.csv
+polymarket_orderbook/results/makinen/jumps/lee_mykland_jumps.csv
+polymarket_orderbook/results/makinen/**/replay_events.csv
+polymarket_orderbook/results/makinen/preds/*.npy
+polymarket_orderbook/results/makinen/preds/*.pt
+polymarket_orderbook/results/makinen/**/preds_*.npy
+polymarket_orderbook/results/jump_prediction/*.npy
+polymarket_orderbook/results/jump_prediction/allbooks_run_*/
