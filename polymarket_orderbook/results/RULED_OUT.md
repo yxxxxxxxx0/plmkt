@@ -1,6 +1,6 @@
 # Ledger of what has been tested and found not tradable
 
-2026-09-16. A record of closed doors, so none of them get re-opened by accident.
+2026-09-17. A record of closed doors, so none of them get re-opened by accident.
 Each entry gives the measured result and where it lives. Where a method *works
 statistically* but still is not tradable, both facts are stated — that
 distinction is the main lesson of this project.
@@ -22,6 +22,7 @@ statistical skill.
 | 5 | imbalance features at a 5s lead | ROC-AUC 0.397–0.547 | at/below chance |
 | 6 | collapsing side → direction of move | **50.2%** | baseline 55.2% — worse than guessing |
 | 7 | jump-direction from sequences | ROC-AUC 0.88 | ~0.75 of it is mean-reversion of a spike already visible in the input |
+| 8 | direction after a tight-spread collapse, holds 10s–600s | ROC **0.659** at +10s, decaying to 0.544 by +300s | **−3.13 to −3.49 ticks/trade**, every horizon — see C5 |
 
 **The decisive one is #3.** A 73.5% directional hit rate still lost 5.60 ticks
 per trade. Directional skill was *achieved* and was *not enough*, because the
@@ -54,12 +55,66 @@ CNN-LSTM and CNN-LSTM-Attention in **every** comparison run.
 | 2 | taker on the collapse signal | **move ÷ spread ≈ 0.32** at every operating point |
 | 3 | taker with *perfect* direction on the collapse signal | EV **−0.094** (top 50%) to **−1.225** (top 1%) |
 | 4 | Polymarket sports taker fee | adds a further ~1–1.75 ticks |
+| 5 | **tight entry + wait for the spread to re-tighten, hold swept 10s–600s** | **negative at every horizon**, see below |
 
 **The structural reason.** The model predicts jumps by detecting that liquidity
 has already gone. "Liquidity has gone" and "trading is expensive" are the same
 sentence. At the model's most confident predictions the median spread is **72
 ticks** against a median move of **23 ticks**. The signal *is* a measurement of
 untradeability.
+
+### C5 in full — the strongest version of the taker case, and it still fails
+
+Entry restricted to collapses where the spread is already **≤ 3 ticks**
+(76,976 events), exit after a swept holding period, and the round trip charged
+correctly as `(spread_in + spread_out) / 2` with **both ends measured**, not
+assumed. This is the most favourable honest formulation found, and it was built
+to answer the objection that earlier tests paid the wide mid-move spread.
+
+Two corrections to earlier numbers are folded in here:
+
+* A round trip is the **average** of the entry and exit spread, not twice the
+  entry spread. Earlier taker tests over-charged.
+* The exit spread must be summarised by its **mean, not its median**. Its
+  median is 1.0 tick but its mean is 3.8, with p90 = 9 ticks and p99 = 43. An
+  interim version of this analysis quoted the median, reported a 1.5-tick round
+  trip, and briefly showed a profit that does not exist.
+
+| hold | E\|move\| | E[cost] | **oracle EV** | direction ROC | model EV (held out) |
+|---|---|---|---|---|---|
+| +10s | 1.31t | 2.62t | **−1.31t** | **0.659** | −3.39t |
+| +20s | 1.66t | 2.64t | −0.98t | 0.610 | −3.49t |
+| +30s | 1.90t | 2.54t | −0.64t | 0.604 | −3.23t |
+| +60s | 2.63t | 2.54t | **+0.09t** | 0.563 | −3.36t |
+| +120s | 3.65t | 2.44t | +1.21t | 0.549 | −3.25t |
+| +300s | 5.76t | 2.46t | +3.30t | 0.544 | −3.29t |
+| +600s | 8.12t | 2.55t | +5.57t | 0.552 | −3.13t |
+
+Move and cost are means over all 74,661–76,976 events; ROC and model EV are on
+the held-out session (`books_2026-09-13`, n ≈ 14,000). Oracle EV is
+`E|move| − E[cost]`, the ceiling for *any* direction model, and it does not
+turn positive until **+60 s**. Full sample in
+`results/makinen/direction_hold/oracle_bound_full_sample.csv`.
+
+**The two ends of the sweep close each other off.** At +10s — the only horizon
+where the signal carries real direction information, and ROC 0.659 is the best
+honest direction figure in this project — **perfect foresight still loses 1.31
+ticks per trade.** No model can rescue a negative oracle. At the horizons where
+the move finally outruns the cost, direction skill has decayed to 0.544–0.563
+against a 68.9–74.8% requirement.
+
+Every variant loses, held out, with game-clustered 95% CIs entirely below zero:
+model on every collapse −3.13 to −3.49t; confidence-gated −1.39 to −4.16t;
+always buy −2.79 to −3.34t; coin flip −3.12 to −3.32t.
+
+**Do not re-open this by lengthening the hold.** Stretching the horizon does not
+trade the signal, it trades the game: entering at a *random* tight moment
+captures 3.0 of the 4.0 ticks a collapse entry gets at +300s (Cliff's δ ≈
++0.12). Mean **signed** move decays monotonically from +0.21t at +10s to
++0.02t at +600s — i.e. indistinguishable from zero. The mid is efficient; the 35% up-rate is skew in
+the distribution, not drift.
+
+`research/makinen/direction_hold.py`, `results/makinen/direction_hold/`.
 
 ## D. Execution as a maker — closed by fills and exit costs
 
@@ -106,11 +161,10 @@ Four things remain genuinely open. None of them are order-book microstructure.
    needs fixing first.
 2. **Signed trade flow** (aggressor side). Not currently recorded. The one
    plausible remaining source of direction, and free to start collecting.
-3. **Hold to resolution.** Every negative above assumes a round trip, paying
-   the spread twice — which is what makes `move < 2 × spread` fatal. Entering
-   and holding to settlement pays the spread once. But that is betting on the
-   game outcome and needs a fair-value edge; the jump signal contributes
-   nothing to it.
+3. **Hold to resolution.** Every negative above assumes a round trip. Entering
+   and holding to settlement pays the spread once instead. But that is betting
+   on the game outcome and needs a fair-value edge; the jump signal contributes
+   nothing to it — C5 shows its direction content is gone within a minute.
 4. **The esports dataset** — 1,039 live contracts over 21 consecutive days,
    only partly exploited. It fixes the sample-size problem that left the MLB
    architecture comparisons unresolved.
