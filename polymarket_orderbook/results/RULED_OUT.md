@@ -210,8 +210,18 @@ Four things remain genuinely open. None of them are order-book microstructure.
    and no direction model. All three are recorded on one clock. **Never
    tested.** `crossmarket.py` exists but carries the series-key defect and
    needs fixing first.
-2. **Signed trade flow** (aggressor side). Not currently recorded. The one
-   plausible remaining source of direction, and free to start collecting.
+2. **Signed trade flow** (aggressor side). **CORRECTED 2026-09-21: it has been
+   recorded all along.** `live_recorder.py` writes an `et="trade"` record per
+   print carrying `side_raw` as the feed sends it and, because that field is
+   the maker's side on some feeds and the taker's on others, a derived
+   `aggressor` inferred from whether the print landed on the bid or the ask.
+   Measured on `books_2026-09-10`: **8,376 prints, 86.4% with the aggressor
+   resolved by the touch, 96.4% carrying the full 10-level book at the moment
+   of the trade.** At roughly 8-12k prints a night over ten recorded sessions
+   that is ~100k signed prints, each with its book — far richer than the
+   41,779 L1-only trades that can be joined in `polymarket_sports`.
+   This is the one plausible remaining source of direction and **the data is
+   already on disk, unused.** It is now the highest-value untested idea.
 3. **Hold to resolution.** Every negative above assumes a round trip. Entering
    and holding to settlement pays the spread once instead. But that is betting
    on the game outcome and needs a fair-value edge; the jump signal contributes

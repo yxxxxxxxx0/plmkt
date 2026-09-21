@@ -218,9 +218,15 @@ Ranked by what the evidence actually supports.
    `crossmarket.py` exists but predates the series-key fix and must be repaired
    first.
 
-3. **Signed trade flow.** The aggressor side is not currently recorded. It is
-   the one plausible remaining source of direction, and it is free to start
-   collecting.
+3. **Signed trade flow — and it is already recorded.** The ledger said this
+   was not being captured; that was wrong, found on 2026-09-21.
+   `live_recorder.py` writes a record per trade print with `side_raw` and a
+   derived `aggressor` inferred from whether the print hit the bid or the ask.
+   On `books_2026-09-10`: 8,376 prints, 86.4% aggressor-resolved, 96.4%
+   carrying the full 10-level book. Roughly 8-12k a night, ~100k across the
+   recorded sessions, none of it used by any model in this project. Direction
+   is the only thing left to solve and this is the only unexploited source of
+   it, so it should be tried before anything else on this list.
 
 4. **The moneyline-and-fee result.** The closest thing to break-even is
    moneyline at a tight entry, failing by a fee that makers are never charged.
