@@ -1,5 +1,9 @@
 # Price jump prediction — what was achieved, and what it is good for
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 2026-09-16. Consolidates work across `results/jump_prediction/`,
 `results/lee_mykland/`, `results/makinen/` and `results/sports/`. Written after
 the economics came out negative, so it separates **what was established** from

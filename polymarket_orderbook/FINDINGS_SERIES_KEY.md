@@ -1,5 +1,9 @@
 # The series-key bug, and what survived it
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 2026-09-15. Every positive result this study produced before this date was an
 artifact of one line in `jump_data.py`. This is the record of what happened,
 how it was found, and what the corrected data says.

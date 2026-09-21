@@ -1,5 +1,9 @@
 # Polymarket strategy screen for a $50 bankroll
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 Research date: 2026-09-08. This is a research screen, not a promise of profit.
 
 ## Bottom line

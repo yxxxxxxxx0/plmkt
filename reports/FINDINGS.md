@@ -1,5 +1,9 @@
 # Findings
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 Walk-forward backtest, MLB regular season 2023-2026 (9,455 games).
 Trained on 2015 through the season before each test year; nothing from a test
 season ever reaches its own model fit.

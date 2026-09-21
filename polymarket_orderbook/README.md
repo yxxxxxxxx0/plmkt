@@ -1,5 +1,9 @@
 # Polymarket order book recorder & tick-level replay
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 Records live Polymarket order books for MLB games, reconstructs the exact
 tick-level history, and serves a browser viewer that steps through **every
 recorded change** — down to microsecond resolution.

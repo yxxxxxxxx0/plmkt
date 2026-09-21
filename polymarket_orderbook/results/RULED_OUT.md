@@ -1,5 +1,9 @@
 # Ledger of what has been tested and found not tradable
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 2026-09-17. A record of closed doors, so none of them get re-opened by accident.
 Each entry gives the measured result and where it lives. Where a method *works
 statistically* but still is not tradable, both facts are stated — that
