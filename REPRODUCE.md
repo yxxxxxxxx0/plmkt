@@ -1,5 +1,14 @@
 # Reproducing this on another machine
 
+> **Note (2026-09-21).** The codebase was tidied: the implementations of the
+> closed methods were deleted (recoverable at `40437ab`, catalogued in
+> `METHODS_AND_EXPERIMENTS.md`), the unrelated `mlbmodel/` project was removed,
+> and with it the orphaned downloads — `kaggle_sports_download/`,
+> `kaggle_cross_market_download/`, `kaggle_metadata_full/`,
+> `cross_market_universe/` and `data/raw/` (12 GB in total). The Kaggle ones
+> are re-downloadable; `data/raw/` was the Elo model's API cache. **Both
+> `data/live/` folders are untouched and remain the irreplaceable data.**
+
 The repository holds **code and results only — about 13 MB**. None of the data
 is in git: 14 GB of it was deliberately excluded, and the derived grids are
 another 37 GB. This file says exactly what to carry, what to re-download, and
@@ -19,8 +28,8 @@ Root is `C:\Users\JustinCHENG\Documents\plmkt`.
 | `polymarket_sports/orderbook/` | 4.00 GB | no | re-download from Kaggle |
 | `polymarket_sports/snapshots/` | 0.32 GB | no | re-download from Kaggle |
 | `polymarket_sports/trades/` | 1.8 MB | no | re-download from Kaggle |
+| `polymarket_orderbook/data/live/books_2026-09-1[789]*`, `-20` | ~63 GB | no | **COPY IT — irreplaceable**, and still uncompressed |
 | `polymarket_orderbook/research/*/cache/` | 3.99 GB | no | rebuild (below) |
-| `kaggle_sports_download/` | 4.33 GB | no | re-download (it is the zip) |
 | `polymarket_orderbook/data/game_windows.json` | 20 KB | **yes** | already cloned |
 | all `research/**/*.py` and `results/**/*.md` | 13 MB | **yes** | already cloned |
 
