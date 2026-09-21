@@ -85,6 +85,57 @@ statistic and corresponds to a materially lower hit rate than 65.3% at any
 single operating point, so this is not "we are already there". It is the first
 time the gap has been small enough to be worth another measurement.
 
+## 4b. CORRECTION — the 65.3% figure was one trade
+
+The 65.3% in the table above is **not robust and should not be quoted**. In the
+top-34 set there is a single 75-tick move, and it is **38% of that set's entire
+total move**. Remove it and the requirement moves to 74.1%; on a 5–95% trimmed
+mean it is 75.3%. The whole "closest we have come" impression was one
+observation.
+
+| cut | n | mean \|move\| | median | robust accuracy needed |
+|---|---|---|---|---|
+| top 34 | 34 | 5.73 (raw) | 3.00 | **74.1% – 75.3%** |
+| top 67 | 67 | 4.32 (raw) | 2.35 | 80.0% – 83.7% |
+| top 167 | 167 | 4.09 (raw) | 3.00 | 81.3% – 84.3% |
+| top 334 | 334 | 4.26 (raw) | 3.00 | 87.6% – 92.9% |
+
+`direction_precision_grid.py` uses the trimmed estimate throughout for exactly
+this reason.
+
+## 4c. The two dials together — what precision do you need, given direction?
+
+Asked the other way round: fix directional accuracy, and ask how tightly you
+must select. `EV = (2a − 1) × E|move| − E[cost + fee]`, on a 30s clock, held
+out, trimmed:
+
+| how tightly you select | n | selector precision | 60% | 70% | **75%** | 80% | 90% | 100% |
+|---|---|---|---|---|---|---|---|---|
+| top 0.1% | 33 | 54.5% | −1.03 | −0.33 | **+0.03** | +0.38 | +1.09 | +1.80 |
+| top 0.2% | 67 | 47.8% | −1.34 | −0.74 | −0.43 | −0.13 | +0.47 | +1.08 |
+| top 0.5% | 167 | 38.9% | −1.62 | −0.94 | −0.60 | −0.26 | +0.42 | +1.10 |
+| top 1% | 334 | 29.9% | −2.32 | −1.61 | −1.25 | −0.89 | −0.18 | +0.54 |
+| top 2% | 669 | 19.7% | −2.93 | −2.23 | −1.88 | −1.53 | −0.83 | −0.13 |
+| everything | 33,434 | 0.9% | −12.48 | −11.56 | −11.09 | −10.63 | −9.70 | −8.78 |
+
+The loosest cut that profits at each accuracy, with game-clustered CIs:
+
+| direction accuracy | feasible? | cut | trades/session | precision needed | EV | 95% CI |
+|---|---|---|---|---|---|---|
+| ≤ 70% | **no cut works** | — | — | — | — | — |
+| 75% | yes | top 0.1% | 16.5 | 54.5% | +0.03 t | [−0.43, +0.55] |
+| 80% | yes | top 0.1% | 16.5 | 54.5% | +0.38 t | [−0.17, +1.01] |
+| 90% | yes | top 0.5% | 83.5 | 38.9% | +0.42 t | **[+0.10, +0.78]** |
+| 100% | yes | top 1% | 167 | 29.9% | +0.54 t | **[+0.08, +0.99]** |
+
+**Read the "precision needed" column: 30–55%. The selector already delivers
+that** — 54.5% at the top 0.1%, 38.9% at the top 0.5%. Precision is solved.
+
+What is not solved is the row label. **Nothing is positive below 75% directional
+accuracy, at any selection precision**, and only at 90% and above does a
+confidence interval exclude zero. The best direction result in this project is
+ROC-AUC 0.659, a ranking statistic weaker than a 66% hit rate, let alone 75%.
+
 ## 5. What would have to be true
 
 Three separate predictions are needed, and only the first is solved:
