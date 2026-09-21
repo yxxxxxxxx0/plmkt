@@ -14,18 +14,59 @@ Because the entry is placed at the jump *before it happens* and the direction
 is assumed known, every number here is an **oracle bound**. No classifier,
 however good, can beat it.
 
-## The headline
+## The marked set — jumps that do not lose after fees
 
-| exit rule | mean P&L | jumps that pay |
+This is the set Justin asked for: nothing in it is a loss once the spread at
+both ends and the taker fee on both legs are paid. Marked in
+`breakeven_marked.png`, listed in `breakeven_jumps.csv`.
+
+| | |
+|---|---|
+| jumps that break even after fees | **935** of 82,120 (1.14%) |
+| total | **2,230 ticks** over six sessions |
+| each | mean 2.38 t, median 0.87 t, p90 5.64 t |
+| how often | **0.60 per contract-hour** (1,555 in-game contract-hours) |
+| spread over | 315 contracts, all 75 games, all 6 sessions |
+| at $100 a trade | **$8,855**, taking all 935 and nothing else |
+
+By market type: moneyline 531 jumps / 1,029 ticks, spread 219 / 601, total
+185 / 599. Moneyline supplies 57% of the payers off 6% of the jumps.
+
+**What they look like.** Median move 5.0 ticks — *identical to the median jump
+overall*. Size of move is not what makes a jump pay. Median entry spread 1 tick
+against 7 for the population, median exit spread 2 against 8. The whole
+distinction is the cost of the round trip, not the size of the prize.
+
+In the picture they sit on the sustained directional runs rather than on the
+spiky reversals, and that holds up when measured: after a paying jump the price
+travels a further 6.7 ticks in the same direction over the next ten minutes,
+against 3.5 after a non-paying one.
+
+## The bar any selector has to clear
+
+A payer is worth **+2.38 ticks**. A non-payer is worth **−8.10 ticks**. At a
+base rate of 1.14%, picking a set at precision `p` earns
+`p × 2.38 + (1−p) × (−8.10)`:
+
+| precision | EV per trade |
+|---|---|
+| 10% | −7.05 t |
+| 25% | −5.48 t |
+| 50% | −2.86 t |
+| **77.3%** | **break even** |
+| 90% | +1.34 t |
+
+**Any selector needs 77.3% precision at a 1.14% base rate.** For scale, the best
+model in this project reaches roughly 47% precision on a 32% base rate, for an
+easier question. That gap is the whole result.
+
+## For the record, the full population
+
+| exit rule | mean P&L over all 82,120 | jumps that pay |
 |---|---|---|
-| at the peak of the move, no fee | −6.15 t | 4,999 / 82,120 = **6.1%** |
-| **at the peak, fee charged** | **−7.98 t** | **935 / 82,120 = 1.1%** |
+| at the peak of the move, no fee | −6.15 t | 4,999 = 6.1% |
+| **at the peak, fee charged** | **−7.98 t** | **935 = 1.1%** |
 | 3s after the peak, fee charged | −7.21 t | 2,009 = 2.4% |
-
-**935 jumps out of 82,120 break even.** They are not concentrated — they span
-315 contracts, all 75 games and all six sessions, so this is not a data
-artefact. Taking only those 935, with perfect foresight, earns 2,230 ticks
-across six nights.
 
 The median paying jump moves 5.0 ticks, exactly the same as the median jump
 overall. **What separates them is not the size of the move, it is the cost of
