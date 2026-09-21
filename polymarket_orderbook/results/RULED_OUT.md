@@ -56,6 +56,7 @@ CNN-LSTM and CNN-LSTM-Attention in **every** comparison run.
 | 3 | taker with *perfect* direction on the collapse signal | EV **−0.094** (top 50%) to **−1.225** (top 1%) |
 | 4 | Polymarket sports taker fee | adds a further ~1–1.75 ticks |
 | 5 | **tight entry + wait for the spread to re-tighten, hold swept 10s–600s** | **negative at every horizon**, see below |
+| 6 | **every jump in the price graph, classifier bypassed, oracle entry and exit** | **1.1% of 82,120 jumps pay**; mean -7.98t, see C6 |
 
 **The structural reason.** The model predicts jumps by detecting that liquidity
 has already gone. "Liquidity has gone" and "trading is expensive" are the same
@@ -115,6 +116,52 @@ captures 3.0 of the 4.0 ticks a collapse entry gets at +300s (Cliff's δ ≈
 the distribution, not drift.
 
 `research/makinen/direction_hold.py`, `results/makinen/direction_hold/`.
+
+### C6 - going around the classifier entirely, and pricing every jump there is
+
+Asked whether the classifier was the bottleneck: skip it, read the jumps
+straight off the price graph, and see which ones clear break-even.
+`oracle_jump_scan.py` enumerates **every** durable move in the 200ms grid --
+82,120 jumps over six sessions, 601 contracts, 75 games -- and prices each at
+the spread standing at entry and at exit, plus the sports fee on both legs.
+Entry is placed before the move and direction is assumed known, so these are
+oracle bounds no model can beat.
+
+**935 of 82,120 jumps pay -- 1.1%.** Mean **-7.98 ticks** exiting at the peak
+with the fee charged, -6.15 before the fee. The payers span 315 contracts, all
+75 games and all six sessions, so it is not a concentration artefact. The median
+paying jump moves 5.0 ticks, the same as the median jump overall; what
+distinguishes it is a 1-tick entry spread against 7, and a 2-tick exit spread
+against 8.
+
+**The classifier's recall was never the constraint.** Perfect detection of
+every jump that exists still loses on 98.9% of them.
+
+**Beware the omniscient exit.** Allowing the oracle to pick the best exit within
+the next 300s makes the mean *positive* (+0.59t). That is a maximum over ~1500
+future instants and is positive on a pure random walk. Against matched random
+in-game entries scored identically, a **random** entry scores **+1.04t** and a
+jump entry **+0.59t** -- entering at a jump is 0.45 ticks *worse*, because jumps
+happen where the book is already wide. Any future analysis reporting a best-exit
+number without this control is reporting noise.
+
+**One slice does clear its spread.** Moneyline entered at a 1-tick spread,
+exiting at the peak: mean move 3.13t against a 2.89t round trip, i.e.
+**+0.242 ticks before fees**, game-clustered 95% CI [+0.117, +0.364], 57.8% of
+jumps paying. Spread and total at the same 1-tick entry are -3.69t and -2.62t,
+because their books widen to 22 and 16 ticks when hit while moneyline widens to
+only 4.8.
+
+The **fee** is then what kills it: 1.94 ticks round trip, eight times the gross
+edge, landing the slice at **-1.697t**, CI [-1.847, -1.545].
+
+This is the first place in the project where the binding constraint is the fee
+rather than the spread. It does not re-open the taker case -- a real system
+would have to capture essentially all of a 0.24-tick edge, against a best honest
+direction ROC of 0.659 -- but "the closest thing to break-even is moneyline, and
+it fails by the fee" is now the accurate statement.
+
+`research/makinen/oracle_jump_scan.py`, `results/makinen/oracle_jumps/`.
 
 ## D. Execution as a maker — closed by fills and exit costs
 
