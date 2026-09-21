@@ -1,110 +1,88 @@
-# Mid-frequency sports outcome models on free data
+# Polymarket in-play order-book study
 
-Predicting game winners from pre-game statistics, built entirely on free,
-key-less public APIs so the whole thing runs at one request per game-day.
+Can the order book of a live sports prediction market tell you where the price
+is about to go, and can you make money from it?
 
-The deep pipeline is MLB (2015-2026, walk-forward tested on 2023-2026). A
-lighter generic pipeline covers any league Action Network exposes (NBA, NHL,
-NFL, NCAAB).
+**Short answer: it tells you *when*, reliably, and never *which way*.** Four
+months, six recorded sessions, 75 MLB games and eight independent attacks on
+the direction problem. The detection works and pays nothing.
 
-## Why "mid-frequency"
+Start here:
 
-Nothing here needs a paid feed, a websocket, or a scraper farm:
-
-| Source | Auth | Cost of a daily update | Used for |
-|---|---|---|---|
-| `statsapi.mlb.com` | none | ~5 requests | schedules, probable starters, team + pitcher box lines |
-| `api.actionnetwork.com/web/v1/scoreboard/<league>` | none | 1 request | closing moneylines, results for other leagues |
-| `gamma-api.polymarket.com` | none | 1 request | which markets are actually liquid |
-
-Every response is cached under `data/raw/`, so a rebuild is offline and the
-APIs are hit once per resource. A full historical backfill is ~1,900 calls;
-keeping it current is a handful per day.
+| document | what it is |
+|---|---|
+| **`RESEARCH_PROGRESS.md`** | the conclusion, the data inventory, and what is still open |
+| **`METHODS_AND_EXPERIMENTS.md`** | every method tried, how it was built, what it measured |
+| `REPRODUCE.md` | what to copy, what to re-download, what to rebuild |
+| `polymarket_orderbook/results/METHODOLOGY.md` | the surviving detection path, end to end |
+| `polymarket_orderbook/results/RULED_OUT.md` | the ledger of closed doors, with figures |
 
 ## Layout
 
 ```
-mlbmodel/
-  config.py     paths, seasons, Elo hyperparameters
-  collect.py    MLB Stats API -> games / team_logs / pitcher_logs
-  odds.py       Action Network -> historical closing moneylines
-  features.py   Elo, team form, starter form, bullpen, park, context
-  ratings.py    schedule-adjusted (Massey/ridge) offence & defence
-  baselines.py  log5, Pythagorean log5, negative-binomial run model
-  models.py     logistic / GBM / forest / MLP zoo
-  advanced.py   Elo-offset GBM, run-margin regression, market blend
-  backtest.py   walk-forward driver, metrics, betting simulation
-  analyze.py    calibration, closing-line value, edge curves
-  tune.py       Elo grid search (pre-test seasons only)
-  anysport.py   generic Elo+form pipeline for NBA / NHL / NFL / NCAAB
-  run.py        end-to-end entry point
-  predict.py    score today's slate, priced against live Polymarket markets
-tests/
-  test_leakage.py   brute-force checks that no feature sees its own game
-  test_pipeline.py  odds maths, baselines, betting sim, calibration
+polymarket_orderbook/
+  live_recorder.py        full order books for every MLB contract on the slate
+  collect_days.py         nightly driver; sleeps until 45 min before first pitch
+  plan_slate.py           writes matches.py from the MLB schedule
+  run_slate_daily.ps1     the scheduled task, with a reboot watchdog
+  jump_data.py            raw JSONL -> 200ms in-game grid -> features
+  trim_sessions.py        in-game trimming; compress_raw.py; verify_recording.py
+  check_series_key.py     regression guard for the defect that poisoned pass one
+
+  research/makinen/       the live detection path, and the 2026-09-21 oracle work
+  research/jump_prediction/  the LOB-trajectory study
+  research/lee_mykland/   jump detection used for external validation
+  research/sports/        esports resolution sweep (still open)
+  results/                every figure, table and written finding
+
+polymarket_sports/        esports tick data, 1,039 contracts over 21 days
+reports/                  early Polymarket strategy screen
 ```
 
-## Running it
+## What works
 
-```powershell
-python -m mlbmodel.collect      # ~1,000 cached API calls, once
-python -m mlbmodel.odds         # historical closing lines, once
-python -m mlbmodel.run --rebuild
-python -m mlbmodel.analyze
-python tests/test_leakage.py; python tests/test_pipeline.py
-python -m mlbmodel.anysport nba
-python -m mlbmodel.predict --date 2026-09-09
+- **Collapse detection with no model at all.** Near-touch liquidity below a
+  quarter of its own 60-second median. 134,428 events, 26.9% of them real.
+- **Real-vs-fake classification at ROC-AUC 0.756** on 24,608 held-out events,
+  and 0.665 in honest tick-by-tick replay at 35x real time.
+- **Picking the jumps that would be profitable, at 22x lift** and 52.9%
+  precision — added 2026-09-21.
+
+Gradient-boosted trees beat CNN, CNN-LSTM and CNN-LSTM-Attention in every
+matched comparison. More data helped where more architecture did not.
+
+## What does not
+
+Direction. Eight methods, three with genuine statistical skill, all lose money
+— including a CNN that hit a **73.5% directional hit rate and still lost 5.60
+ticks per trade.** The model predicts jumps by detecting that liquidity has
+gone, and "liquidity has gone" and "trading is expensive" are the same
+sentence.
+
+The final measurement: selection is solved and needs 30–55% precision, which is
+achieved. Nothing is profitable below **75% directional accuracy** at any
+precision. Measured direction skill is ROC-AUC 0.659.
+
+## Running the recorder
+
+```bash
+cd polymarket_orderbook
+python plan_slate.py --hkt-date 2026-09-22 --write matches.py
+python collect_days.py --days 1 --duration-hours 14
 ```
 
-## Result in one line
+Or leave the `PolymarketSlateDaily` task alone — it fires at 22:30 HKT nightly
+and has a 30-minute repeat as a reboot watchdog.
 
-The models reach 56.6% on MLB and 67.5% on NBA — solid, calibrated, and in
-line with the published literature — but the closing line reaches 56.8% and
-69.4%, and a model fit with the closing line as a fixed offset cannot improve
-on it in any season. There is no edge here. `reports/FINDINGS.md` gives the
-numbers and, more usefully, the three controls that killed an apparent +9%
-ROI before it could be believed.
+## A note on trusting results here
 
-## Method
+Nine data and labelling defects were found over the project, and **every one
+produced a convincing false positive first** — a merged spread series that made
+a one-line rule score 76%, a jump label that was 37–99% quote-vacuum artefacts,
+a feature filter that leaked the future and returned ROC-AUC 1.0000. They are
+all catalogued in `METHODS_AND_EXPERIMENTS.md` section 7.
 
-**Leakage is the whole game.** Published MLB papers reporting 90%+ accuracy
-are, essentially without exception, computing season-total statistics that
-include the game being predicted. Every feature here is built by
-`shift(1)` *before* any rolling or expanding window, and `tests/test_leakage.py`
-recomputes a random sample of features by brute force to prove it. A
-shuffled-label control confirms the feature matrix carries no residual signal.
-
-**Features** (all strictly pre-game):
-
-- *Elo* — margin-of-victory scaled, reverted 30% between seasons, plus a
-  variant that shifts the win probability by the listed starter's rolling
-  game score. Hyperparameters grid-searched on 2018-2022 only.
-- *Team form* — wOBA, runs, K%, BB%, HR% over 15- and 40-game windows and
-  season-to-date, built from summed numerators and denominators (not means of
-  per-game rates) and regressed toward the league mean by an explicit prior.
-- *Schedule-adjusted ratings* — ridge regression of runs scored on
-  `offence_i - defence_j + home`, refit every 10 days over a 400-day
-  recency-weighted window. Removes strength-of-schedule bias that plain
-  rolling averages carry.
-- *Starting pitcher* — rolling game score, FIP, K/BF, BB/BF, HR/BF, IP per
-  start, days rest, career start count. Relief outings excluded.
-- *Bullpen* — relief innings absorbed over the last 5 and 15 games (fatigue)
-  and a 40-game relief ERA.
-- *Context* — rest days, games in the last 7, series openers, travel,
-  day/night, trailing 3-season park factor.
-
-**Models** — three classical baselines (log5, Pythagorean log5, a
-negative-binomial run-scoring model), a regularised ML zoo (logistic, elastic
-net, LightGBM, XGBoost, random forest, extra trees, MLP, calibrated GBM), and
-two structural variants that matter more than any of the above: a LightGBM
-that takes the pitcher-aware Elo logit as a fixed offset and only learns the
-residual, and a run-margin regressor whose output is mapped through a fitted
-logistic link.
-
-**Evaluation** — walk-forward: for test season *S*, train only on seasons
-`< S`. Reported per season and pooled: accuracy, log loss, Brier, AUC,
-calibration slope, and a betting simulation against the actual closing
-moneyline (flat stake and fractional Kelly), plus how the model's probability
-compares with the closing line.
-
-See `reports/FINDINGS.md` for results.
+The habits that came out of it: prove any key used to group or join a series is
+unique against the raw source; plot the price and compute a model-free oracle
+bound before believing a model score; and treat a result concentrated in one
+slice as a corruption signature rather than a finding.
