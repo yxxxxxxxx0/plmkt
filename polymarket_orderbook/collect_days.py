@@ -21,9 +21,32 @@ once: Polymarket lists only the moneyline for a future game and adds the other
 ~15 markets close to game time, so planning a slate early silently records an
 eighth of the book.
 
+Unattended operation. run_slate_daily.ps1 starts this detached and exits
+immediately, so this process outlives the Task Scheduler instance that
+launched it. Three consequences are designed for here:
+
+  own log file      Its stdout belongs to a parent that is already gone, so
+                    printing to it can raise. Everything is written to
+                    logs/collector.log and stdout is best-effort only. This is
+                    what failed on 2026-09-22: the wrapper was killed at 13:30,
+                    the orphaned collector slept on, and the first print() when
+                    it woke at 05:50 hit a dead pipe and killed it silently --
+                    at exactly the moment it was supposed to start recording.
+
+  heartbeat         logs/collector_state.json carries pid, slate and a
+                    timestamp refreshed every 30s. The watchdog uses it to tell
+                    a working collector from a wedged one; "the pid still
+                    exists" was the check that let the dead collector above
+                    suppress the whole night's restarts.
+
+  --auto            Picks the slate itself from the MLB schedule, instead of
+                    the caller assuming "tomorrow". A tick at 06:00 has to
+                    restart *today's* slate, not queue tomorrow's.
+
 Usage:
     python collect_days.py --hkt-dates 2026-09-10 2026-09-11 --dry-run
     python collect_days.py --days 3
+    python collect_days.py --auto            # what the scheduled task runs
     python collect_days.py --verify-only
 """
 from __future__ import annotations
@@ -35,18 +58,122 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 LIVE = os.path.join(BASE, "data", "live")
+LOGS = os.path.join(BASE, "logs")
+LOGFILE = os.path.join(LOGS, "collector.log")
+STATEFILE = os.path.join(LOGS, "collector_state.json")
 MANIFEST = os.path.join(LIVE, "sessions.json")
 PY = sys.executable
 HKT = dt.timezone(dt.timedelta(hours=8))
 SLUG_DATE = re.compile(r"-(\d{4}-\d{2}-\d{2})$")
 
 
+_logfh = None
+
+
+def open_log():
+    """Own the log file rather than inheriting a parent's stdout."""
+    global _logfh
+    os.makedirs(LOGS, exist_ok=True)
+    _logfh = open(LOGFILE, "a", encoding="utf-8")
+
+
 def log(m):
-    print(f"[{dt.datetime.now(HKT):%Y-%m-%d %H:%M:%S} HKT] {m}", flush=True)
+    line = f"[{dt.datetime.now(HKT):%Y-%m-%d %H:%M:%S} HKT] {m}"
+    if _logfh is not None:
+        _logfh.write(line + chr(10))
+        _logfh.flush()
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass  # detached: the pipe our parent owned is gone. Never fatal.
+
+
+def keep_awake(on=True):
+    """Ask Windows not to sleep while a slate is pending or recording.
+
+    A missed slate is unrecoverable, so this is asserted for the whole run --
+    including the hours spent waiting for first pitch, which is most of it.
+    """
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ES_CONTINUOUS = 0x80000000
+        ES_SYSTEM_REQUIRED = 0x00000001
+        flags = ES_CONTINUOUS | (ES_SYSTEM_REQUIRED if on else 0)
+        ctypes.windll.kernel32.SetThreadExecutionState(ctypes.c_uint(flags))
+    except Exception as e:
+        log(f"  keep_awake({on}) failed: {type(e).__name__}: {e}")
+
+
+_state = dict(slate=None, phase="starting")
+
+
+def set_phase(phase, slate=None):
+    _state["phase"] = phase
+    if slate is not None:
+        _state["slate"] = slate
+
+
+def heartbeat():
+    """Publish liveness for run_slate_daily.ps1 to read.
+
+    Written whole-file then renamed so a reader never sees a half-written file
+    and concludes the collector is dead.
+    """
+    tmp = STATEFILE + ".tmp"
+    try:
+        os.makedirs(LOGS, exist_ok=True)
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(dict(pid=os.getpid(), slate=_state["slate"],
+                           phase=_state["phase"],
+                           heartbeat_at=dt.datetime.now(HKT).isoformat()), fh)
+        os.replace(tmp, STATEFILE)
+    except OSError:
+        pass
+
+
+def start_beating(interval=30.0):
+    """Beat from a daemon thread, for the whole life of the process.
+
+    Beating only at phase boundaries is not enough: verifying a 20 GB
+    recording blocks the main thread for many minutes, and during it no
+    live_recorder is running either -- so the watchdog would see a collector
+    with a stale heartbeat and no recording, conclude it was wedged, and kill
+    it in the middle of the verify. A thread that beats regardless of what the
+    main thread is doing means the heartbeat measures the process, not the
+    phase.
+    """
+    def beat():
+        while True:
+            heartbeat()
+            keep_awake(True)
+            time.sleep(interval)
+
+    heartbeat()
+    t = threading.Thread(target=beat, name="heartbeat", daemon=True)
+    t.start()
+    return t
+
+
+def sleep_until(target):
+    """Wait for a wall-clock instant, not for an interval.
+
+    One long time.sleep() measures elapsed time, so a clock correction or a
+    suspend/resume silently shifts the start of a recording that has to begin
+    45 minutes before a specific first pitch. Re-reading the clock in short
+    naps keeps the target fixed.
+    """
+    while True:
+        left = (target - dt.datetime.now(HKT)).total_seconds()
+        if left <= 0:
+            return
+        time.sleep(min(30.0, left))
 
 
 def read_manifest():
@@ -129,8 +256,10 @@ def collect_one(hkt_date, lead_minutes, duration_hours, dry_run, no_compress):
 
     wait = (start_at - dt.datetime.now(HKT)).total_seconds()
     if wait > 0:
-        log(f"  sleeping {wait/3600:.2f}h until {start_at:%Y-%m-%d %H:%M} HKT")
-        time.sleep(wait)
+        log(f"  waiting {wait/3600:.2f}h until {start_at:%Y-%m-%d %H:%M} HKT")
+        set_phase(f"waiting for {start_at:%m-%d %H:%M} HKT first pitch", hkt_date)
+        sleep_until(start_at)
+        log(f"  woke at {dt.datetime.now(HKT):%Y-%m-%d %H:%M:%S} HKT")
     elif wait < -3600:
         log(f"  start time was {-wait/3600:.1f}h ago; recording a partial "
             f"slate is worse than skipping it")
@@ -140,6 +269,7 @@ def collect_one(hkt_date, lead_minutes, duration_hours, dry_run, no_compress):
            "--duration-hours", str(duration_hours)]
     if no_compress:
         cmd.append("--no-compress")
+    set_phase("recording", hkt_date)
     t0 = time.time()
     rc = subprocess.run(cmd, cwd=BASE).returncode
     log(f"  run_slate exit {rc} after {(time.time()-t0)/3600:.2f}h")
@@ -160,11 +290,41 @@ def collect_one(hkt_date, lead_minutes, duration_hours, dry_run, no_compress):
         row["skipped"] = f"no books_{tag}.jsonl produced"
         return row
     if row["path"].endswith(".jsonl"):
+        set_phase("verifying", hkt_date)
         log(f"  verifying {os.path.basename(row['path'])}...")
         row.update(verify(row["path"]))
     else:
         row["verdict"] = "SKIPPED (compressed before verify)"
     return row
+
+
+def pick_auto_slate(lead_minutes, grace_minutes):
+    """The one HKT slate a tick fired *now* should be recording.
+
+    The rule the old wrapper used -- "the slate is always tomorrow" -- is only
+    right between about 14:00 and midnight. A watchdog tick at 06:00 on
+    2026-09-22, restarting after the collector died, queued 2026-09-23 and
+    walked past the slate that was starting ten minutes earlier. So consider
+    today first and fall through to tomorrow only once today's start time is
+    past recovering.
+    """
+    now = dt.datetime.now(HKT)
+    for off in (0, 1):
+        d = str(now.date() + dt.timedelta(days=off))
+        fp = first_pitch_hkt(d)
+        if fp is None:
+            log(f"auto: {d} has no scheduled games")
+            continue
+        start_at = fp - dt.timedelta(minutes=lead_minutes)
+        late = (now - start_at).total_seconds() / 60.0
+        if late <= grace_minutes:
+            when = f"{-late:.0f} min from now" if late < 0 else f"{late:.0f} min ago"
+            log(f"auto: recording {d} (first pitch {fp:%m-%d %H:%M} HKT, "
+                f"start {start_at:%m-%d %H:%M} HKT, {when})")
+            return d
+        log(f"auto: {d} start {start_at:%m-%d %H:%M} HKT was {late:.0f} min "
+            f"ago, past the {grace_minutes:.0f} min grace")
+    return None
 
 
 def main():
@@ -178,10 +338,20 @@ def main():
     ap.add_argument("--no-compress", action="store_true",
                     help="leave the raw jsonl in place (needed if you intend "
                          "to rebuild the jump dataset from it straight away)")
+    ap.add_argument("--auto", action="store_true",
+                    help="work out which slate is due now from the MLB "
+                         "schedule; what the scheduled task runs")
+    ap.add_argument("--grace-minutes", type=float, default=60.0,
+                    help="with --auto, still take today's slate if its start "
+                         "was at most this long ago")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--verify-only", action="store_true",
                     help="re-verify every recording already in data/live")
     a = ap.parse_args()
+
+    open_log()
+    log(f"=== collect_days pid {os.getpid()} :: {' '.join(sys.argv[1:])} ===")
+    start_beating()
 
     rows = read_manifest()
 
@@ -201,8 +371,14 @@ def main():
     if a.days:
         today = dt.datetime.now(HKT).date()
         dates += [str(today + dt.timedelta(days=i + 1)) for i in range(a.days)]
+    if a.auto:
+        d = pick_auto_slate(a.lead_minutes, a.grace_minutes)
+        if d is None:
+            log("auto: nothing to record now; exiting so the next tick retries")
+            return 0
+        dates.append(d)
     if not dates:
-        raise SystemExit("pass --hkt-dates, --days, or --verify-only")
+        raise SystemExit("pass --hkt-dates, --days, --auto, or --verify-only")
 
     log(f"plan: {len(dates)} slate(s) -- {', '.join(dates)}")
     for d in dates:
@@ -220,4 +396,7 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    finally:
+        keep_awake(False)

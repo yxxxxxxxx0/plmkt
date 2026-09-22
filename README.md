@@ -22,9 +22,10 @@ Start here:
 ```
 polymarket_orderbook/
   live_recorder.py        full order books for every MLB contract on the slate
-  collect_days.py         nightly driver; sleeps until 45 min before first pitch
+  collect_days.py         nightly driver; waits until 45 min before first pitch
   plan_slate.py           writes matches.py from the MLB schedule
-  run_slate_daily.ps1     the scheduled task, with a reboot watchdog
+  run_slate_daily.ps1     watchdog tick: is a collector up, and is it alive?
+  register_recorder_task.ps1  registers the PolymarketSlateDaily task
   jump_data.py            raw JSONL -> 200ms in-game grid -> features
   trim_sessions.py        in-game trimming; compress_raw.py; verify_recording.py
   check_series_key.py     regression guard for the defect that poisoned pass one
@@ -71,8 +72,36 @@ python plan_slate.py --hkt-date 2026-09-22 --write matches.py
 python collect_days.py --days 1 --duration-hours 14
 ```
 
-Or leave the `PolymarketSlateDaily` task alone — it fires at 22:30 HKT nightly
-and has a 30-minute repeat as a reboot watchdog.
+Or leave the `PolymarketSlateDaily` task alone. It ticks every 20 minutes,
+around the clock. Each tick runs `run_slate_daily.ps1`, which finishes in about
+two seconds: if a recording is in progress it does nothing, and otherwise it
+starts `collect_days.py --auto` **detached** and exits. `--auto` reads the MLB
+schedule and picks the slate that is due now, so a tick at any hour restarts
+the right night rather than queueing the wrong one.
+
+To see what it is doing:
+
+```powershell
+type polymarket_orderbook\logs\watchdog.log          # one line per tick
+type polymarket_orderbook\logs\collector_state.json  # pid, slate, phase, heartbeat
+type polymarket_orderbook\logs\collector.log         # the collector's own log
+```
+
+Re-register the task with `powershell -ExecutionPolicy Bypass -File
+polymarket_orderbook\register_recorder_task.ps1`. It proves the task really
+executes by watching `watchdog.log` grow, rather than trusting Task Scheduler's
+own status fields. **Run it elevated** to get `LogonType=S4U` and an at-startup
+trigger; unelevated it registers Interactive, which survives a locked screen
+but not a logoff or an unattended reboot, and it says so.
+
+Why it is built this way — the watchdog used to *host* the collector for the
+whole 14-hour slate, and the task's repetition had `StopAtDurationEnd`, so Task
+Scheduler killed that host every afternoon and left the Python collector running
+as an orphan with a dead stdout pipe. Every tick that night saw the orphan and
+skipped, and the orphan itself died on its first `print()` when it woke to
+record. The 2026-09-22 slate was lost with no error anywhere. The design notes
+at the top of `run_slate_daily.ps1` and `register_recorder_task.ps1` carry the
+detail.
 
 ## A note on trusting results here
 
