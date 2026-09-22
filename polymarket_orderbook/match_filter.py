@@ -26,6 +26,15 @@ BROKEN-MATCH EXCLUSION
     all cannot be trimmed or judged, so they are excluded rather than guessed
     at.
 
+    The rule originally checked only the TAIL, and that is not symmetric.
+    A recording can also start late, or die in the middle and resume: on
+    books_2026-09-21, mlb-tor-bal was captured for the last 20 minutes of a
+    198-minute game and stopped exactly on time, so its truncation was zero
+    and it would have been kept in full. Two further tests close that:
+    `late_start_min` against first pitch, and `ingame_cover` -- the share of
+    the window's minutes that carry any grid row at all. The same blind spot
+    in match_quality.py's coverage metric was fixed in the same pass.
+
 Both are deliberately conservative: when coverage cannot be established, the
 match is dropped.
 """
@@ -44,6 +53,16 @@ WIN = os.path.join(BASE, "data", "game_windows.json")
 # minutes before the final out. Small negatives are the recorder's stop grace
 # and cost nothing; tens of minutes means whole innings are missing.
 MAX_TRUNCATION_MIN = 5.0
+
+# ...and the mirror of it. The recorder normally starts before first pitch, so
+# a positive late start of more than a few minutes means innings are missing
+# from the FRONT of the game. Same tolerance, for the same reason.
+MAX_LATE_START_MIN = 5.0
+
+# Share of the game window's minutes that must carry at least one grid row.
+# Catches the case neither endpoint can see: a recording that starts on time,
+# ends on time, and is dead in between.
+MIN_INGAME_COVER = 0.90
 
 # Seconds of PREGAME kept before kickoff. Not training data -- these rows are
 # excluded as prediction points elsewhere -- but history: the deep models need
@@ -67,8 +86,57 @@ def load_windows(path=WIN):
     return out
 
 
-def match_report(F, windows=None, max_truncation_min=MAX_TRUNCATION_MIN):
-    """Per-match coverage and a keep/drop decision. F needs `series` and `ts`."""
+def judge_match(window, min_ts, max_ts, minute_buckets,
+                max_truncation_min=MAX_TRUNCATION_MIN,
+                max_late_start_min=MAX_LATE_START_MIN,
+                min_ingame_cover=MIN_INGAME_COVER):
+    """The keep/drop decision, from three per-slug summaries and the window.
+
+    It lives here alone because it did not, and the copies drifted.
+    `trim_sessions.py` streams sessions too large to hold in memory and so
+    reimplemented the truncation test inline; when the late-start and coverage
+    tests were added to `match_report` in 2026-09-22, the builder that
+    actually writes the trimmed caches kept applying the old rule and the two
+    disagreed about four matches. Both now call this.
+
+    `minute_buckets` is any iterable of `ts // 60000`; only those inside the
+    window are counted, so passing the whole session's is fine.
+    """
+    if window is None:
+        return dict(keep=False, reason="no game window: coverage unknown",
+                    truncation_min=float("nan"), late_start_min=float("nan"),
+                    ingame_cover=float("nan"))
+    st, en = window
+    a, b = st // 60000, en // 60000
+    total = b - a + 1
+    seen = sum(1 for m in minute_buckets if a <= m <= b)
+    cover = float(seen / total) if total > 0 else 0.0
+    trunc = (en - max_ts) / 60000.0       # >0 means data stops early
+    late = (min_ts - st) / 60000.0        # >0 means data starts late
+
+    keep, reason = True, ""
+    if seen == 0:
+        keep, reason = False, "no rows inside the game window"
+    elif trunc > max_truncation_min:
+        keep, reason = False, f"stops {trunc:.1f} min before the final out"
+    elif late > max_late_start_min:
+        keep, reason = False, f"starts {late:.1f} min after first pitch"
+    elif cover < min_ingame_cover:
+        keep, reason = False, (f"only {cover:.0%} of the game covered "
+                               f"({seen} of {total} minutes)")
+    return dict(keep=keep, reason=reason, truncation_min=float(trunc),
+                late_start_min=float(late), ingame_cover=cover)
+
+
+def match_report(F, windows=None, max_truncation_min=MAX_TRUNCATION_MIN,
+                 max_late_start_min=MAX_LATE_START_MIN,
+                 min_ingame_cover=MIN_INGAME_COVER):
+    """Per-match coverage and a keep/drop decision. F needs `series` and `ts`.
+
+    Three independent ways a match can be incomplete, all measured against
+    game_windows.json rather than against the recording's own extent:
+    it stops early, it starts late, or it is hollow in the middle.
+    """
     windows = load_windows() if windows is None else windows
     slug = F.series.astype(str).str.split("|").str[0]
     ts = F.ts.to_numpy()
@@ -84,17 +152,11 @@ def match_report(F, windows=None, max_truncation_min=MAX_TRUNCATION_MIN):
             continue
         st, en = w
         ing = (t >= st) & (t <= en)
-        trunc = (en - t.max()) / 60000.0      # >0 means data stops early
-        keep, reason = True, ""
-        if trunc > max_truncation_min:
-            keep = False
-            reason = f"stops {trunc:.1f} min before the final out"
-        elif not ing.any():
-            keep = False
-            reason = "no rows inside the game window"
-        rows.append(dict(slug=s, n=len(i), keep=keep, reason=reason,
-                         ingame_frac=float(ing.mean()),
-                         truncation_min=float(trunc)))
+        v = judge_match(w, int(t.min()), int(t.max()),
+                        np.unique(t // 60000).tolist(),
+                        max_truncation_min, max_late_start_min,
+                        min_ingame_cover)
+        rows.append(dict(slug=s, n=len(i), ingame_frac=float(ing.mean()), **v))
     return pd.DataFrame(rows).sort_values("slug").reset_index(drop=True)
 
 

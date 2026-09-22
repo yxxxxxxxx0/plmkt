@@ -289,12 +289,17 @@ def collect_one(hkt_date, lead_minutes, duration_hours, dry_run, no_compress):
     if "path" not in row:
         row["skipped"] = f"no books_{tag}.jsonl produced"
         return row
-    if row["path"].endswith(".jsonl"):
-        set_phase("verifying", hkt_date)
-        log(f"  verifying {os.path.basename(row['path'])}...")
-        row.update(verify(row["path"]))
-    else:
-        row["verdict"] = "SKIPPED (compressed before verify)"
+    # Verify whatever we ended up with, compressed or not. This used to run
+    # only on a bare .jsonl, so a slate that compressed itself first was
+    # recorded as "SKIPPED (compressed before verify)" and never looked at
+    # again -- which is how books_2026-09-17 (9 games, all GOOD, 14,313 trade
+    # prints) sat unverified and unused for five days. verify_recording.py
+    # reads .xz directly; it is only slower, and the whole point of the step
+    # is that an unverified recording is indistinguishable from a broken one.
+    set_phase("verifying", hkt_date)
+    log(f"  verifying {os.path.basename(row['path'])}"
+        f"{' (compressed -- slower)' if not row['path'].endswith('.jsonl') else ''}...")
+    row.update(verify(row["path"]))
     return row
 
 
@@ -357,7 +362,12 @@ def main():
 
     if a.verify_only:
         import glob
-        for p in sorted(glob.glob(os.path.join(LIVE, "books_*.jsonl"))):
+        # Both extensions. Globbing only "*.jsonl" meant the catch-up path
+        # could never re-verify an archive, so a session compressed before
+        # its verify ran had no route back to being checked at all.
+        paths = sorted(set(glob.glob(os.path.join(LIVE, "books_*.jsonl")))
+                       | set(glob.glob(os.path.join(LIVE, "books_*.jsonl.xz"))))
+        for p in paths:
             log(f"verifying {os.path.basename(p)}")
             r = dict(path=p, size_bytes=os.path.getsize(p),
                      checked_at=dt.datetime.now(HKT).isoformat())

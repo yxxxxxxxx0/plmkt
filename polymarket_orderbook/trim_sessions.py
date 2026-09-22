@@ -65,8 +65,7 @@ def trim_one(feat_path, market_types, in_game_only, drop_broken, force=False,
               each surviving batch to its own small parquet part immediately,
               and gather that batch's tensor rows from the memmap right away.
     """
-    from match_filter import (MAX_TRUNCATION_MIN, PREGAME_BUFFER_S,
-                              load_windows)
+    from match_filter import PREGAME_BUFFER_S, judge_match, load_windows
 
     tag = os.path.basename(feat_path).replace("feat_", "").replace(
         ".parquet", "")
@@ -85,32 +84,39 @@ def trim_one(feat_path, market_types, in_game_only, drop_broken, force=False,
         f"batch size {batch_rows:,}")
     windows = load_windows()
 
-    # ---- pass 1: per-slug max ts only, if a broken-match decision is needed
+    # ---- pass 1: per-slug summaries, if a broken-match decision is needed
+    #
+    # This used to test truncation inline, which is how it came to disagree
+    # with match_filter.match_report: the late-start and game-coverage tests
+    # were added there and never reached the builder that writes the caches.
+    # The three summaries below are everything judge_match needs, and each is
+    # O(one entry per slug) or O(minutes per slug), so the streaming stays
+    # bounded -- a 10h session is ~600 minute buckets per match.
     broken_slugs = set()
     if drop_broken:
-        max_ts = {}
+        lo_ts, hi_ts, mins = {}, {}, {}
         for batch in pf.iter_batches(columns=["series", "ts"],
                                      batch_size=batch_rows):
             series = batch.column("series").to_pylist()
             ts = batch.column("ts").to_pylist()
             for s, t in zip(series, ts):
                 slug = s.split("|", 1)[0]
-                if t > max_ts.get(slug, -1):
-                    max_ts[slug] = t
+                if t > hi_ts.get(slug, -1):
+                    hi_ts[slug] = t
+                if t < lo_ts.get(slug, 1 << 62):
+                    lo_ts[slug] = t
+                mins.setdefault(slug, set()).add(t // 60000)
             del series, ts, batch
-        for slug, mx in max_ts.items():
-            w = windows.get(slug)
-            if w is None:
-                broken_slugs.add(slug)     # unknown coverage: exclude
-                continue
-            _, en = w
-            trunc_min = (en - mx) / 60000.0
-            if trunc_min > MAX_TRUNCATION_MIN:
+        for slug in hi_ts:
+            v = judge_match(windows.get(slug), lo_ts[slug], hi_ts[slug],
+                            mins[slug])
+            if not v["keep"]:
                 broken_slugs.add(slug)
+                log(f"  {tag}: excluding {slug}: {v['reason']}")
         if broken_slugs:
-            log(f"  {tag}: excluding {len(broken_slugs)} broken match(es): "
-                f"{', '.join(sorted(broken_slugs))}")
-        del max_ts
+            log(f"  {tag}: excluding {len(broken_slugs)} broken match(es) "
+                f"in total")
+        del lo_ts, hi_ts, mins
         gc.collect()
 
     # ---- pass 2: stream full columns, filter, write, gather tensor rows
