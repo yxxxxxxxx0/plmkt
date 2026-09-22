@@ -90,9 +90,21 @@ type polymarket_orderbook\logs\collector.log         # the collector's own log
 Re-register the task with `powershell -ExecutionPolicy Bypass -File
 polymarket_orderbook\register_recorder_task.ps1`. It proves the task really
 executes by watching `watchdog.log` grow, rather than trusting Task Scheduler's
-own status fields. **Run it elevated** to get `LogonType=S4U` and an at-startup
-trigger; unelevated it registers Interactive, which survives a locked screen
-but not a logoff or an unattended reboot, and it says so.
+own status fields, which advance even for runs that never launched.
+
+It registers `LogonType=Interactive`, which survives a locked screen but not a
+logoff. **S4U is not available on this machine** and the script no longer tries
+it by default: `AzureAD\JustinCHENG` is a cloud-only Entra ID account (SID
+prefix `S-1-12-1`), and Task Scheduler's S4U logon goes through `LogonUserS4U`,
+which such an account cannot satisfy. An elevated attempt on 2026-09-22 left
+the task unable to start at all -- event 104, error `0x80070520` (1312, "a
+specified logon session does not exist"). That is also the real explanation for
+the 09-16/09-17 losses the old scripts blamed on a missing `SeBatchLogonRight`;
+the account already held that right. `-TryS4U` forces an attempt anyway.
+
+Running it **elevated** is still worth doing once, for the at-startup trigger:
+without it nothing restarts the recorder after an unattended reboot until
+someone logs in.
 
 Why it is built this way — the watchdog used to *host* the collector for the
 whole 14-hour slate, and the task's repetition had `StopAtDurationEnd`, so Task
