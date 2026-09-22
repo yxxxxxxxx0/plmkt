@@ -108,6 +108,14 @@ def association(d: pd.DataFrame) -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", default="books_2026-09-11")
+    ap.add_argument("--sessions", nargs="*", default=None,
+                    help="pool several sessions; overrides --session")
+    ap.add_argument("--marked-only", action="store_true",
+                    help="restrict to the break-even set: jumps that net "
+                         "positive after spread and fee (pnl_peak > 0)")
+    ap.add_argument("--up-only", action="store_true",
+                    help="score the UPWARD call specifically -- precision of "
+                         "predicting a rise, which is the long-only trade")
     ap.add_argument("--outdir", default=str(ROOT / "results" / "makinen" / "batting"))
     ap.add_argument("--plays", default=None)
     ap.add_argument("--max-gap", type=float, default=180.0)
@@ -120,19 +128,30 @@ def main() -> None:
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    plays_path = Path(args.plays) if args.plays else (
-        ROOT / "results" / "makinen" / "mlb_plays" / f"plays_{args.session}.csv")
-    plays = pd.read_csv(plays_path)
+    sessions = args.sessions or [args.session]
+    plays = pd.concat([pd.read_csv(
+        ROOT / "results" / "makinen" / "mlb_plays" / f"plays_{s}.csv")
+        for s in sessions], ignore_index=True)
 
     ev = pd.read_parquet(ROOT / "results" / "makinen" / "oracle_jumps" / "events.parquet")
-    ev = ev[(ev.session == args.session) & ev.is_jump].copy()
+    ev = ev[ev.session.isin(sessions) & ev.is_jump].copy()
+    n_all = len(ev)
+    # `marked` is the EVALUATION set, never the fitting set. Which team a token
+    # represents is a fixed property of that token, so it is estimated from
+    # every jump in the game's first half; restricting the fit to the 0.95% of
+    # jumps that break even would estimate a nuisance parameter from almost no
+    # data and call the resulting noise a result.
+    ev["marked"] = ev.pnl_peak > 0
+    if args.marked_only:
+        print(f"marked (break-even after fees): {int(ev.marked.sum()):,} of "
+              f"{n_all:,} ({ev.marked.mean():.2%}) -- evaluation set")
     if args.price_driven_only:
         cz = pd.read_csv(ROOT / "results" / "makinen" / "oracle_jumps" / "jump_cause.csv",
                          usecols=["session", "slug", "series", "ts", "cause"])
         ev = ev.merge(cz, on=["session", "slug", "series", "ts"], how="inner")
         ev = ev[ev.cause == "price"]
     ev = ev[ev.market_type.isin(args.market_types)]
-    print(f"{args.session}: {len(ev):,} jumps in {args.market_types}")
+    print(f"{'+'.join(sessions)}: {len(ev):,} jumps in {args.market_types}")
 
     d = attach_half(ev, plays, args.max_gap)
     print(f"{len(d):,} of them sit within {args.max_gap:.0f}s of a play "
@@ -141,9 +160,11 @@ def main() -> None:
           f"bottom: {int((~d.is_top).sum()):,}")
 
     # ---- 1. association ---------------------------------------------------
-    assoc = association(d)
+    assoc = association(d[d.marked] if args.marked_only else d)
     if assoc.empty:
-        raise SystemExit("not enough jumps per token to measure anything")
+        print("  (too few per token for the per-token association; "
+              "skipping to the prediction, which pools)")
+        assoc = association(d)
     obs = assoc["diff"].abs().mean()
     print()
     print("=== ASSOCIATION: P(up | bottom) - P(up | top), per token ===")
@@ -163,7 +184,7 @@ def main() -> None:
     print(f"  permutation null (n={args.n_perm}) : "
           f"{np.nanmean(null):.4f} +/- {np.nanstd(null):.4f}")
     print(f"  p-value                      : {p:.4f}")
-    assoc.to_csv(outdir / f"batting_association_{args.session}.csv", index=False)
+    assoc.to_csv(outdir / f"batting_association_{'_'.join(sessions) if len(sessions)==1 else 'pooled'}.csv", index=False)
 
     # ---- 2. prediction, fitted on the first half of each game -------------
     print()
@@ -173,7 +194,11 @@ def main() -> None:
         g = g.sort_values("ts")
         split = g.ts.min() + (g.ts.max() - g.ts.min()) / 2
         tr, te = g[g.ts < split], g[g.ts >= split]
-        if len(tr) < 20 or len(te) < 10:
+        if args.marked_only:
+            te = te[te.marked]
+        if args.up_only:
+            te = te[te.signed > 0]
+        if len(tr) < 20 or len(te) < 1:
             continue
         # does this token go up when the home side (bottom) bats?
         up_bot = (tr.loc[~tr.is_top, "signed"] > 0).mean() if (~tr.is_top).any() else 0.5
@@ -183,6 +208,7 @@ def main() -> None:
                         np.where(up_bot >= 0.5, 1, -1))
         rows.append(pd.DataFrame(dict(slug=slug, series=ser,
                                       market_type=te.market_type.to_numpy(),
+                                      pred=pred, truth=te.signed.to_numpy(),
                                       hit=(pred == te.signed.to_numpy()))))
     pred = pd.concat(rows, ignore_index=True)
     acc = pred.hit.mean()
@@ -193,10 +219,36 @@ def main() -> None:
     print(f"  coin flip 50%  |  profitable from ~75% (SELECTOR.md)")
     print()
     print(pred.groupby("market_type").hit.agg(["size", "mean"]).round(3).to_string())
-    pred.to_csv(outdir / f"batting_prediction_{args.session}.csv", index=False)
 
-    draw(assoc, null, obs, acc, n, outdir / f"batting_team_direction_{args.session}.png",
-         args.session, p)
+    if "pred" in pred.columns:
+        up = pred[pred.pred > 0]
+        actual_up = pred[pred.truth > 0]
+        base = (pred.truth > 0).mean()
+        print()
+        print("=== the UPWARD call (the long-only trade) ===")
+        print(f"  base rate: {base:.1%} of these jumps are up")
+        if len(up):
+            prec = (up.truth > 0).mean()
+            se = np.sqrt(prec * (1 - prec) / len(up))
+            print(f"  rule says UP on {len(up):,} ({len(up)/len(pred):.0%} of them)")
+            print(f"  precision  : {prec:.1%}  95% CI [{prec-1.96*se:.1%}, "
+                  f"{prec+1.96*se:.1%}]   lift {prec/max(base,1e-9):.2f}x")
+            rec = (up.truth > 0).sum() / max((pred.truth > 0).sum(), 1)
+            print(f"  recall     : {rec:.1%} of the actual upward jumps")
+        for mt, g in pred.groupby("market_type"):
+            u = g[g.pred > 0]
+            if len(u) < 20:
+                continue
+            b = (g.truth > 0).mean()
+            print(f"    {mt:<10} base {b:.1%} -> precision {(u.truth>0).mean():.1%}  n={len(u):,}")
+
+    tag = "_".join(sessions) if len(sessions) == 1 else f"pooled{len(sessions)}"
+    if args.marked_only:
+        tag += "_marked"
+    pred.to_csv(outdir / f"batting_prediction_{tag}.csv", index=False)
+
+    draw(assoc, null, obs, acc, n,
+         outdir / f"batting_team_direction_{tag}.png", "+".join(sessions), p)
 
 
 def draw(assoc, null, obs, acc, n, path, session, pval):
