@@ -73,6 +73,7 @@ def main():
 
     log(f"{len(files)} slate(s) to rebuild")
     t_all = time.time()
+    failed = []
 
     for path in files:
         tag = os.path.basename(path)[len("books_"):-len(".jsonl")]
@@ -94,12 +95,21 @@ def main():
             log("skipping data/uniform (viewer builds from by_game directly)")
         elif run([PY, "-u", "rebuild_duckdb.py", *slugs], f"reconstruct {tag}") != 0:
             log(f"!! reconstruct failed for {tag}; continuing to next slate")
+            failed.append(f"{tag} (reconstruct)")
             continue
-        if run([PY, "-u", "build_viewer_chunked.py", "--merge", "--games", *slugs],
-               f"viewer data {tag}") != 0:
+        viewer_rc = run([PY, "-u", "build_viewer_chunked.py", "--merge",
+                         "--games", *slugs], f"viewer data {tag}")
+        if viewer_rc != 0:
             log(f"!! viewer build failed for {tag}")
+            failed.append(f"{tag} (viewer)")
 
-        if not args.keep_cache:
+        # Keep the split when the build failed. Deleting it unconditionally
+        # threw away the one expensive artefact needed to debug the failure --
+        # on 2026-09-20 a 5 minute re-split, and on a full slate closer to 30 --
+        # and it did so in the same breath as reporting the error.
+        if viewer_rc != 0 and not args.keep_cache:
+            log(f"keeping by_game split for {tag} so the failure can be retried")
+        elif not args.keep_cache:
             freed = 0
             for s in slugs:
                 f = os.path.join(BY_GAME, f"{s}.jsonl")
@@ -108,9 +118,19 @@ def main():
                     os.remove(f)
             log(f"freed {freed/1e9:.1f} GB of by_game cache for {tag}")
 
-    run([PY, "-u", "build_viewer_multi.py"], "viewer html")
+    if run([PY, "-u", "build_viewer_multi.py"], "viewer html") != 0:
+        failed.append("viewer html")
     log(f"ALL DONE in {(time.time()-t_all)/60:.1f} min")
+
+    # Exit non-zero when anything failed. Returning 0 regardless meant a build
+    # that crashed on every game still reported success to whatever launched it
+    # -- Task Scheduler, a shell, or a background runner -- so the failure was
+    # only visible to someone who read the log to the end.
+    if failed:
+        log(f"FAILED: {', '.join(failed)}")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
