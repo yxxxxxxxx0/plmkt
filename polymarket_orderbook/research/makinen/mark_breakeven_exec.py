@@ -180,6 +180,9 @@ def scan_session(path: Path) -> pd.DataFrame:
         "exit_spread": spr[np.clip(exit_i, 0, n - 1)],
         "hold_s": (ts[np.clip(exit_i, 0, n - 1)] - ts[keep]) / 1000.0,
         "mid_move_ticks": peak_move[keep] / TICK,
+        "long_net_ticks": long_net,
+        "short_net_ticks": short_net,
+        "entry_ask": e_ask, "entry_bid": e_bid,
         "exec_net_ticks": net,
     })
 
@@ -208,6 +211,7 @@ def main() -> None:
         print(f"  {s}: {len(d):,} durable jumps")
         frames.append(d)
     allj = pd.concat(frames, ignore_index=True)
+    allj.to_parquet(outdir / "breakeven_exec_all.parquet", index=False)
     win = allj[allj.exec_net_ticks > 0].copy()
 
     print()
