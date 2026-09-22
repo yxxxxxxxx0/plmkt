@@ -189,6 +189,12 @@ def main() -> None:
     ap.add_argument("--sessions", nargs="*", default=SESSIONS)
     ap.add_argument("--outdir", default=str(ROOT / "results" / "makinen" / "oracle_jumps"))
     ap.add_argument("--panels", type=int, default=6)
+    ap.add_argument("--stake", type=float, default=10.0,
+                    help="USD deployed per trade, for the P&L block")
+    ap.add_argument("--max-shares", type=float, default=None,
+                    help="cap the position. Fills at the touch assume size is "
+                         "there; at a 1c entry $10 is 1,000 shares and nobody "
+                         "is quoting that")
     args = ap.parse_args()
     outdir = Path(args.outdir)
 
@@ -238,7 +244,47 @@ def main() -> None:
         "median_hold_s": win.hold_s.median(),
     }]).to_csv(outdir / "breakeven_exec_summary.csv", index=False)
 
+    pnl_block(win, args.stake, args.max_shares, outdir)
+
     draw(win, allj, outdir / "breakeven_exec_marked.png", args.panels)
+
+
+def pnl_block(win, stake, max_shares, outdir):
+    """What taking every marked jump at a fixed stake would have made.
+
+    Short is not a short. Polymarket has no borrow: selling token X at its bid
+    is buying the complement at 1 - bid, so the price actually paid per share
+    differs between the two sides and the share count has to follow it.
+    """
+    paid = np.where(win.side == "long", win.entry_px, 1.0 - win.entry_px)
+    shares = stake / paid
+    if max_shares:
+        shares = np.minimum(shares, max_shares)
+    w = win.copy()
+    w["price_paid"] = paid
+    w["shares"] = shares
+    w["pnl_usd"] = shares * w.exec_net_ticks * TICK
+    deployed = float((shares * paid).sum())
+
+    print()
+    print(f"=== P&L, ${stake:.0f} per trade, every marked jump taken"
+          f"{f', capped at {max_shares:.0f} shares' if max_shares else ''} ===")
+    print(f"  trades           : {len(w):,}")
+    print(f"  capital deployed : ${deployed:,.0f} cumulative "
+          f"(not held simultaneously)")
+    print(f"  TOTAL P&L        : ${w.pnl_usd.sum():,.2f}")
+    print(f"  per trade        : mean ${w.pnl_usd.mean():.3f}  "
+          f"median ${w.pnl_usd.median():.3f}  best ${w.pnl_usd.max():.2f}")
+    print(f"  return on capital: {w.pnl_usd.sum()/deployed:.2%}")
+    per = w.groupby("session").pnl_usd.agg(["size", "sum"])
+    print(f"  per session      : ${per['sum'].mean():,.0f} mean over "
+          f"{len(per)} nights, range ${per['sum'].min():,.0f} to "
+          f"${per['sum'].max():,.0f}")
+    cum = w.pnl_usd.sort_values(ascending=False).cumsum() / w.pnl_usd.sum()
+    print(f"  concentration    : top 100 of {len(w):,} trades = "
+          f"{cum.iloc[99]:.0%} of the total")
+    w.to_csv(outdir / "breakeven_exec_pnl.csv", index=False)
+    per.to_csv(outdir / "breakeven_exec_pnl_by_session.csv")
 
 
 def draw(win, allj, path, panels):
