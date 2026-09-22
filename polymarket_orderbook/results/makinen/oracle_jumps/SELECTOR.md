@@ -1,5 +1,36 @@
 # Is 77.3% precision reachable? And is precision even the binding constraint?
 
+> **SUPERSEDED IN PART, 2026-09-22. Read this first.**
+>
+> Every held-out number below was produced with `TEST_SESSIONS` hardcoded to
+> `books_2026-09-12` and `books_2026-09-13`. Four sessions recorded *after*
+> those dates — 09-17 through 09-20 — were later built and went into
+> **training**, so the split stopped being chronological and the model was
+> fitted on the future of its own test period. The script's leakage assertion
+> only checks that no game straddles the split, and none did, so nothing
+> flagged it.
+>
+> Re-run on ten sessions with the split derived as the last two present
+> (09-19, 09-20):
+>
+> | | below | corrected |
+> |---|---|---|
+> | ROC-AUC | 0.865 | 0.888 |
+> | PR-AUC lift | 22.1× | 20.7× |
+> | **best precision anywhere** | **52.9%** | **34.2%** (73 trades) |
+> | held-out payer base rate | 0.94% | 0.60% |
+> | nothing profitable below | 75% direction | **80% direction** |
+>
+> **The conclusion of section 4c is reversed.** "Precision is solved" does not
+> survive the corrected split: the requirement is 71.8% and the selector
+> reaches 34.2%. The structure of the argument — that direction and precision
+> trade off against each other, and that a wrong-side trade costs about twice
+> what a right-side trade earns — stands unchanged. Only the claim that one of
+> the two dials was already delivered does not.
+>
+> Current figures: `RESEARCH_PROGRESS.md`, section "What changed on
+> 2026-09-22", and the regenerated CSVs beside this file.
+
 2026-09-21. Justin asked: if I beat 77.3% precision at a 1.1% base rate, I
 capture the 935 paying jumps and make money. The arithmetic is right. This tests
 whether the precision is reachable, and finds that precision stops being the

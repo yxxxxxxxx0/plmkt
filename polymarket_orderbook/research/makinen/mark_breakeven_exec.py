@@ -67,9 +67,19 @@ HOLD_S = 3.0
 DEBOUNCE_S = 30.0
 SPORTS_FEE_RATE = 0.05
 
-SESSIONS = ["books_2026-08-28", "books_2026-08-30", "books_2026-09-10",
-            "books_2026-09-11", "books_2026-09-12", "books_2026-09-13",
-            "books_2026-09-18", "books_2026-09-19", "books_2026-09-20"]
+def _sessions():
+    """Discovered from the trimmed caches, not listed.
+
+    The hardcoded list here and the one in oracle_jump_scan.py were edited by
+    hand and fell out of step with each other and with the data more than
+    once; a session built but not added silently stayed out of the scan.
+    """
+    suffix = "_trimmed.parquet"
+    return sorted(q.name[len("feat_"):-len(suffix)]
+                  for q in (ROOT / "data" / "jump").glob("feat_books_*" + suffix))
+
+
+SESSIONS = _sessions()
 
 SURFACE = "#fcfcfb"
 INK, INK2 = "#0b0b0b", "#52514e"

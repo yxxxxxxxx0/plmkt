@@ -198,6 +198,23 @@ fills, not the bankroll.
 5. **`asset_id` read as float64 by pyarrow** — lossy on 77-digit integers.
 6. **pandas `groupby` silently drops NaN keys** — moneyline (null `line`)
    vanished from a figure.
+7. **Coverage measured against the recording rather than against the game**
+   (2026-09-22). `match_quality.py` computed
+   `1 - median(per-asset largest gap) / span`, where `span` runs from a
+   match's first record to its last. Both ends move with the data, so a
+   recording that never started cannot lower it: `mlb-tor-bal-2026-09-21`
+   scored **GOOD at 99.9%** while 21 of that game's 198 minutes carry any
+   record. `match_filter.py` tested only the tail, and that match stopped on
+   time; `trim_sessions.py` had reimplemented the same rule inline, so the
+   builder that writes the caches never received the fix applied elsewhere.
+   One rule now, `match_filter.judge_match`, testing the front, the back and
+   the middle of the game window, pinned by `test_match_coverage.py`.
+8. **A "chronological" split that stopped being chronological** (2026-09-22).
+   `TEST_SESSIONS` was a hardcoded pair; four later sessions were built and
+   joined TRAINING while the test set stayed at 09-12/09-13, so the model was
+   fitted on data recorded after its own test period. The script's leakage
+   assertion only checks that no game straddles the split, and none did.
+   Derived from the sessions present now.
 
 ---
 

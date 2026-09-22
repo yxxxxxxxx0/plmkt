@@ -57,7 +57,24 @@ POS = "#2a78d6"
 NEG = "#eb6834"
 
 ACCS = [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00]
-PRECS = [0.0122, 0.05, 0.10, 0.20, 0.30, 0.40, 0.529, 0.60, 0.716, 0.80, 0.90, 1.00]
+def measured_precision(outdir, default=0.342):
+    """The selector's best held-out precision, read from its own output.
+
+    It used to be the literal 0.529, and that number was quoted in this
+    figure long after the selector had been re-fitted: on the corrected
+    chronological split the best precision anywhere on the curve is 34.2%.
+    Reading it back from selector_operating_points.csv means the picture and
+    the model can no longer disagree.
+    """
+    f = outdir / "selector_operating_points.csv"
+    if not f.exists():
+        return default
+    d = pd.read_csv(f)
+    col = "precision" if "precision" in d.columns else d.columns[3]
+    return float(d[col].max())
+
+
+PRECS = [0.0122, 0.05, 0.10, 0.20, 0.30, 0.40, 0.60, 0.716, 0.80, 0.90, 1.00]
 
 
 def dollars(net_ticks, entry_px, side_is_long, stake):
@@ -71,6 +88,11 @@ def main() -> None:
     ap.add_argument("--stake", type=float, default=10.0)
     args = ap.parse_args()
     outdir = Path(args.outdir)
+
+    # the measured operating point, read back rather than typed in
+    global P_MEAS, precs
+    P_MEAS = round(measured_precision(outdir), 4)
+    precs = sorted(set(PRECS) | {P_MEAS})
 
     a = pd.read_parquet(outdir / "breakeven_exec_all.parquet")
     long_is_better = a.long_net_ticks >= a.short_net_ticks
@@ -97,7 +119,7 @@ def main() -> None:
     ev_non_b, ev_non_w = d_better[~pays].mean(), d_worse[~pays].mean()
 
     rows = []
-    for p in PRECS:
+    for p in precs:
         for acc in ACCS:
             ev_pay = acc * ev_pay_b + (1 - acc) * ev_pay_w
             ev_non = acc * ev_non_b + (1 - acc) * ev_non_w
@@ -117,7 +139,7 @@ def main() -> None:
     print(f"{'precision':>10} {'min accuracy':>13} {'max trades':>11} "
           f"{'total at that corner':>21}")
     front = []
-    for p in PRECS:
+    for p in precs:
         sub = g[(g.precision == p) & (g.ev_per_trade > 0)]
         if sub.empty:
             print(f"{p:>10.1%} {'impossible':>13} {'-':>11} {'-':>21}")
@@ -132,13 +154,14 @@ def main() -> None:
 
     print()
     print("=== where the measured system actually sits ===")
-    print("  selector precision 52.9% (top 0.1%, SELECTOR.md), direction ~55% "
+    print(f"  selector precision {P_MEAS:.1%} (best on the held-out curve), "
+          "direction ~55% "
           "(batting-team, moneyline)")
-    ev = (0.529 * (0.55 * ev_pay_b + 0.45 * ev_pay_w)
-          + 0.471 * (0.55 * ev_non_b + 0.45 * ev_non_w))
+    ev = (P_MEAS * (0.55 * ev_pay_b + 0.45 * ev_pay_w)
+          + (1 - P_MEAS) * (0.55 * ev_non_b + 0.45 * ev_non_w))
     print(f"  --> ${ev:+.2f} per $10 trade")
-    print("  and at 52.9% precision with PERFECT direction:")
-    ev2 = 0.529 * ev_pay_b + 0.471 * ev_non_b
+    print(f"  and at {P_MEAS:.1%} precision with PERFECT direction:")
+    ev2 = P_MEAS * ev_pay_b + (1 - P_MEAS) * ev_non_b
     print(f"  --> ${ev2:+.2f} per $10 trade")
 
     draw(g, outdir / "requirements_grid.png", args.stake, n_pay, len(a))
@@ -178,7 +201,7 @@ def draw(g, path, stake, n_pay, n_all):
 
     # where the measured system sits
     try:
-        yi = list(piv.index).index(0.529)
+        yi = list(piv.index).index(P_MEAS)
         xi = float(np.interp(0.55, piv.columns, np.arange(len(piv.columns))))
         ax.plot([xi], [yi], marker="o", ms=13, mfc="none", mec=INK, mew=2.4)
         ax.annotate("measured today:\n53% precision, ~55% direction",

@@ -86,6 +86,17 @@ enough; the `.xz` books are needed only to rebuild the 10-level grid.
     ..\.venv\Scripts\python jump_data.py --raw ../data/live/books_2026-09-10.jsonl
     #   ...repeat per session. This writes data/jump/feat_*.parquet and lob_*.npy
 
+    # 4b. trim -- REQUIRED, and it is what applies the broken-match rule.
+    #     Everything downstream reads feat_*_trimmed.parquet, and the session
+    #     lists are discovered from those files, so a session that is built but
+    #     not trimmed is silently invisible to every analysis.
+    ..\.venv\Scripts\python trim_sessions.py
+
+    # 4c. gate -- do not trust a session that has not passed this
+    ..\.venv\Scripts\python audit_datasets.py
+    ..\.venv\Scripts\python test_jump_data.py
+    ..\.venv\Scripts\python test_match_coverage.py
+
     # 5. rebuild the research caches
     ..\.venv\Scripts\python research/lee_mykland/build_minute_bars.py
     ..\.venv\Scripts\python research/makinen/build_panel.py

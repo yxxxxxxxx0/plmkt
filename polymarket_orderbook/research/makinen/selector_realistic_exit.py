@@ -48,7 +48,26 @@ FEATURES = [
     "rv_5", "rv_25", "rv_150", "ofi_5", "dmid_5", "ofi_25", "dmid_25",
     "stale", "book_age_ms", "mid",
 ]
-TEST_SESSIONS = ["books_2026-09-12", "books_2026-09-13"]
+def _test_sessions(n_held_out=2):
+    """The chronologically LAST `n_held_out` sessions, discovered not listed.
+
+    This was the hardcoded pair ["books_2026-09-12", "books_2026-09-13"], and
+    it silently stopped being a chronological split the moment later sessions
+    were built: 09-12 and 09-13 stayed the test set while 09-17 through 09-20
+    -- recorded AFTER them -- joined TRAINING. The "no game straddles the
+    split" assertion still passed, because no game does, so nothing announced
+    it. A model fitted on the future of its own test period is not a held-out
+    result, and every score it produces is suspect upwards.
+
+    Session names are `books_YYYY-MM-DD`, so lexical order is chronological.
+    """
+    suffix = "_trimmed.parquet"
+    built = sorted(q.name[len("feat_"):-len(suffix)]
+                   for q in (ROOT / "data" / "jump").glob("feat_books_*" + suffix))
+    return built[-n_held_out:]
+
+
+TEST_SESSIONS = _test_sessions()
 
 
 def fee_ticks(price):

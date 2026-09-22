@@ -61,14 +61,21 @@ SPORTS_FEE_RATE = 0.05
 BUCKET_EDGES = [-0.01, 1.01, 2.01, 3.01, 5.01, 10.01, 20.01, 1e9]
 BUCKET_NAMES = ["<=1", "2", "3", "4-5", "6-10", "11-20", ">20"]
 
-SESSIONS = [
-    "books_2026-08-28",
-    "books_2026-08-30",
-    "books_2026-09-10",
-    "books_2026-09-11",
-    "books_2026-09-12",
-    "books_2026-09-13",
-]
+def _sessions():
+    """Every session that has a trimmed cache, discovered rather than listed.
+
+    This was a hardcoded list of six, and it went stale the moment three more
+    sessions were built: the scan kept describing a population that no longer
+    existed, and the derived summaries next to it described a different one
+    again. build_panel.py has always globbed; this now does too.
+    """
+    suffix = "_trimmed.parquet"
+    d = ROOT / "data" / "jump"
+    return sorted(p.name[len("feat_"):-len(suffix)]
+                  for p in d.glob("feat_books_*" + suffix))
+
+
+SESSIONS = _sessions()
 
 
 def fee_ticks(price):
