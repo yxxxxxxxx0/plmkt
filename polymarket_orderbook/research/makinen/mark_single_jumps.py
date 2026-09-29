@@ -36,14 +36,18 @@ comes back where it was. That spikes the mid and moves nothing you could trade.
             sat anywhere. A move A -> B -> C is two jumps and is only ever
             priced as A -> B and B -> C separately.
 
-  entry     buy at the ask standing in the last grid slot of A, i.e. the
-            price on the book immediately before the jump began. (On a rest,
+  entry     buy at the ask standing as the jump began: the latest slot of A's
+            final PLATEAU_S at which the ask held at least $STAKE. (Not simply
+            the last slot: just before a big move the offer is being lifted,
+            and the final 200ms often shows a few dollars left at a price that
+            had hundreds a second earlier.) (On a rest,
             whose ask may be flickering: the lowest ask that stood STAND_S
             within A's last PLATEAU_S, never before the previous mark's exit.)
 
   exit      sell at the highest bid on B that STOOD for at least STAND_S
-            seconds, searched over B's first EXIT_S seconds. A bid that
-            flickers for one 200ms slot cannot be sold into and is ignored.
+            seconds with enough size for the whole position throughout,
+            searched over B's first EXIT_S seconds. A bid that flickers for
+            one 200ms slot cannot be sold into and is ignored.
 
   breaks    (exit bid - entry ask) in ticks minus the sports taker fee on both
   even      legs is > 0, AND the touch held at least $STAKE at both ends, so a
@@ -81,6 +85,12 @@ WHAT IS EXCLUDED, AND WHY
   slow drifts          transitions longer than MAX_JUMP_S. A two-minute grind
                        with no pause is a drift, not a jump.
   thin touch           fewer than $STAKE at the entry ask or at the exit bid.
+  crossed book         the mark's window overlaps a stretch in which the RAW
+                       recorded book for that contract was crossed (from
+                       crossed_scan.py). A crossed book means our copy holds a
+                       ghost level the exchange had already removed; the grid
+                       drops crossed records and carries the last uncrossed
+                       book, ghost included, so the prices there are not real.
 
 Outputs, under results/makinen/single_jumps/
   marks.csv            every marked jump (single and combined), one row each
@@ -117,6 +127,7 @@ sys.path.insert(0, str(HERE))
 
 from match_filter import load_windows  # noqa: E402
 from mark_breakeven_exec import fee_ticks, SESSIONS  # noqa: E402
+from crossed_scan import suspect_windows  # noqa: E402
 
 TICK = 0.01
 GRID_MS = 200
@@ -276,7 +287,7 @@ def overlaps(gaps, a, b):
     return bool(np.any((gaps[:, 0] < b) & (gaps[:, 1] > a)))
 
 
-def scan_series(s: pd.DataFrame, gaps) -> list[dict]:
+def scan_series(s: pd.DataFrame, gaps, suspect=None) -> list[dict]:
     ts = s.ts.to_numpy(np.int64)
     bid = s.bid.to_numpy(np.float64)
     ask = s.ask.to_numpy(np.float64)
@@ -320,17 +331,38 @@ def scan_series(s: pd.DataFrame, gaps) -> list[dict]:
 
     # one record per consecutive pair of levels
     steps = []
+    # Size has to be there at the instant you trade, and the instant matters:
+    # right before a big move the offer is typically being lifted by faster
+    # traders, so the LAST slot of the level often shows a few dollars left
+    # at a price that had hundreds standing a second earlier (pit-stl 08-29,
+    # moneyline 0.63 -> 0.87: $143 at -1s, under $10 in the final slot). Buying
+    # in that final slot only would reject the biggest jumps most often.
+    fill_a = au >= STAKE
     prev_exit_end = -1                       # last slot the previous exit's bid stood
     for (a0, a1, ka), (b0, b1, kb) in zip(levels[:-1], levels[1:]):
         contiguous = ts[b0] - ts[a1] == (b0 - a1) * GRID_MS
         # Entry never precedes the previous step's exit on the same level, so
         # no stretch of price is ever inside two marks.
         lo = max(a0, a1 - int(PLATEAU_S * 1000 / GRID_MS) + 1, prev_exit_end + 1)
-        if ka == "plateau" or lo > a1 - stand + 1:
-            ea, ei = ask[a1], a1                 # the ask standing as the jump began
+        if ka == "plateau":
+            # the LATEST slot of the level's final PLATEAU_S at which the ask
+            # could fill STAKE; if none could, the final slot (-> thin_entry)
+            ok = np.flatnonzero(fill_a[lo:a1 + 1]) if lo <= a1 else np.array([], int)
+            ei = lo + int(ok[-1]) if len(ok) else a1
+            ea = ask[ei]
+        elif lo > a1 - stand + 1:
+            ea, ei = ask[a1], a1
         else:                                    # a rest's ask may be flickering
-            ea, ei = best_standing_ask(ask, lo, a1, stand)
-        xb, xi = best_standing_bid(bid, b0, min(b1, b0 + exit_n - 1), stand)
+            ea, ei = best_standing_ask(np.where(fill_a, ask, np.inf), lo, a1, stand)
+            if not np.isfinite(ea):
+                ea, ei = best_standing_ask(ask, lo, a1, stand)
+        # the exit bid must hold the whole position for its whole stand
+        shares = STAKE / ea
+        fill_b = bu >= shares * bid
+        hi = min(b1, b0 + exit_n - 1)
+        xb, xi = best_standing_bid(np.where(fill_b, bid, -np.inf), b0, hi, stand)
+        if not np.isfinite(xb):                  # nothing fillable: keep, flag thin_exit
+            xb, xi = best_standing_bid(bid, b0, hi, stand)
         prev_exit_end = xi + stand - 1 if xi >= 0 else b0
         steps.append(dict(
             a0=a0, a1=a1, b0=b0, b1=b1, contiguous=contiguous,
@@ -359,6 +391,8 @@ def scan_series(s: pd.DataFrame, gaps) -> list[dict]:
             reasons.append("thin_exit")
         if overlaps(gaps, ts[e_i] - GAP_PAD_S * 1000, ts[x_i]):
             reasons.append("recording_gap")
+        if suspect is not None and overlaps(suspect, ts[e_i] - GAP_PAD_S * 1000, ts[x_i]):
+            reasons.append("crossed_book")
         r = dict(
             kind=kind, series=s.series.iat[0],
             ts_entry=int(ts[e_i]), ts_jump_end=int(ts[last["b0"]]), ts_exit=int(ts[x_i]),
@@ -430,10 +464,12 @@ def check_no_overlap(c: pd.DataFrame) -> None:
 def scan_session(session: str) -> pd.DataFrame:
     df = load_session(session)
     gaps = load_gaps(session)
+    suspect = suspect_windows(session)
+    none = np.empty((0, 2), np.int64)
     rows = []
     for _, s in df.groupby("sid", sort=False):
-        slug = s.series.iat[0].split("|")[0]
-        rows += scan_series(s, gaps.get(slug, np.empty((0, 2), np.int64)))
+        slug, _, _, aid = s.series.iat[0].split("|")
+        rows += scan_series(s, gaps.get(slug, none), suspect.get(aid, none))
     out = pd.DataFrame(rows)
     if len(out):
         check_no_overlap(out)
@@ -459,6 +495,7 @@ GRID_C = "#e9e8e4"
 KIND_C = {"single": "#2a78d6", "combined": "#eb6834"}
 KIND_M = {"single": "o", "combined": "D"}
 CTX_S = 40.0          # seconds of price shown either side of the mark
+FIG_DPI = 150         # match plots: large and sharp, several MB each
 PANELS = (6, 4)       # rows x cols per sheet
 
 
@@ -469,8 +506,8 @@ def draw_panel(ax, m, s, t_game0):
     x = (w.ts.to_numpy() - m.ts_entry) / 1000.0
     c = KIND_C[m.kind]
     ax.fill_between(x, w.bid, w.ask, step="post", color=BAND, lw=0, zorder=1)
-    ax.step(x, w.ask, where="post", color=LINE, lw=0.8, zorder=2)
-    ax.step(x, w.bid, where="post", color=INK2, lw=0.9, zorder=2)
+    ax.step(x, w.ask, where="post", color=LINE, lw=1.1, zorder=2)
+    ax.step(x, w.bid, where="post", color=INK2, lw=1.3, zorder=2)
     xj = (m.ts_jump_end - m.ts_entry) / 1000.0
     ax.axvspan(0, xj, color=c, alpha=0.10, lw=0, zorder=0)
     if m.kind == "combined":
@@ -480,9 +517,9 @@ def draw_panel(ax, m, s, t_game0):
         ax.axvspan(p0, p1, facecolor="none", edgecolor=c, hatch="////",
                    lw=0, alpha=0.45, zorder=2.5)
     xe = (m.ts_exit - m.ts_entry) / 1000.0
-    ax.plot([0, xe], [m.entry_ask, m.exit_bid], color=c, lw=2, zorder=3)
+    ax.plot([0, xe], [m.entry_ask, m.exit_bid], color=c, lw=2.6, zorder=3)
     ax.plot([0, xe], [m.entry_ask, m.exit_bid], ls="none", marker=KIND_M[m.kind],
-            ms=6, mfc=c, mec=SURFACE, mew=1.5, zorder=4)
+            ms=8.5, mfc=c, mec=SURFACE, mew=1.8, zorder=4)
     ys = np.concatenate([w.bid.to_numpy(), w.ask.to_numpy()])
     ys = ys[np.isfinite(ys)]
     # frame on the traded levels; a blown-out book is allowed to run off-panel
@@ -496,14 +533,14 @@ def draw_panel(ax, m, s, t_game0):
     minute = (m.ts_entry - t_game0) / 60000.0 if t_game0 else float("nan")
     line = "" if m.line in (None, "None") else f" {m.line}"
     ax.set_title(f"{m.slug.replace('mlb-', '')}  {m.market_type}{line} ..{m.series[-4:]}  "
-                 f"min {minute:.1f}", fontsize=7.5, color=INK, loc="left", pad=3)
+                 f"min {minute:.1f}", fontsize=10.5, color=INK, loc="left", pad=4)
     tag = ("SINGLE" if m.kind == "single" else f"COMBINED, pause {m.pause_s:.0f}s {m.pause_regime}")
     ax.text(0.02, 0.97, f"{tag}\nbuy {m.entry_ask:.3f} -> sell {m.exit_bid:.3f}\n"
             f"net {m.net_ticks:+.1f}t  \\${m.pnl_usd:+.2f}",
-            transform=ax.transAxes, va="top", ha="left", fontsize=6.5, color=INK,
-            bbox=dict(boxstyle="round,pad=0.25", fc=SURFACE, ec=c, lw=1))
-    ax.tick_params(labelsize=6, colors=INK2, length=2)
-    ax.grid(color=GRID_C, lw=0.5)
+            transform=ax.transAxes, va="top", ha="left", fontsize=9.5, color=INK,
+            bbox=dict(boxstyle="round,pad=0.3", fc=SURFACE, ec=c, lw=1.2, alpha=0.92))
+    ax.tick_params(labelsize=9, colors=INK2, length=3)
+    ax.grid(color=GRID_C, lw=0.6)
     for sp in ax.spines.values():
         sp.set_color(GRID_C)
     ax.set_facecolor(SURFACE)
@@ -575,18 +612,22 @@ def draw_overview(ax, s, ms, t_game0, show_x, xlim):
     q = spr <= cut
     bid = np.where(q, s.bid.to_numpy(), np.nan)
     ask = np.where(q, s.ask.to_numpy(), np.nan)
+    # A faint dotted bid joins the quoted stretches across each pull, so a
+    # jump that happened while the book was pulled still shows as a step
+    # rather than a hole.
+    ax.plot(x[q], s.bid.to_numpy()[q], color=INK2, lw=0.8, ls=(0, (1, 2)), alpha=0.6, zorder=1.5)
     ax.fill_between(x, bid, ask, color=BAND, lw=0, zorder=1)
-    ax.plot(x, ask, color=LINE, lw=0.6, zorder=2)
-    ax.plot(x, bid, color=INK2, lw=0.7, zorder=2)
+    ax.plot(x, ask, color=LINE, lw=0.9, zorder=2)
+    ax.plot(x, bid, color=INK2, lw=1.1, zorder=2)
     for m in ms.itertuples():
         c = KIND_C[m.kind]
         xm = (m.ts_entry - t_game0) / 60000.0
-        ax.plot([xm, xm], [m.entry_ask, m.exit_bid], color=c, lw=2.2, zorder=4,
+        ax.plot([xm, xm], [m.entry_ask, m.exit_bid], color=c, lw=3.2, zorder=4,
                 solid_capstyle="round")
-        ax.plot([xm], [m.exit_bid], ls="none", marker=KIND_M[m.kind], ms=4.5, mfc=c,
-                mec=SURFACE, mew=1, zorder=5)
-        ax.annotate(str(m.n), (xm, m.exit_bid), xytext=(0, 4), textcoords="offset points",
-                    ha="center", va="bottom", fontsize=5.5, color=INK2, zorder=6)
+        ax.plot([xm], [m.exit_bid], ls="none", marker=KIND_M[m.kind], ms=7, mfc=c,
+                mec=SURFACE, mew=1.3, zorder=5)
+        ax.annotate(str(m.n), (xm, m.exit_bid), xytext=(0, 5), textcoords="offset points",
+                    ha="center", va="bottom", fontsize=8.5, color=INK, zorder=6)
     lo = np.nanmin([np.nanpercentile(bid, 1), ms.entry_ask.min()])
     hi = np.nanmax([np.nanpercentile(ask, 99), ms.exit_bid.max()])
     pad = max(0.02, 0.08 * (hi - lo))
@@ -594,18 +635,18 @@ def draw_overview(ax, s, ms, t_game0, show_x, xlim):
     ax.set_xlim(*xlim)                     # one time axis for every contract
     ax.text(0.003, 0.95, f"{contract_label(ms.iloc[0])}   {len(ms)} mark(s), "
             f"net {ms.net_ticks.sum():.1f}t", transform=ax.transAxes, ha="left",
-            va="top", fontsize=8, color=INK,
-            bbox=dict(boxstyle="round,pad=0.2", fc=SURFACE, ec="none", alpha=0.85))
-    ax.tick_params(labelsize=6.5, colors=INK2, length=2, labelbottom=show_x)
+            va="top", fontsize=11.5, color=INK,
+            bbox=dict(boxstyle="round,pad=0.25", fc=SURFACE, ec="none", alpha=0.85))
+    ax.tick_params(labelsize=10, colors=INK2, length=3, labelbottom=show_x)
     ax.grid(color=GRID_C, lw=0.5)
     for sp in ax.spines.values():
         sp.set_color(GRID_C)
     ax.set_facecolor(SURFACE)
     if show_x:
-        ax.set_xlabel("minutes from first pitch", fontsize=8, color=INK2)
+        ax.set_xlabel("minutes from first pitch", fontsize=11, color=INK2)
 
 
-def draw_game(slug, gm, by_series, t_game0, path, cols=6):
+def draw_game(slug, gm, by_series, t_game0, path, cols=4):
     """One PNG per match.
 
     Top: every contract that has a mark, over the whole match, with each mark
@@ -627,14 +668,14 @@ def draw_game(slug, gm, by_series, t_game0, path, cols=6):
     n_ov = len(order)
     rows = int(np.ceil(len(gm) / cols))
 
-    head, ov_h, gap, z_h = 0.95, 1.15, 0.75, 2.35   # inches
-    H = head + n_ov * ov_h + 0.35 + gap + rows * z_h
-    W = cols * 2.95
+    head, ov_h, gap, z_h, xl = 1.3, 2.0, 1.0, 3.5, 0.5   # inches
+    H = head + n_ov * ov_h + xl + gap + rows * z_h
+    W = cols * 4.7
     fig = plt.figure(figsize=(W, H), facecolor=SURFACE)
 
     ov_top = 1 - head / H
-    ov_bot = ov_top - (n_ov * ov_h + 0.35) / H
-    g1 = fig.add_gridspec(n_ov, 1, left=0.035, right=0.995, top=ov_top, bottom=ov_bot + 0.35 / H,
+    ov_bot = ov_top - (n_ov * ov_h + xl) / H
+    g1 = fig.add_gridspec(n_ov, 1, left=0.035, right=0.995, top=ov_top, bottom=ov_bot + xl / H,
                           hspace=0.12)
     t_lo = min(int(by_series[sr].ts.min()) for sr in order)
     t_hi = max(int(by_series[sr].ts.max()) for sr in order)
@@ -645,23 +686,23 @@ def draw_game(slug, gm, by_series, t_game0, path, cols=6):
                       show_x=(r == n_ov - 1), xlim=xlim)
 
     z_top = ov_bot - gap / H
-    g2 = fig.add_gridspec(rows, cols, left=0.035, right=0.995, top=z_top, bottom=0.25 / H,
-                          hspace=0.42, wspace=0.28)
+    g2 = fig.add_gridspec(rows, cols, left=0.035, right=0.995, top=z_top, bottom=0.3 / H,
+                          hspace=0.36, wspace=0.2)
     for k, m in enumerate(gm.itertuples()):
         ax = fig.add_subplot(g2[k // cols, k % cols])
         draw_panel(ax, m, by_series[m.series], t_game0)
         ax.set_title(f"#{m.n}  " + ax.get_title(loc="left").split("  ", 1)[1],
-                     fontsize=7.5, color=INK, loc="left", pad=3)
-    fig.text(0.035, z_top + 0.30 / H, "Every mark, zoomed (x = seconds from entry; shaded = the jump; "
-             "numbers match the bars above)", fontsize=10, color=INK, ha="left", va="bottom")
+                     fontsize=10.5, color=INK, loc="left", pad=4)
+    fig.text(0.035, z_top + 0.40 / H, "Every mark, zoomed (x = seconds from entry; shaded = the jump; "
+             "numbers match the bars above)", fontsize=14, color=INK, ha="left", va="bottom")
 
     n_s = int((gm.kind == "single").sum())
     n_c = int((gm.kind == "combined").sum())
-    fig.text(0.005, 1 - 0.18 / H,
+    fig.text(0.005, 1 - 0.22 / H,
              f"{slug}   {n_s} single + {n_c} combined upward jump(s) that break even at the touch"
              f"   net {gm.net_ticks.sum():.1f} ticks, \\${gm.pnl_usd.sum():.2f} at "
              f"\\${STAKE:.0f} a trade (perfect-foresight marks, not a strategy)",
-             fontsize=12, color=INK, ha="left", va="top")
+             fontsize=16, color=INK, ha="left", va="top")
     handles = [
         Line2D([], [], color=INK2, lw=1, label="bid"),
         Line2D([], [], color=LINE, lw=1, label="ask"),
@@ -670,11 +711,11 @@ def draw_game(slug, gm, by_series, t_game0, path, cols=6):
         Line2D([], [], color=KIND_C["combined"], lw=2, marker="D", mec=SURFACE,
                label="combined: two jumps, book regime unchanged across the pause (hatched)"),
     ]
-    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.005, 1 - 0.42 / H),
-               ncol=4, frameon=False, fontsize=9, labelcolor=INK)
-    fig.text(0.995, 1 - 0.50 / H, "match plots show the quoted book only; gaps are quote pulls",
-             fontsize=8, color=INK2, ha="right", va="top")
-    fig.savefig(path, dpi=100, facecolor=SURFACE)
+    fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.005, 1 - 0.58 / H),
+               ncol=2, frameon=False, fontsize=12, labelcolor=INK)
+    fig.text(0.995, 1 - 0.66 / H, "match plots show the quoted book; dotted = bid across a quote pull",
+             fontsize=11, color=INK2, ha="right", va="top")
+    fig.savefig(path, dpi=FIG_DPI, facecolor=SURFACE)
     plt.close(fig)
 
 

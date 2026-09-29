@@ -157,6 +157,22 @@ def test_chained_combined_do_not_share_a_step():
     assert abs(k.entry_ask.iat[0] - 0.51) < 1e-9 and abs(k.exit_bid.iat[0] - 0.54) < 1e-9
 
 
+def test_offer_lifted_in_the_last_slot_is_still_bought():
+    # pit-stl 08-29: $143 on the 0.63 offer a second before the jump, under
+    # $10 in the final 200ms as it was lifted. The jump must still be marked,
+    # bought at 0.51 in the last slot that could fill.
+    p = calm(Path_(), 0.50)
+    p.ramp(0.50, 0.60, 0.55, 0.66, 8)
+    calm(p, 0.60)
+    f = p.frame()
+    a1 = 60 * 5 - 1                        # last slot of the first level
+    f.loc[a1 - 1:a1, "ask_usd"] = 3.0      # offer nearly gone for 400ms
+    out = pd.DataFrame(M.scan_series(f, NOGAP))
+    k = kept(out)
+    assert len(k) == 1 and abs(k.entry_ask.iat[0] - 0.51) < 1e-9, out[["entry_ask", "excluded"]]
+    assert k.ts_entry.iat[0] == f.ts.iat[a1 - 2]
+
+
 def test_recording_gap_excludes():
     p = calm(Path_(), 0.50)
     p.ramp(0.50, 0.60, 0.55, 0.66, 8)
@@ -165,6 +181,17 @@ def test_recording_gap_excludes():
     t_mid = int(f.ts.iat[len(f) // 2])
     out = run(p, np.array([[t_mid - 6000, t_mid]], np.int64))
     assert len(kept(out)) == 0 and "recording_gap" in out.excluded.iat[0]
+
+
+def test_crossed_book_excludes():
+    # ari-sf 08-29: a ghost ask the grid carried through a crossed stretch.
+    p = calm(Path_(), 0.50)
+    p.ramp(0.50, 0.60, 0.55, 0.66, 8)
+    calm(p, 0.60)
+    f = p.frame()
+    t_mid = int(f.ts.iat[len(f) // 2])
+    out = pd.DataFrame(M.scan_series(f, NOGAP, np.array([[t_mid - 2000, t_mid + 2000]], np.int64)))
+    assert len(kept(out)) == 0 and "crossed_book" in out.excluded.iat[0]
 
 
 if __name__ == "__main__":
