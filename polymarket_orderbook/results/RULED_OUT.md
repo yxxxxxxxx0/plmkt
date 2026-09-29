@@ -220,13 +220,21 @@ fills, not the bankroll.
 
 ## What is NOT ruled out
 
-Four things remain genuinely open. None of them are order-book microstructure.
+Four things were left open; the first has since been tested and closed (below).
+None of them are order-book microstructure.
 
-1. **Cross-market consistency.** Moneyline, run line and total on the same game
-   must cohere. Any inconsistency is a fair value that needs no latency edge
-   and no direction model. All three are recorded on one clock. **Never
-   tested.** `crossmarket.py` exists but carries the series-key defect and
-   needs fixing first.
+1. **Cross-market consistency. TESTED 2026-09-29 -- closed.** Moneyline, run
+   line and total must cohere (Over 9.5 <= 8.5 <= 7.5; team by 3+ <= by 2+ <=
+   wins; both teams cannot cover). `research/makinen/cross_market_timing.py`
+   checked every 200ms of 204 games for violations that stand >= 1s with $10
+   on both legs, net of fees on both: 42, all at 0.2-4 cents in decided games,
+   $1.33 in total. The one large hit (ari-sf 08-29, 7.6c on Over 8.5 vs 7.5)
+   was a ghost level in the recording -- see `crossed_scan.py`. The lead-lag
+   is real but not tradeable: spread and total reprice a median 4.0s after
+   the moneyline, yet their makers pull a median 2s BEFORE it, so following
+   the moneyline loses 7-9c a share; a still-quoted laggard exists in ~1% of
+   events and loses there too. `crossmarket.py` (series-key defect) is
+   superseded, not fixed.
 2. **Signed trade flow** (aggressor side). **CORRECTED 2026-09-21: it has been
    recorded all along.** `live_recorder.py` writes an `et="trade"` record per
    print carrying `side_raw` as the feed sends it and, because that field is
