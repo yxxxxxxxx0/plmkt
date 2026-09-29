@@ -164,13 +164,102 @@ def test_no_window_is_not_a_pass():
     return all(ok)
 
 
+def test_sub_minute_holes_need_the_exclusion_list():
+    """The 08-30 shape: 40s of every minute missing for 25 minutes.
+
+    Every minute still holds a record, so minute coverage is 100% and the
+    match is kept -- 16.7 minutes of the game gone and nothing notices. Only
+    the continuity scan sees it, and the exclusion list is how that verdict
+    reaches the filter.
+    """
+    print("holes shorter than a minute pass minute coverage; the list catches them")
+    import continuity_scan as cs
+    ok = []
+    slug = "mlb-aaa-bbb-2026-09-21"
+    rows = [t for t in grid(0, 101)
+            if not (10 * MIN <= t - START < 35 * MIN and (t - START) % MIN >= 20_000)]
+    w = {slug: WINDOW}
+
+    r = mf.match_report(frame(rows, slug), windows=w, excluded={})
+    ok.append(check("minute coverage alone keeps it", bool(r.keep.iloc[0]), True))
+
+    r = mf.match_report(frame(rows, slug), windows=w,
+                        excluded={slug: "lost 16.7 of 100 min"})
+    ok.append(check("the exclusion list drops it", bool(r.keep.iloc[0]), False))
+    ok.append(check("reason says why", r.reason.iloc[0].startswith("excluded:"), True))
+
+    v = mf.judge_match(WINDOW, START, END, minutes(0, 101), slug=slug,
+                       excluded={slug: "x"})
+    ok.append(check("judge_match honours it (trim_sessions path)", v["keep"], False))
+
+    # the classifier's three bands, on the gaps the scan would report
+    def row(*gaps):
+        return dict(window=True, game_min=100.0, gaps=[
+            dict(secs=s, disconnect=d, at_start=False, at_end=False) for s, d in gaps])
+    ok.append(check("25 x 40s holes: severe",
+                    cs.classify(row(*[(40.0, False)] * 25))[0], "severe"))
+    ok.append(check("one 140s hole: slight",
+                    cs.classify(row((140.0, True)))[0], "slight"))
+    ok.append(check("a 13s reconnect: slight",
+                    cs.classify(row((13.0, True)))[0], "slight"))
+    ok.append(check("8s of quiet, no disconnect: continuous",
+                    cs.classify(row((8.0, False)))[0], "continuous"))
+    return all(ok)
+
+
+def test_a_decided_game_is_not_an_early_stop():
+    """hou-oak 2026-09-26: moneyline at 0.9975, grid ends 28 min early.
+
+    The recording ran to the final out; the book went one-sided once the
+    result was certain, and the grid keeps only two-sided rows. That must not
+    read as a truncated recording -- but an UNDECIDED game that ends early
+    still must.
+    """
+    print("a decided game's early end is kept; an undecided one is not")
+    ok = []
+    slug = "mlb-aaa-bbb-2026-09-21"
+    rows = grid(0, 70)                      # ends 30 min before the final out
+    w = {slug: WINDOW}
+
+    def with_mid(last_mid):
+        F = frame(rows, slug)
+        F["mid"] = 0.6
+        F.loc[F.index[-1], "mid"] = last_mid
+        return F
+
+    r = mf.match_report(with_mid(0.9975), windows=w, excluded={})
+    ok.append(check("decided (0.9975): kept", bool(r.keep.iloc[0]), True))
+    ok.append(approx("reports how early it settled", r.settled_min.iloc[0], 30.0, tol=0.1))
+    r = mf.match_report(with_mid(0.004), windows=w, excluded={})
+    ok.append(check("decided the other way (0.004): kept", bool(r.keep.iloc[0]), True))
+
+    r = mf.match_report(with_mid(0.55), windows=w, excluded={})
+    ok.append(check("undecided (0.55): dropped", bool(r.keep.iloc[0]), False))
+    ok.append(check("reason is the early stop", "before the final out" in r.reason.iloc[0], True))
+    r = mf.match_report(frame(rows, slug), windows=w, excluded={})
+    ok.append(check("no mid column: nothing counts as settled", bool(r.keep.iloc[0]), False))
+
+    r = mf.match_report(with_mid(0.9975), windows=w, excluded={slug: "raw died"})
+    ok.append(check("the exclusion list still wins", bool(r.keep.iloc[0]), False))
+
+    # the trim_sessions path: judge_match with the streamed flag
+    v = mf.judge_match(WINDOW, START, START + 70 * MIN - 1000, minutes(0, 70),
+                       settled=True)
+    ok.append(check("judge_match(settled=True) keeps it", v["keep"], True))
+    v = mf.judge_match(WINDOW, START, START + 70 * MIN - 1000, minutes(0, 70))
+    ok.append(check("judge_match without the flag drops it", v["keep"], False))
+    return all(ok)
+
+
 if __name__ == "__main__":
     print("game-window coverage\n" + "=" * 70)
     results = [test_late_start_is_visible(),
                test_the_old_metric_really_does_miss_it(),
                test_hollow_middle_is_caught(),
                test_a_complete_recording_is_kept(),
-               test_no_window_is_not_a_pass()]
+               test_no_window_is_not_a_pass(),
+               test_sub_minute_holes_need_the_exclusion_list(),
+               test_a_decided_game_is_not_an_early_stop()]
     print("=" * 70)
     print(f"{sum(results)}/{len(results)} groups passed")
     sys.exit(0 if all(results) else 1)

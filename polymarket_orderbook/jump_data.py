@@ -34,7 +34,7 @@ sampling would weight busy markets and busy moments enormously and make the
 label base rate meaningless.
 
 Usage:
-    python jump_data.py --raw ../data/live/books_2026-08-30.jsonl
+    python jump_data.py --raw data/live/books_2026-08-30.jsonl.xz
 """
 from __future__ import annotations
 

@@ -48,6 +48,11 @@ import pandas as pd
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 WIN = os.path.join(BASE, "data", "game_windows.json")
+# Matches continuity_scan.py found too incomplete to use. The minute-coverage
+# test below cannot see them: on books_2026-08-30 eight games lost 8-27 min
+# mid-game in holes shorter than a minute each, so almost every minute still
+# held a record and they passed at >= 90%.
+EXCLUDED = os.path.join(BASE, "data", "excluded_matches.json")
 
 # A match is unusable for training if its recording stops more than this many
 # minutes before the final out. Small negatives are the recorder's stop grace
@@ -72,6 +77,17 @@ MIN_INGAME_COVER = 0.90
 # forward-fill cap can leave.
 PREGAME_BUFFER_S = 120.0
 
+# A moneyline whose last mid is at least this far toward 0 or 1 has been
+# decided. Once it is, nobody offers above 0.99, the book goes one-sided,
+# and jump_data.py keeps only two-sided rows -- so a decided game's grid ends
+# before the final out although the RECORDING runs to it. Nine complete games
+# (7 continuous, 2 with a <5 min hole, per continuity_scan.py) were being
+# dropped as "stops N min early" this way, 5 to 45 min before the final out:
+# the lopsided games, systematically. For a settled game the end of its data
+# is the end of the tradeable game. A recording that really died late in a
+# lopsided game is still caught, by the raw scan's exclusion list.
+SETTLED_MID = 0.99
+
 
 def load_windows(path=WIN):
     if not os.path.exists(path):
@@ -86,10 +102,41 @@ def load_windows(path=WIN):
     return out
 
 
+def load_exclusions(path=EXCLUDED):
+    """slug -> reason for every match continuity_scan.py excluded."""
+    if not os.path.exists(path):
+        return {}
+    raw = json.load(open(path, encoding="utf-8"))
+    return {k: v.get("reason", v.get("verdict", "excluded"))
+            for k, v in raw.get("matches", {}).items()}
+
+
+def is_settled(mid):
+    """True when a moneyline mid says the game has been decided."""
+    return mid is not None and (mid >= SETTLED_MID or mid <= 1 - SETTLED_MID)
+
+
+def settled_slugs(series, ts, mid):
+    """Slugs whose moneyline ends decided, from aligned series/ts/mid arrays.
+
+    Each moneyline token's LAST row is what counts; either token being at an
+    extreme is enough, since the two are complements.
+    """
+    d = pd.DataFrame(dict(series=np.asarray(series), ts=np.asarray(ts),
+                          mid=np.asarray(mid, dtype=float)))
+    d = d[d.series.str.contains("|moneyline|", regex=False)]
+    if d.empty:
+        return set()
+    last = d.sort_values("ts").groupby("series").tail(1)
+    last = last[last.mid.map(is_settled)]
+    return set(last.series.str.split("|", n=1).str[0])
+
+
 def judge_match(window, min_ts, max_ts, minute_buckets,
                 max_truncation_min=MAX_TRUNCATION_MIN,
                 max_late_start_min=MAX_LATE_START_MIN,
-                min_ingame_cover=MIN_INGAME_COVER):
+                min_ingame_cover=MIN_INGAME_COVER,
+                slug=None, excluded=None, settled=False):
     """The keep/drop decision, from three per-slug summaries and the window.
 
     It lives here alone because it did not, and the copies drifted.
@@ -101,12 +148,31 @@ def judge_match(window, min_ts, max_ts, minute_buckets,
 
     `minute_buckets` is any iterable of `ts // 60000`; only those inside the
     window are counted, so passing the whole session's is fine.
+
+    `slug` is checked against the exclusion list (`excluded`, loaded from
+    data/excluded_matches.json when not given) before anything else.
+
+    `settled` says the moneyline ended decided (see SETTLED_MID). The end of
+    the data then stands in for the final out, for both the truncation test
+    and the coverage denominator; `settled_min` reports how much earlier than
+    the final out that was.
     """
+    if slug is not None:
+        excluded = load_exclusions() if excluded is None else excluded
+        if slug in excluded:
+            return dict(keep=False, reason=f"excluded: {excluded[slug]}",
+                        truncation_min=float("nan"),
+                        late_start_min=float("nan"),
+                        ingame_cover=float("nan"))
     if window is None:
         return dict(keep=False, reason="no game window: coverage unknown",
                     truncation_min=float("nan"), late_start_min=float("nan"),
                     ingame_cover=float("nan"))
     st, en = window
+    settled_min = 0.0
+    if settled and st < max_ts < en:
+        settled_min = (en - max_ts) / 60000.0
+        en = max_ts
     a, b = st // 60000, en // 60000
     total = b - a + 1
     seen = sum(1 for m in minute_buckets if a <= m <= b)
@@ -125,26 +191,36 @@ def judge_match(window, min_ts, max_ts, minute_buckets,
         keep, reason = False, (f"only {cover:.0%} of the game covered "
                                f"({seen} of {total} minutes)")
     return dict(keep=keep, reason=reason, truncation_min=float(trunc),
-                late_start_min=float(late), ingame_cover=cover)
+                late_start_min=float(late), ingame_cover=cover,
+                settled_min=float(settled_min))
 
 
 def match_report(F, windows=None, max_truncation_min=MAX_TRUNCATION_MIN,
                  max_late_start_min=MAX_LATE_START_MIN,
-                 min_ingame_cover=MIN_INGAME_COVER):
-    """Per-match coverage and a keep/drop decision. F needs `series` and `ts`.
+                 min_ingame_cover=MIN_INGAME_COVER, excluded=None):
+    """Per-match coverage and a keep/drop decision. F needs `series` and `ts`,
+    and `mid` for the settled-game rule (without it no game counts as settled).
 
     Three independent ways a match can be incomplete, all measured against
     game_windows.json rather than against the recording's own extent:
     it stops early, it starts late, or it is hollow in the middle.
     """
     windows = load_windows() if windows is None else windows
+    excluded = load_exclusions() if excluded is None else excluded
     slug = F.series.astype(str).str.split("|").str[0]
     ts = F.ts.to_numpy()
+    settled = (settled_slugs(F.series.astype(str), ts, F.mid)
+               if "mid" in F.columns else set())
     rows = []
     for s, idx in slug.groupby(slug).groups.items():
         i = np.asarray(idx)
         t = ts[i]
         w = windows.get(s)
+        if s in excluded:
+            rows.append(dict(slug=s, n=len(i), keep=False,
+                             reason=f"excluded: {excluded[s]}",
+                             ingame_frac=np.nan, truncation_min=np.nan))
+            continue
         if w is None:
             rows.append(dict(slug=s, n=len(i), keep=False,
                              reason="no game window: coverage unknown",
@@ -155,7 +231,7 @@ def match_report(F, windows=None, max_truncation_min=MAX_TRUNCATION_MIN,
         v = judge_match(w, int(t.min()), int(t.max()),
                         np.unique(t // 60000).tolist(),
                         max_truncation_min, max_late_start_min,
-                        min_ingame_cover)
+                        min_ingame_cover, settled=s in settled)
         rows.append(dict(slug=s, n=len(i), ingame_frac=float(ing.mean()), **v))
     return pd.DataFrame(rows).sort_values("slug").reset_index(drop=True)
 

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import lzma
 import json
 import os
 import sys
@@ -52,9 +53,11 @@ def market_questions(session, slug):
     """asset_id -> human market question, read from the raw feed for one game."""
     p = os.path.join(LIVE, "top_of_book_%s.csv" % session)
     if not os.path.exists(p):
+        p += ".xz"          # compress_raw.py archives the CSVs
+    if not os.path.exists(p):
         return {}
     t = pacsv.read_csv(
-        p, read_options=pacsv.ReadOptions(block_size=1 << 26),
+        lzma.open(p, "rb") if p.endswith(".xz") else p, read_options=pacsv.ReadOptions(block_size=1 << 26),
         convert_options=pacsv.ConvertOptions(
             include_columns=["event_slug", "asset_id", "market_question",
                              "outcome"],

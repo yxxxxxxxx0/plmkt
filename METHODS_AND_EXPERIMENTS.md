@@ -406,8 +406,9 @@ and figures retained under `results/lee_mykland/`.
 `discover_cross_market_candidates.py`, `inspect_cross_market.py`,
 `kaggle_cross_market_extract.py`, `maker_feasibility_audit.py`,
 `match_game_delay_audit.py`, `match_game_maker_audit.py`,
-`taker_delay_check.py`. Their outputs are retained under
-`polymarket_sports/reports/`.
+`taker_delay_check.py`. Their outputs were kept under
+`polymarket_sports/reports/`, removed from disk on 2026-09-29 and recoverable
+with `git checkout 7936a34 -- polymarket_sports/reports`.
 
 **Note on cross-market.** The root-level `cross_market_*` scripts tested
 lead-lag *across categories* on the Kaggle sports dataset. They are **not** the

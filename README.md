@@ -33,10 +33,10 @@ polymarket_orderbook/
   research/makinen/       the live detection path, and the 2026-09-21 oracle work
   research/jump_prediction/  the LOB-trajectory study
   research/lee_mykland/   jump detection used for external validation
-  research/sports/        esports resolution sweep (still open)
+  research/sports/        esports resolution sweep (still open; its data was removed
+                          from disk on 2026-09-29 -- see REPRODUCE.md to restore)
   results/                every figure, table and written finding
 
-polymarket_sports/        esports tick data, 1,039 contracts over 21 days
 reports/                  early Polymarket strategy screen
 ```
 

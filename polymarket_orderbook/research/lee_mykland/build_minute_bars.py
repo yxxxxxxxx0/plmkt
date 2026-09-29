@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import lzma
 import os
 import sys
 import time
@@ -58,13 +59,28 @@ COLS = ["ts_exchange_ms", "event_slug", "market_type", "line", "outcome",
 MIN_MS = 60_000
 
 
+def tob_source(path):
+    """A top_of_book path pyarrow can read: the raw .csv, or its .csv.xz archive
+    (compress_raw.py replaces the CSVs; pyarrow does not decompress xz itself)."""
+    return lzma.open(path, "rb") if path.endswith(".xz") else path
+
+
+def tob_paths(live):
+    """Every slate's top_of_book file, compressed or not, one per session."""
+    ps = glob.glob(os.path.join(live, "top_of_book_2026-*.csv"))
+    have = {p + ".xz" for p in ps}
+    ps += [p for p in glob.glob(os.path.join(live, "top_of_book_2026-*.csv.xz"))
+           if p not in have]
+    return sorted(ps)
+
+
 def log(m):
     print("[%s] %s" % (time.strftime("%H:%M:%S"), m), flush=True)
 
 
 def build_one(path, max_stale_min):
     d = pacsv.read_csv(
-        path, read_options=pacsv.ReadOptions(block_size=1 << 26),
+        tob_source(path), read_options=pacsv.ReadOptions(block_size=1 << 26),
         convert_options=pacsv.ConvertOptions(
             include_columns=COLS,
             # asset_id is a 77-digit integer. Left to type inference pyarrow
@@ -125,7 +141,7 @@ def build_one(path, max_stale_min):
         out.append(full)
     B = pd.concat(out, ignore_index=True)
     B = B.merge(meta, on="asset_id", how="left")
-    B["session"] = os.path.basename(path).replace("top_of_book_", "").replace(".csv", "")
+    B["session"] = os.path.basename(path).replace("top_of_book_", "").replace(".xz", "").replace(".csv", "")
     # staleness of the quote actually used, in seconds
     B["staleness_s"] = ((B.minute + 1) * MIN_MS - B.ts_last) / 1000.0
     stats.update(minute_bars=int(len(B)),
@@ -145,7 +161,7 @@ def main():
     os.makedirs(CACHE, exist_ok=True)
     os.makedirs(RES, exist_ok=True)
 
-    paths = sorted(glob.glob(os.path.join(LIVE, "top_of_book_2026-*.csv")))
+    paths = tob_paths(LIVE)
     paths = [p for p in paths if "smoke" not in p and "tradetest" not in p]
     frames, stats = [], []
     for p in paths:

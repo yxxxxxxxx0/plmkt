@@ -16,6 +16,7 @@ enough is an empirical question, not an assumption.
 from __future__ import annotations
 
 import glob
+import lzma
 import json
 import os
 import sys
@@ -40,9 +41,24 @@ def log(m):
     print("[%s] %s" % (time.strftime("%H:%M:%S"), m), flush=True)
 
 
+def tob_source(path):
+    """A top_of_book path pyarrow can read: the raw .csv, or its .csv.xz archive
+    (compress_raw.py replaces the CSVs; pyarrow does not decompress xz itself)."""
+    return lzma.open(path, "rb") if path.endswith(".xz") else path
+
+
+def tob_paths(live):
+    """Every slate's top_of_book file, compressed or not, one per session."""
+    ps = glob.glob(os.path.join(live, "top_of_book_2026-*.csv"))
+    have = {p + ".xz" for p in ps}
+    ps += [p for p in glob.glob(os.path.join(live, "top_of_book_2026-*.csv.xz"))
+           if p not in have]
+    return sorted(ps)
+
+
 def read(path):
     t = pacsv.read_csv(
-        path,
+        tob_source(path),
         read_options=pacsv.ReadOptions(block_size=1 << 26),
         convert_options=pacsv.ConvertOptions(
             include_columns=COLS,
@@ -52,7 +68,7 @@ def read(path):
 
 def main():
     os.makedirs(RES, exist_ok=True)
-    paths = sorted(glob.glob(os.path.join(LIVE, "top_of_book_2026-*.csv")))
+    paths = tob_paths(LIVE)
     # the smoke/tradetest files are not slates; exclude them explicitly
     paths = [p for p in paths if "smoke" not in p and "tradetest" not in p]
     if not paths:

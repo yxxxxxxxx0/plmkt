@@ -6,12 +6,13 @@
 > and with it the orphaned downloads — `kaggle_sports_download/`,
 > `kaggle_cross_market_download/`, `kaggle_metadata_full/`,
 > `cross_market_universe/` and `data/raw/` (12 GB in total). The Kaggle ones
-> are re-downloadable; `data/raw/` was the Elo model's API cache. **Both
-> `data/live/` folders are untouched and remain the irreplaceable data.**
+> are re-downloadable; `data/raw/` was the Elo model's API cache. **The
+> recordings were untouched and remain the irreplaceable data** (since
+> 2026-09-29 they are all in `polymarket_orderbook/data/live/`).
 
 The repository holds **code and results only — about 13 MB**. None of the data
-is in git: 14 GB of it was deliberately excluded, and the derived grids are
-another 37 GB. This file says exactly what to carry, what to re-download, and
+is in git: the 7.3 GB of recordings are deliberately excluded, and the derived
+grids are another 57 GB. This file says exactly what to carry, what to re-download, and
 what to rebuild.
 
 Repo: https://github.com/yxxxxxxxx0/plmkt-jump-study
@@ -22,51 +23,41 @@ Root is `C:\Users\JustinCHENG\Documents\plmkt`.
 
 | path | size | in git? | how to get it back |
 |---|---|---|---|
-| `polymarket_orderbook/data/live/` | **12.15 GB** | no | **COPY IT — irreplaceable** |
-| `data/live/` (repo ROOT, August sessions) | **2.25 GB** | no | **COPY IT — irreplaceable** |
-| `polymarket_orderbook/data/jump/` | 37.22 GB | no | rebuild (below) |
-| `polymarket_sports/orderbook/` | 4.00 GB | no | re-download from Kaggle |
-| `polymarket_sports/snapshots/` | 0.32 GB | no | re-download from Kaggle |
-| `polymarket_sports/trades/` | 1.8 MB | no | re-download from Kaggle |
-| `polymarket_orderbook/data/live/books_2026-09-1[789]*`, `-20` | ~63 GB | no | **COPY IT — irreplaceable**, and still uncompressed |
-| `polymarket_orderbook/research/*/cache/` | 3.99 GB | no | rebuild (below) |
-| `polymarket_orderbook/data/game_windows.json` | 20 KB | **yes** | already cloned |
+| `polymarket_orderbook/data/live/` | **7.3 GB** | no | **COPY IT — irreplaceable** |
+| `polymarket_orderbook/data/jump/` | 57 GB | no | rebuild (below) |
+| `polymarket_orderbook/research/*/cache/` | 3.8 GB | no | rebuild (below) |
+| `polymarket_orderbook/data/game_windows.json` | 40 KB | **yes** | already cloned |
+| `polymarket_orderbook/data/excluded_matches.json` | 5 KB | **yes** | already cloned |
 | all `research/**/*.py` and `results/**/*.md` | 13 MB | **yes** | already cloned |
 
-## The only thing you must physically copy: 14.40 GB, in TWO folders
+## The only thing you must physically copy: 7.3 GB, in ONE folder
 
-The recorder writes to two places, and it is easy to miss the second one:
+    polymarket_orderbook/data/live/
 
-    polymarket_orderbook/data/live/    12.15 GB   September sessions
-    data/live/                          2.25 GB   August sessions (repo ROOT)
+Every session the recorder has made is in it. The August sessions used to sit
+in a second folder at the repo root (`data/live/`); they were moved here on
+2026-09-29, so there is no longer a second place to miss. It is your own
+recorder's output: nobody can download or regenerate it. Everything else in
+this project is derived from it or is a public download.
 
-Both are your own recorder's output. Neither can be downloaded or regenerated
-by anyone. Everything else in this project is derived from them or is a public
-download.
+Contents, so you can check nothing is missed (all xz, compressed losslessly by
+`compress_raw.py` after a full bit-for-bit round trip):
 
-Contents of each, so you can check nothing is missed:
+    books_2026-08-27.jsonl.jsonl.xz              the doubled extension is real
+    books_2026-08-28 .. 08-30.jsonl.xz
+    books_2026-09-10 .. 09-13.jsonl.xz
+    books_2026-09-17 .. 09-27.jsonl.xz           19 sessions, 6.5 GB in total
+    top_of_book_2026-09-10 .. 09-27.csv.xz       15 sessions, 0.9 GB (no CSV in August)
+    *.health.json                                per-session recording checks
+    sessions.json                                recording manifest
 
-    # repo ROOT -- data/live/            (2.25 GB, August sessions)
-    books_2026-08-27.jsonl.jsonl.xz      0.31 GB
-    books_2026-08-28.jsonl.xz            0.76 GB
-    books_2026-08-29.jsonl.xz            0.72 GB
-    books_2026-08-30.jsonl.xz            0.46 GB
-
-    # polymarket_orderbook/data/live/    (12.15 GB, September sessions)
-    books_2026-09-10..13.jsonl.xz       ~1.46 GB   full 10-level books
-    top_of_book_2026-09-10..13.csv      ~6.30 GB   event-level L1 feed
-    books_2026-09-16-late2.jsonl         4.10 GB   salvage run, uncompressed
-    top_of_book_2026-09-16-late2.csv     0.28 GB
-    sessions.json                                  recording manifest
-
-The August archives sit at the root because the recorder has always written
-there as well -- the same gap that once left 133 GB visible to `git add -A`
-(see .gitignore). It is easy to copy only the September folder and silently
-lose four sessions.
+Read the archives in place: `jump_data.py` and the research readers open `.xz`
+directly. `decompress_raw.py` restores a `.jsonl` when a tool needs one (the
+viewer rebuild, `rebuild_all_slates.py`, still does).
 
 An external drive or `robocopy` is the sane way to move it. If you only want
-the newer studies working, the four September `top_of_book_*.csv` files are
-enough; the `.xz` books are needed only to rebuild the 10-level grid.
+the minute-bar studies working, the `top_of_book_*.csv.xz` files are enough;
+the `books_*.jsonl.xz` files are needed to rebuild the 10-level grid.
 
 ## Step by step on the new machine
 
@@ -79,11 +70,11 @@ enough; the `.xz` books are needed only to rebuild the 10-level grid.
     .venv\Scripts\python -m pip install numpy pandas pyarrow scikit-learn ^
         lightgbm xgboost torch matplotlib scipy requests tabulate
 
-    # 3. copy BOTH data/live folders across by hand (14.40 GB total), then:
+    # 3. copy polymarket_orderbook/data/live across by hand (7.3 GB), then:
 
-    # 4. rebuild the 200ms grid -- ~37 GB out, one command per session
+    # 4. rebuild the 200ms grid -- ~57 GB out, one command per session
     cd polymarket_orderbook
-    ..\.venv\Scripts\python jump_data.py --raw ../data/live/books_2026-09-10.jsonl
+    ..\.venv\Scripts\python jump_data.py --raw data/live/books_2026-09-10.jsonl.xz
     #   ...repeat per session. This writes data/jump/feat_*.parquet and lob_*.npy
 
     # 4b. trim -- REQUIRED, and it is what applies the broken-match rule.
@@ -110,12 +101,16 @@ enough; the `.xz` books are needed only to rebuild the 10-level grid.
 
 ## For the esports dataset
 
-Re-download rather than copy — it is public:
+`polymarket_sports/` (the esports tick data, 4.1 GB) and the pipeline that
+built it, `kaggle_sports_pipeline/`, were deleted from disk on 2026-09-29.
+Nothing in the MLB work reads them; only `research/sports/` does. To restore:
 
-* Kaggle: `marvingozo/polymarket-tick-level-orderbook-dataset`
-* The extraction that produced `polymarket_sports/` is documented in
-  `polymarket_sports/reports/run_manifest.json`
-* Then: `research/sports/build_bars.py` and `research/sports/run_resolution.py`
+* the pipeline code: `git checkout archive/kaggle-sports-pipeline -- kaggle_sports_pipeline`
+  (it was gitignored, so that branch holds the only copy)
+* the reports, audit and run manifest: `git checkout 7936a34 -- polymarket_sports/reports polymarket_sports/metadata`
+* the data: run the pipeline in a Kaggle notebook against
+  `marvingozo/polymarket-tick-level-orderbook-dataset` (see its README)
+* then: `research/sports/build_bars.py` and `research/sports/run_resolution.py`
 
 Read `polymarket_sports/reports/DATA_AUDIT.md` first — only ~12% of that
 dataset is usable and the filter matters.
@@ -131,5 +126,5 @@ dataset is usable and the filter matters.
 
 * **Rebuilding `data/jump` needs the `.xz` books, not the CSVs.** The CSVs carry
   only level 1; the 10-level grid comes from `books_*.jsonl.xz`.
-* **`data/jump` is 37 GB and `research/*/cache` is 4 GB.** Have ~55 GB free
+* **`data/jump` is 57 GB and `research/*/cache` is 4 GB.** Have ~70 GB free
   before starting step 4.

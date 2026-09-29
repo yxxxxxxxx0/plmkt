@@ -10,8 +10,8 @@
 paths:
   # Raw recordings. READ ONLY -- nothing in this study writes to these.
   raw_dirs:
-    - ../../data/live          # relative to research/jump_prediction
-    - ../../../data/live       # the recorder also wrote to the repo-root data/live
+    - ../../data/live          # relative to research/jump_prediction; every
+                               # session, August included, since 2026-09-29
   # Derived 200ms-grid datasets built by ../../jump_data.py (already verified
   # clean by ../../audit_datasets.py; see ../../FINDINGS_SERIES_KEY.md).
   grid_dir: ../../data/jump

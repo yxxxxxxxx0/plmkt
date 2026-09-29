@@ -56,7 +56,7 @@ timestamp regressions and millisecond collisions
 
 Usage:
     python verify_recording.py data/live/books_hkt0909.jsonl
-    python verify_recording.py ../data/live/books_2026-08-30.jsonl --max-lines 5000000
+    python verify_recording.py data/live/books_2026-08-30.jsonl.xz --max-lines 5000000
     python verify_recording.py data/live/*.jsonl --json report.json
 """
 from __future__ import annotations

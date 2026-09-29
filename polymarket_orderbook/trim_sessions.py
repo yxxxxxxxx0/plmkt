@@ -65,7 +65,9 @@ def trim_one(feat_path, market_types, in_game_only, drop_broken, force=False,
               each surviving batch to its own small parquet part immediately,
               and gather that batch's tensor rows from the memmap right away.
     """
-    from match_filter import PREGAME_BUFFER_S, judge_match, load_windows
+    from match_filter import (MAX_TRUNCATION_MIN, PREGAME_BUFFER_S,
+                              is_settled, judge_match, load_exclusions,
+                              load_windows)
 
     tag = os.path.basename(feat_path).replace("feat_", "").replace(
         ".parquet", "")
@@ -95,24 +97,37 @@ def trim_one(feat_path, market_types, in_game_only, drop_broken, force=False,
     broken_slugs = set()
     if drop_broken:
         lo_ts, hi_ts, mins = {}, {}, {}
-        for batch in pf.iter_batches(columns=["series", "ts"],
+        ml_last = {}        # moneyline series -> (ts, mid) of its last row
+        for batch in pf.iter_batches(columns=["series", "ts", "mid"],
                                      batch_size=batch_rows):
             series = batch.column("series").to_pylist()
             ts = batch.column("ts").to_pylist()
-            for s, t in zip(series, ts):
+            mid = batch.column("mid").to_pylist()
+            for s, t, m in zip(series, ts, mid):
                 slug = s.split("|", 1)[0]
+                if "|moneyline|" in s and t >= ml_last.get(s, (-1, None))[0]:
+                    ml_last[s] = (t, m)
                 if t > hi_ts.get(slug, -1):
                     hi_ts[slug] = t
                 if t < lo_ts.get(slug, 1 << 62):
                     lo_ts[slug] = t
                 mins.setdefault(slug, set()).add(t // 60000)
-            del series, ts, batch
+            del series, ts, mid, batch
+        # the same rule as match_filter.settled_slugs, streamed
+        settled = {s.split("|", 1)[0] for s, (_, m) in ml_last.items()
+                   if is_settled(m)}
+        excluded = load_exclusions()
         for slug in hi_ts:
             v = judge_match(windows.get(slug), lo_ts[slug], hi_ts[slug],
-                            mins[slug])
+                            mins[slug], slug=slug, excluded=excluded,
+                            settled=slug in settled)
             if not v["keep"]:
                 broken_slugs.add(slug)
                 log(f"  {tag}: excluding {slug}: {v['reason']}")
+            elif v["settled_min"] > MAX_TRUNCATION_MIN:
+                # only the matches this rule saved; shorter tails always passed
+                log(f"  {tag}: keeping {slug}: moneyline decided, data ends "
+                    f"{v['settled_min']:.1f} min before the final out")
         if broken_slugs:
             log(f"  {tag}: excluding {len(broken_slugs)} broken match(es) "
                 f"in total")

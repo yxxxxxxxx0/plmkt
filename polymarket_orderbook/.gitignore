@@ -9,6 +9,9 @@
 # ---------------------------------------------------------------------------
 data/*
 !data/game_windows.json
+# Matches too incomplete to use, with reasons (continuity_scan.py --exclusions).
+# A decision, not bulk data, so it is versioned like the window file.
+!data/excluded_matches.json
 
 # Analysis OUTPUTS are small and worth versioning -- they are the findings,
 # not bulk data. 4 MB total: the per-event CSV, the figures, and the cached
