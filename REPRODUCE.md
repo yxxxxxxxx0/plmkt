@@ -77,6 +77,16 @@ the `books_*.jsonl.xz` files are needed to rebuild the 10-level grid.
     ..\.venv\Scripts\python jump_data.py --raw data/live/books_2026-09-10.jsonl.xz
     #   ...repeat per session. This writes data/jump/feat_*.parquet and lob_*.npy
 
+    # 4a. scan the raw feeds -- both read data/live directly, and both write
+    #     into data/ (gitignored), so a fresh clone must run them
+    ..\.venv\Scripts\python continuity_scan.py data/live/books_2026-09-10.jsonl.xz
+    #   ...repeat per session, then:
+    ..\.venv\Scripts\python continuity_scan.py --exclusions   # -> data/excluded_matches.json
+    ..\.venv\Scripts\python crossed_scan.py    # ghost-level stretches -> data/crossed/
+    #     (all sessions in parallel, ~10 min). The jump marker and the
+    #     cross-market study refuse to run without it: the grid hides a crossed
+    #     book behind the last clean one, so only the raw feed can show it.
+
     # 4b. trim -- REQUIRED, and it is what applies the broken-match rule.
     #     Everything downstream reads feat_*_trimmed.parquet, and the session
     #     lists are discovered from those files, so a session that is built but
@@ -98,6 +108,14 @@ the `books_*.jsonl.xz` files are needed to rebuild the 10-level grid.
     ..\.venv\Scripts\python research/makinen/collapse_classify.py   # ROC 0.756
     ..\.venv\Scripts\python research/makinen/collapse_tree.py       # GBM 0.627
     ..\.venv\Scripts\python research/makinen/live_replay.py         # ROC 0.665
+
+    # 7. single upward jumps that break even, one plot per match (~25 min)
+    ..\.venv\Scripts\python research/makinen/test_single_jumps.py
+    ..\.venv\Scripts\python research/makinen/mark_single_jumps.py
+    #   redraw only, from the saved marks:  ... mark_single_jumps.py --from-marks
+
+    # 8. cross-market arbitrage and lead-lag (~8 min)
+    ..\.venv\Scripts\python research/makinen/cross_market_timing.py
 
 ## For the esports dataset
 

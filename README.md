@@ -4,8 +4,10 @@ Can the order book of a live sports prediction market tell you where the price
 is about to go, and can you make money from it?
 
 **Short answer: it tells you *when*, reliably, and never *which way*.** Four
-months, six recorded sessions, 75 MLB games and eight independent attacks on
-the direction problem. The detection works and pays nothing.
+months, eighteen recorded sessions, 204 MLB games and eight independent attacks
+on the direction problem. The detection works and pays nothing, and the
+moneyline, spread and total markets offer neither arbitrage nor a tradeable
+lead-lag between them (tested 2026-09-29).
 
 Start here:
 

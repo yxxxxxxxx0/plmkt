@@ -1,6 +1,6 @@
 # Research progress
 
-Polymarket in-play order-book study. Last updated 2026-09-22.
+Polymarket in-play order-book study. Last updated 2026-09-29.
 
 Companion documents: `REPRODUCE.md` (what to copy, re-download and rebuild),
 `polymarket_orderbook/results/METHODOLOGY.md` (the detection path end to end),
@@ -23,6 +23,16 @@ precision against the 71.8% the marked set requires, and nothing is
 profitable below 80% directional accuracy. Both dials are short, and the
 earlier "precision is solved" reading came from a held-out split that had
 quietly stopped being held out. That gap is the project.
+
+**2026-09-29.** Eighteen sessions and 204 games now. Marked by hand-checkable
+rules on bid and ask, 11,884 single upward jumps clear break-even at the touch
+-- but only with perfect foresight. The two cross-market ideas that needed no
+direction model are now tested and closed: there is **no usable arbitrage**
+between moneyline, spread and total, and the ~4 s lead of the moneyline over
+the others **cannot be traded**, because the slower markets' makers pull their
+quotes before the moneyline moves. Three data defects were found on the way;
+one of them (ghost orders in the recorded books) had produced the only
+arbitrage the scan found.
 
 ---
 
@@ -204,6 +214,85 @@ first number was an artefact of a stale split.
 
 ---
 
+## What changed on 2026-09-29
+
+Eighteen sessions and 204 games, up from ten and 122: 08-29 (never built
+before), 09-21 (one usable game) and 09-22 to 09-27 are now in. Matches that
+lost too much feed are excluded by `continuity_scan.py`, which measures
+silences on the feed itself rather than minute coverage.
+
+### 1. Every single upward jump that breaks even, one plot per match
+
+`research/makinen/mark_single_jumps.py` → `results/makinen/single_jumps/`.
+Justin asked for the break-even upward jumps marked off the price graph, each
+one a single jump and never two glued together, except two jumps across which
+the microstructure did not change, drawn differently.
+
+* **Everything on bid and ask, never the mid.** On almost every pitch the
+  makers pull, the spread blows out to 40–90 ticks and comes back; the mid
+  spikes and nothing tradeable moves.
+* **A jump** is the move between two levels the market sat at: a quoted
+  plateau (bid and ask each within a cent for ≥ 5 s, book not blown out), or a
+  bid resting part-way up while the ask flickers — a price a long could have
+  sold at, so it ends the first jump. A still, emptied book mid-jump does not.
+* **Break-even**: buy the ask standing as the jump began, sell a bid that
+  stood ≥ 1 s on the new level, fee on both legs, ≥ $10 on the touch at both
+  ends. That needs about **3¢ from ask paid to bid sold** at mid-range prices
+  (4–5¢ of chart move including the spread), 1–2¢ near 10¢ or 90¢.
+* **Combined marks** (orange) are two jumps with the book in one regime
+  throughout and a pause ≤ 30 s, where neither alone pays.
+
+| | |
+|---|---|
+| single jumps that break even | **11,445** |
+| combined | **439** |
+| median gain, ask paid → bid sold | 4 ticks (2.5 net of fees) |
+| clearing by under 1 tick | 29% |
+| median time for a jump to settle | 17.6 s |
+| all of them at $10, perfect foresight | $15,771 |
+
+Every rule came from looking at the marks: the first pass split real jumps at
+still empty books, merged two moves across a bid rest, and counted 7-minute
+calm pauses as one move. Ten synthetic-book tests pin the rules
+(`test_single_jumps.py`).
+
+**Not comparable with the 2026-09-22 oracle set.** That set (1,806 break-even
+jumps on ten sessions) had to exit within 10 s of the first 2-tick mid move;
+the median jump here takes 17.6 s to settle, so most real jumps were cut off
+before they paid. The new set is a different, less restrictive definition, and
+**the selector and precision figures above (34.2% against 71.8%) have not
+been re-measured on it.**
+
+### 2. Cross-market arbitrage — closed
+
+`research/makinen/cross_market_timing.py` → `results/makinen/cross_market/`.
+Every recorded token is the YES side of its own market, so the implications
+are exact: Over 9.5 ⇒ 8.5 ⇒ 7.5; team by 3+ ⇒ by 2+ ⇒ wins; the two teams
+cannot both cover. Checked every 200 ms of 204 games for a violation standing
+≥ 1 s with $10 on both legs, net of fees on both: **42, all at 0.2–4¢ in
+decided games, $1.33 in total**, most likely a tick-size floor. The one large
+hit was a ghost order (defect 14 below).
+
+### 3. Cross-market lead-lag — real, not tradeable
+
+18,280 matched repricings (the pairing is confirmed: a same-team spread moves
+with the moneyline 99.6% of the time within 10 s, an other-team spread against
+it 99.7%).
+
+| | spread | total |
+|---|---|---|
+| reprices after the moneyline, median | +4.0 s | +4.0 s |
+| middle half | +0.4 to +8.4 s | +0.6 to +8.0 s |
+| makers' quote pull vs the moneyline's | −2.0 s | −2.0 s |
+
+The lag grows with the move: 2.6 s for 3–5¢, 7.4 s above 20¢. But the slower
+books are already pulled when the lag opens. Buying the slower market 0.2–2 s
+after the moneyline reprices loses a median **7–9¢ a share**; a still-quoted
+laggard exists in about 1% of events and loses 0.5–4¢ there too. Clocks are
+the exchange's, so a real follower would be later still.
+
+---
+
 ## Data and method defects found (do not repeat)
 
 These cost more time than the modelling did, and every one produced a
@@ -254,6 +343,31 @@ convincing false positive first.
     nothing announced it. Every selector score published between those two
     dates was fitted on the future of its own test period. The split is now
     derived as the last two sessions present, so it cannot go stale again.
+12. **Recording holes too short for the coverage test** (found 2026-09-29).
+    On `books_2026-08-30` eight games lost 8–27 minutes in sub-minute holes and
+    still passed at ≥ 90% minute coverage, because a few stray updates make a
+    minute look live. `continuity_scan.py` measures silences on the whole
+    match stream; matches are excluded through `data/excluded_matches.json`
+    and any jump touching a > 5 s silence is dropped.
+13. **An entry rule that threw away the biggest jumps** (found 2026-09-29, by
+    Justin, from a gap in a match plot). The marker bought in the last 200 ms
+    before a move and required $10 there — but that is exactly when the offer
+    is being lifted. pit-stl 08-29, moneyline 0.63 → 0.86: $143 on the offer a
+    second before, under $10 in the final slot, so rejected. Entry is now the
+    latest slot in the level's last 5 s that could fill; 1,437 marks came
+    back, and jumps of 20+ ticks rose 16%.
+14. **Ghost orders in the recorded books** (found 2026-09-29). When the
+    recorder misses a removal, the level stays in our copy. `jump_data.py`
+    drops every crossed record (`asks[0][0] <= bids[0][0]`) and forward-fills
+    the last uncrossed book, so a ghost looks like an ordinary, slightly stale
+    price; the continuity scan cannot see it because records keep arriving.
+    It manufactured a 7.6¢ Over 8.5 / Over 7.5 "arbitrage" on ari-sf 08-29
+    (Over 7.5 ask frozen at 0.52 while its own bid traded to 0.66).
+    `crossed_scan.py` reads the raw feed: 349 stretches crossed for > 1 s,
+    about 23 hours of contract-time. Everything touching one is excluded. The
+    9,380 crossings that clear within the same exchange millisecond are
+    harmless message ordering; excluding those too wrongly removed 676 real
+    moneyline jumps, so they are not.
 
 The standing rule that came out of this: **plot the price and compute a
 model-free oracle bound before believing any model score**, and treat a result
@@ -274,13 +388,15 @@ the integrity audit, which had never been run on 09-18/19/20.
 | 2026-09-18 | built; 15/15 GOOD, 0 re-seeds; integrity PASS |
 | 2026-09-19 | built; **slate-wide 113–136 s outage on all 15 matches**; `det-cws` covered for only 60% of its game and is now excluded; integrity PASS |
 | 2026-09-20 | built; 15/15 GOOD, 0 re-seeds; integrity PASS |
-| 2026-09-21 | **1 usable game of 3.** The 21:50 Z run connected, seeded and streamed nothing for 3 h 43 m; the restart at 01:33 Z arrived 32 min after `wsh-det` ended and 20 min before `tor-bal` did. Only `min-sf` is complete. Not built. |
+| 2026-09-21 | **1 usable game of 3.** The 21:50 Z run connected, seeded and streamed nothing for 3 h 43 m; the restart at 01:33 Z arrived 32 min after `wsh-det` ended and 20 min before `tor-bal` did. Only `min-sf` is complete. **Built 2026-09-29 with that one game.** |
+| 2026-09-22 to 09-27 | **built 2026-09-29**: 14, 2, 12, 15, 13 and 13 usable games after the continuity exclusions. `audit_datasets.py` not yet re-run on these six. |
 | 2026-09-16 (partial daytime run) | **deleted 2026-09-21** — 2 hours only, never used |
-| 2026-08-29 | recorded (685 MB), 15 games, clean in the 2026-09-15 QC report, **never built** — no reason on record |
+| 2026-08-29 | recorded (685 MB), 15 games; **built 2026-09-29**, 15 usable games |
 | 2026-08-27 | recorded (300 MB), 7 games, filename is `books_2026-08-27.jsonl.jsonl.xz` so globs miss it; poor integrity (560 crossed, 5,028 locked books) — treat as suspect |
 
-Ten sessions and 122 games are behind the numbers below, up from six sessions
-and 118 games. 2026-08-29 remains the cheapest unexploited night on disk.
+Eighteen sessions and 204 games are behind the 2026-09-29 numbers; the
+2026-09-22 selector figures rest on the ten sessions and 122 games of that
+date. All recordings now live in `polymarket_orderbook/data/live/`.
 
 Immediate housekeeping: ~60 GB of 09-18/19/20 is still uncompressed, and the
 2026-09-21 recorder failure has no alarm attached to it — `watchdog.log` begins
@@ -292,17 +408,20 @@ Immediate housekeeping: ~60 GB of 09-18/19/20 is still uncompressed, and the
 
 Ranked by what the evidence actually supports.
 
-1. **Re-measure the direction requirement on ten sessions.** The only operating
+1. **Re-measure the direction requirement — now on eighteen sessions, and on
+   the 2026-09-29 break-even set as well as the old one.** The only operating
    point where the gap is small rests on 33 trades over two held-out sessions,
    with one game supplying 37% of the P&L at the next cut down. That is not a
    sample anyone can conclude from. Doubling the held-out data is the single
    highest-value next step and requires no new ideas.
 
-2. **Cross-market consistency.** Moneyline, run line and total on the same game
-   must cohere; any inconsistency is a fair value needing no latency edge and
-   no direction model. All three are recorded on one clock. **Never tested.**
-   `crossmarket.py` exists but predates the series-key fix and must be repaired
-   first.
+2. ~~Cross-market consistency.~~ **Tested and closed 2026-09-29** — no usable
+   arbitrage, and the lead-lag cannot be traded (see above). What it left
+   behind is a question rather than a trade: the slower markets' makers pull
+   a median 2 s *before* the moneyline reprices, so they appear to react to
+   the game itself. Timing those pulls against the MLB play-by-play
+   (`results/makinen/mlb_plays/`) would say whether anyone sees an event before
+   the price moves.
 
 3. **Signed trade flow — and it is already recorded.** The ledger said this
    was not being captured; that was wrong, found on 2026-09-21.
@@ -332,6 +451,16 @@ untested directions are all about **knowing what a contract is worth**, not when
 it will move.
 
 ---
+
+## Reproducing the 2026-09-29 work
+
+```bash
+cd polymarket_orderbook
+python crossed_scan.py                                # ghost orders, from the raw feed
+python research/makinen/test_single_jumps.py
+python research/makinen/mark_single_jumps.py          # marks + one plot per match
+python research/makinen/cross_market_timing.py        # arbitrage and lead-lag
+```
 
 ## Reproducing the 2026-09-21 work
 
