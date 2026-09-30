@@ -5,14 +5,16 @@ A GAME PANEL puts every recorded YES market of one game on the shared 200 ms clo
     mid[k, s]   float32 (NaN where the market has no row)
 plus per-market meta (role, line, orientation, normal spread) and the slots where each marked jump starts.
 
-The TARGET is "a large upward YES jump starts on market k between t+H_LO and t+H_HI". H_LO defaults
-to 2 s because Polymarket delays marketable orders on live sports markets (reported 1-3 s): a signal
-with less lead than that cannot be traded as a taker.
+The TARGET is "a large upward YES jump starts on market k more than H_LO_MS and at most H_HI_MS after
+t" (default 200 ms .. 5 s). Samples are taken every EVERY_MS (default 200 ms, so a 200 ms lead is not
+lost between samples). All three are environment settings, e.g. XM_H_LO_MS=2000 XM_H_HI_MS=8000.
 
-Every method is scored by `report()`: trade at the first second a market's score clears the cut,
-then stay out 10 s on that market; buy the YES ask DELAY after the signal, sell the bid once the book
-has been quoted and still for 3 s (at least 5 s after entry). Output is the table Justin asked for:
-trades, how many became large jumps, the rest, P&L per trade, and the break-even count.
+Every method is scored by `report()`: trade at the first sample a market's score clears the cut,
+then stay out 10 s on that market; buy the YES ask after each fill delay in DELAYS_MS (default 0.2 s,
+1 s, 3 s -- Polymarket reportedly holds marketable orders on live sports markets for 1-3 s), sell the
+bid once the book has been quoted and still for 3 s (at least 5 s after entry). Output is the table
+Justin asked for: trades, how many became large jumps, the rest, and P&L per trade and break-even
+count at each delay.
 """
 from __future__ import annotations
 
@@ -29,11 +31,13 @@ MARKS = os.path.join(ROOT, 'results', 'makinen', 'single_jumps', 'marks.csv')
 os.makedirs(CACHE, exist_ok=True); os.makedirs(OUT, exist_ok=True)
 
 GRID = 200
-EVERY = 5                    # one sample per second
+_ms = lambda name, default: int(os.environ.get(name, default)) // GRID
+EVERY = max(1, _ms('XM_EVERY_MS', 200))       # sample spacing, in slots
+H_LO, H_HI = _ms('XM_H_LO_MS', 200), _ms('XM_H_HI_MS', 5000)   # label: jump starts in (t+H_LO, t+H_HI]
+DELAYS = [int(d) // GRID for d in os.environ.get('XM_DELAYS_MS', '200,1000,3000').split(',')]
 HIST = 100                   # 20 s of history for the sequence models
-H_LO, H_HI = 10, 40          # label window: jump starts in (t+2 s, t+8 s]
 DEBOUNCE = 50                # 10 s between trades on one market
-DELAY = 5                    # entry 1 s after the signal (taker delay)
+NEG_SCALE = EVERY / 5        # keeps the number of sampled negatives the same whatever the spacing
 MINHOLD, STABLE, TIMEOUT = 25, 15, 450
 STAKE, FEE = 10.0, 0.05
 TEST_FROM = 'books_2026-09-21'
@@ -179,10 +183,10 @@ def seq_batch(pan, ks, ts):
 # evaluation: debounced trades on the full test grid, priced from the panel's top of book
 # --------------------------------------------------------------------------------------------
 
-def price_trade(pan, k, t):
+def price_trade(pan, k, t, delay):
     bid, ask, spr = bid_ask(pan, k)
     meta = pan['meta'][k]; cut = meta['norm'] + max(2, meta['norm'])
-    e = t + DELAY; S = len(bid)
+    e = t + delay; S = len(bid)
     if e >= S or not np.isfinite(ask[e]): return np.nan
     if np.expm1(float(pan['P'][k, e, 5])) < STAKE: return np.nan                # < $10 at the best ask
     q = np.isfinite(spr) & (spr <= cut)
@@ -213,25 +217,27 @@ def report(name, R, cuts=(5, 1, 0.5, 0.25, 0.1), panels=None, days=None):
                 if t - last >= DEBOUNCE:
                     trades.append((sess, slug, k, t, yl, ym)); last = t
         T = pd.DataFrame(trades, columns=['sess', 'slug', 'k', 't', 'y_large', 'y_mark'])
-        if panels is not None and len(T):
-            pn = []
-            for (sess, slug), g in T.groupby(['sess', 'slug']):
-                pan = panels(sess, slug)
-                pn += [(i, price_trade(pan, k, t)) for i, k, t in zip(g.index, g.k, g.t)]
-            T['pnl'] = pd.Series(dict(pn))
-        else:
-            T['pnl'] = np.nan
         nl = int(T.y_large.sum()) if len(T) else 0
-        win, loss = T[T.y_large == 1].pnl.mean(), T[T.y_large == 0].pnl.mean()
-        # share of trades that must be large to break even; undefined unless large trades win and the rest lose
-        be = -loss / (win - loss) if np.isfinite(win) and np.isfinite(loss) and win > 0 > loss else np.nan
-        rows.append(dict(method=name, cut=f'top {q}%', trades=len(T), trades_per_day=len(T) / days, large=nl,
-                         large_pct=nl / max(len(T), 1), rest=len(T) - nl, pnl_per_trade=T.pnl.mean(),
-                         pnl_large=win, pnl_rest=loss, breakeven_pct=be,
-                         breakeven_count=int(np.ceil(be * len(T))) if np.isfinite(be) else np.nan))
+        row = dict(method=name, cut=f'top {q}%', trades=len(T), trades_per_day=len(T) / days, large=nl,
+                   large_pct=nl / max(len(T), 1), rest=len(T) - nl)
+        for d in DELAYS:
+            tag = f'{d * GRID / 1000:g}s'
+            pnl = pd.Series(np.nan, index=T.index)
+            if panels is not None and len(T):
+                for (sess, slug), g in T.groupby(['sess', 'slug']):
+                    pan = panels(sess, slug)
+                    pnl[g.index] = [price_trade(pan, k, t, d) for k, t in zip(g.k, g.t)]
+            win, loss = pnl[T.y_large == 1].mean(), pnl[T.y_large == 0].mean()
+            # share of trades that must be large to break even; undefined unless large trades win and the rest lose
+            be = -loss / (win - loss) if np.isfinite(win) and np.isfinite(loss) and win > 0 > loss else np.nan
+            row.update({f'pnl_{tag}': pnl.mean(), f'pnl_large_{tag}': win, f'pnl_rest_{tag}': loss,
+                        f'breakeven_count_{tag}': int(np.ceil(be * len(T))) if np.isfinite(be) else np.nan})
+        rows.append(row)
     out = pd.DataFrame(rows)
-    with pd.option_context('display.width', 200):
-        print(out.round(3).to_string(index=False))
+    print(f'target: large upward YES jump starting {H_LO * GRID / 1000:g}-{H_HI * GRID / 1000:g} s after the signal; '
+          f'P&L at fill delays {", ".join(f"{d * GRID / 1000:g}s" for d in DELAYS)}')
+    with pd.option_context('display.width', 250, 'display.max_columns', 40):
+        print(out.round(2).to_string(index=False))
     return out
 
 

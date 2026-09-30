@@ -2,16 +2,17 @@
 
 Train: every train-session game panel is held in memory; negatives are subsampled (NEG) and all
 positives kept; 10% of train games are held out for early stopping on average precision.
-Test: every second of every test game is scored (needed for debounced trades), game by game.
+Test: every sample (default every 200 ms) of every test game is scored, game by game -- needed so
+the debounced trades are the ones a live system would have taken.
 """
 import os, sys, time
 import numpy as np, pandas as pd, torch, torch.nn as nn
 from sklearn.metrics import average_precision_score, roc_auc_score
-from common import (list_panels, load_panel, samples, is_test, seq_batch, game_state, yes_bats, GAME_FEATS,
+from common import (list_panels, load_panel, samples, is_test, seq_batch, game_state, yes_bats, GAME_FEATS, NEG_SCALE,
                     GRID, report, save_report, PanelCache, K_MAX, HIST, SEQ_CH)
 
 torch.set_num_threads(max(1, os.cpu_count() - 2))
-NEG = 0.01
+NEG = 0.01 * NEG_SCALE
 
 
 def game_vec(pan, ks, ts):
