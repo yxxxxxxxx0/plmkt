@@ -834,3 +834,77 @@ mlb-tex-mil-2026-08-30,823740,9,top,True,1788125382828.0,1788125428076.0,False,T
 mlb-tex-mil-2026-08-30,823740,9,bottom,False,1788125579856.0,1788125608823.0,False,True,Flyout,7,4,Jake Bauers flies out to left fielder Wyatt Langford.
 mlb-tex-mil-2026-08-30,823740,9,bottom,False,1788125627340.0,1788125719250.0,False,True,Flyout,7,4,Jackson Chourio flies out to left fielder Wyatt Langford.
 mlb-tex-mil-2026-08-30,823740,9,bottom,False,1788125737270.0,1788125827868.0,False,True,Strikeout,7,4,Christian Yelich strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,1,top,True,1788120336761.0,1788120450655.0,False,True,Strikeout,0,0,Blaze Alexander called out on strikes.
+mlb-bal-oak-2026-08-30,824959,1,top,True,1788120453714.0,1788120535526.0,False,True,Groundout,0,0,"Pete Alonso grounds out, shortstop Alika Williams to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,1,top,True,1788120543467.0,1788120601024.0,True,False,Home Run,1,0,Gunnar Henderson homers (21) on a line drive to center field.
+mlb-bal-oak-2026-08-30,824959,1,top,True,1788120599931.0,1788120698265.0,False,True,Strikeout,1,0,Coby Mayo strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788120804828.0,1788120844659.0,False,False,Single,1,0,Henry Bolte singles on a line drive to left fielder Christian Franklin.
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788120849924.0,1788121011152.0,False,True,Strikeout,1,0,Jeff McNeil strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788121022399.0,1788121124416.0,False,False,Walk,1,0,Zack Gelof walks. Henry Bolte to 2nd.
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788121129023.0,1788121194891.0,True,False,Double,1,2,Lawrence Butler doubles (16) on a sharp line drive to right fielder Leody Taveras. Henry Bolte scores. Zack Gelof scores
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788121256380.0,1788121322531.0,False,True,Groundout,1,2,Donovan Walton grounds out to first baseman Coby Mayo. Lawrence Butler to 3rd.
+mlb-bal-oak-2026-08-30,824959,1,bottom,False,1788121335191.0,1788121401046.0,False,True,Flyout,1,2,Tommy White flies out to center fielder Colton Cowser.
+mlb-bal-oak-2026-08-30,824959,2,top,True,1788121493450.0,1788121559114.0,False,True,Flyout,1,2,Christian Encarnacion-Strand flies out to right fielder Lawrence Butler.
+mlb-bal-oak-2026-08-30,824959,2,top,True,1788121564720.0,1788121683976.0,False,True,Strikeout,1,2,Leody Taveras strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,2,top,True,1788121688155.0,1788121788664.0,False,True,Groundout,1,2,"Christian Franklin grounds out, pitcher Jeffrey Springs to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788121891454.0,1788122026744.0,False,True,Strikeout,1,2,Carlos Cortes strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122030603.0,1788122130948.0,False,False,Single,1,2,Brian Serven singles on a line drive to left fielder Christian Franklin.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122140570.0,1788122204061.0,False,True,Strikeout,1,2,Alika Williams strikes out on a foul tip.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122207471.0,1788122294777.0,False,False,Single,1,2,Henry Bolte singles on a ground ball to shortstop Gunnar Henderson. Brian Serven to 2nd.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122315607.0,1788122358912.0,True,False,Double,1,3,Jeff McNeil doubles (19) on a sharp line drive to right fielder Leody Taveras. Brian Serven scores. Henry Bolte to 3rd.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122367770.0,1788122563266.0,False,False,Walk,1,3,Zack Gelof walks.
+mlb-bal-oak-2026-08-30,824959,2,bottom,False,1788122613759.0,1788122711654.0,False,True,Groundout,1,3,"Lawrence Butler grounds out, shortstop Gunnar Henderson to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,3,top,True,1788122850310.0,1788122932260.0,False,True,Groundout,1,3,"Carlos Narváez grounds out, third baseman Zack Gelof to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,3,top,True,1788122963575.0,1788123074418.0,False,True,Strikeout,1,3,Colton Cowser called out on strikes.
+mlb-bal-oak-2026-08-30,824959,3,top,True,1788123076820.0,1788123132899.0,False,True,Groundout,1,3,"Blaze Alexander grounds out, third baseman Zack Gelof to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,3,bottom,False,1788123268255.0,1788123278139.0,False,True,Groundout,1,3,Donovan Walton grounds out to first baseman Coby Mayo.
+mlb-bal-oak-2026-08-30,824959,3,bottom,False,1788123284545.0,1788123331997.0,False,False,Double,1,3,Tommy White doubles (5) on a fly ball to right fielder Leody Taveras.
+mlb-bal-oak-2026-08-30,824959,3,bottom,False,1788123340180.0,1788123434159.0,False,True,Groundout,1,3,"Carlos Cortes grounds out, second baseman Blaze Alexander to first baseman Coby Mayo. Tommy White to 3rd."
+mlb-bal-oak-2026-08-30,824959,3,bottom,False,1788123446501.0,1788123557340.0,True,False,Home Run,1,5,Brian Serven homers (5) on a fly ball to right center field. Tommy White scores.
+mlb-bal-oak-2026-08-30,824959,3,bottom,False,1788123560741.0,1788123599849.0,False,True,Groundout,1,5,"Alika Williams grounds out, third baseman Christian Encarnacion-Strand to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788123693047.0,1788123792876.0,False,False,Single,1,5,Pete Alonso singles on a line drive to center fielder Henry Bolte.
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788123800124.0,1788123941789.0,False,False,Single,1,5,Gunnar Henderson singles on a ground ball to third baseman Zack Gelof. Pete Alonso to 2nd.
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788123957252.0,1788124072830.0,True,False,Home Run,4,5,Coby Mayo homers (19) on a line drive to left center field. Pete Alonso scores. Gunnar Henderson scores.
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788124075468.0,1788124175167.0,False,True,Flyout,4,5,Christian Encarnacion-Strand flies out to center fielder Henry Bolte.
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788124178554.0,1788124260906.0,False,True,Strikeout,4,5,Leody Taveras strikes out on a foul tip.
+mlb-bal-oak-2026-08-30,824959,4,top,True,1788124264339.0,1788124328043.0,False,True,Groundout,4,5,"Christian Franklin grounds out softly, pitcher Jeffrey Springs to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,4,bottom,False,1788124441099.0,1788124576125.0,False,True,Strikeout,4,5,Henry Bolte strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,4,bottom,False,1788124581315.0,1788124624427.0,False,True,Groundout,4,5,Jeff McNeil grounds out to first baseman Coby Mayo.
+mlb-bal-oak-2026-08-30,824959,4,bottom,False,1788124637824.0,1788124677292.0,False,True,Groundout,4,5,"Zack Gelof grounds out, shortstop Gunnar Henderson to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788124791208.0,1788124868037.0,False,True,Flyout,4,5,Carlos Narváez flies out to left fielder Carlos Cortes.
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788124877506.0,1788124943216.0,False,True,Strikeout,4,5,Colton Cowser strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788124946539.0,1788125039040.0,False,False,Single,4,5,Blaze Alexander singles on a ground ball to second baseman Donovan Walton.
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788125110968.0,1788125331875.0,False,False,Walk,4,5,Pete Alonso walks. Blaze Alexander to 2nd.
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788125327785.0,1788125539422.0,True,False,Home Run,7,5,Gunnar Henderson homers (22) on a fly ball to right field. Blaze Alexander scores. Pete Alonso scores.
+mlb-bal-oak-2026-08-30,824959,5,top,True,1788125683316.0,1788125755831.0,False,True,Strikeout,7,5,Coby Mayo strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,5,bottom,False,1788125864345.0,1788126051392.0,False,False,Walk,7,5,Lawrence Butler walks.
+mlb-bal-oak-2026-08-30,824959,5,bottom,False,1788126055315.0,1788126205008.0,False,True,Grounded Into DP,7,5,"Donovan Walton grounds into a double play, shortstop Gunnar Henderson to first baseman Coby Mayo. Lawrence Butler out at"
+mlb-bal-oak-2026-08-30,824959,5,bottom,False,1788126220357.0,1788126289318.0,False,True,Flyout,7,5,Tommy White flies out to center fielder Colton Cowser.
+mlb-bal-oak-2026-08-30,824959,6,top,True,1788126387244.0,1788126469502.0,False,True,Strikeout,7,5,Christian Encarnacion-Strand strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,6,top,True,1788126474309.0,1788126603480.0,False,True,Strikeout,7,5,Leody Taveras called out on strikes.
+mlb-bal-oak-2026-08-30,824959,6,top,True,1788126605789.0,1788126758796.0,False,True,Strikeout,7,5,Christian Franklin strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,6,bottom,False,1788126872701.0,1788126942288.0,False,True,Groundout,7,5,"Carlos Cortes grounds out, shortstop Gunnar Henderson to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,6,bottom,False,1788126951182.0,1788126997001.0,False,True,Groundout,7,5,"Brian Serven grounds out, second baseman Blaze Alexander to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,6,bottom,False,1788127004373.0,1788127128057.0,False,False,Single,7,5,Alika Williams singles on a sharp line drive to center fielder Colton Cowser.
+mlb-bal-oak-2026-08-30,824959,6,bottom,False,1788127272779.0,1788127299820.0,False,True,Groundout,7,5,"Henry Bolte grounds out, shortstop Gunnar Henderson to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,7,top,True,1788127453040.0,1788127579141.0,False,True,Strikeout,7,5,Carlos Narváez strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,7,top,True,1788127582466.0,1788127731027.0,False,True,Groundout,7,5,Colton Cowser grounds out to first baseman Tommy White.
+mlb-bal-oak-2026-08-30,824959,7,top,True,1788127735424.0,1788127801448.0,False,True,Groundout,7,5,"Blaze Alexander grounds out, third baseman Zack Gelof to first baseman Tommy White."
+mlb-bal-oak-2026-08-30,824959,7,bottom,False,1788127904921.0,1788127979149.0,False,True,Lineout,7,5,Jeff McNeil lines out to shortstop Gunnar Henderson.
+mlb-bal-oak-2026-08-30,824959,7,bottom,False,1788127988319.0,1788128108547.0,False,True,Strikeout,7,5,Zack Gelof called out on strikes.
+mlb-bal-oak-2026-08-30,824959,7,bottom,False,1788128111393.0,1788128223165.0,False,True,Strikeout,7,5,Lawrence Butler strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,8,top,True,1788128353845.0,1788128403211.0,False,False,Hit By Pitch,7,5,Pete Alonso hit by pitch.
+mlb-bal-oak-2026-08-30,824959,8,top,True,1788128497916.0,1788128641856.0,True,False,Triple,8,5,Gunnar Henderson triples (5) on a sharp ground ball to center fielder Henry Bolte. Jackson Holliday scores.
+mlb-bal-oak-2026-08-30,824959,8,top,True,1788128678472.0,1788128852222.0,False,True,Pop Out,8,5,Coby Mayo pops out to shortstop Alika Williams.
+mlb-bal-oak-2026-08-30,824959,8,top,True,1788128867195.0,1788128988319.0,False,True,Strikeout,8,5,Christian Encarnacion-Strand strikes out swinging.
+mlb-bal-oak-2026-08-30,824959,8,top,True,1788129056249.0,1788129147971.0,False,True,Pop Out,8,5,Leody Taveras pops out to shortstop Alika Williams.
+mlb-bal-oak-2026-08-30,824959,8,bottom,False,1788129293053.0,1788129419305.0,False,True,Groundout,8,5,"Michael Stefanic grounds out, second baseman Blaze Alexander to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,8,bottom,False,1788129427674.0,1788129506199.0,False,True,Strikeout,8,5,Tommy White called out on strikes.
+mlb-bal-oak-2026-08-30,824959,8,bottom,False,1788129531671.0,1788129615861.0,False,False,Single,8,5,Max Muncy singles on a ground ball to left fielder Christian Franklin.
+mlb-bal-oak-2026-08-30,824959,8,bottom,False,1788129626156.0,1788129650695.0,False,True,Lineout,8,5,Brian Serven lines out to left fielder Christian Franklin.
+mlb-bal-oak-2026-08-30,824959,9,top,True,1788129778109.0,1788129819920.0,False,True,Lineout,8,5,Dylan Beavers lines out to left fielder Zack Gelof.
+mlb-bal-oak-2026-08-30,824959,9,top,True,1788129822815.0,1788129923520.0,False,True,Strikeout,8,5,Carlos Narváez called out on strikes.
+mlb-bal-oak-2026-08-30,824959,9,top,True,1788129926466.0,1788129954690.0,False,True,Lineout,8,5,Colton Cowser lines out to right fielder Lawrence Butler.
+mlb-bal-oak-2026-08-30,824959,9,bottom,False,1788130087827.0,1788130163644.0,False,True,Lineout,8,5,Jonah Heim lines out to center fielder Colton Cowser.
+mlb-bal-oak-2026-08-30,824959,9,bottom,False,1788130167558.0,1788130269520.0,False,True,Groundout,8,5,"Henry Bolte grounds out, third baseman Christian Encarnacion-Strand to first baseman Coby Mayo."
+mlb-bal-oak-2026-08-30,824959,9,bottom,False,1788130279007.0,1788130303400.0,False,True,Flyout,8,5,Jeff McNeil flies out to left fielder Dylan Beavers.

@@ -1,0 +1,66 @@
+slug,gamePk,inning,half,is_top,start_ms,end_ms,is_scoring,has_out,event,away_score,home_score,description
+mlb-min-sf-2026-09-21,823169,1,top,True,1790041563559.0,1790041605759.0,False,True,Flyout,0,0,Walker Jenkins flies out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-21,823169,1,top,True,1790041605702.0,1790041638788.0,False,True,Flyout,0,0,Luke Keaschall flies out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-21,823169,1,top,True,1790041641699.0,1790041670221.0,False,True,Groundout,0,0,"Brooks Lee grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790041766201.0,1790041878583.0,False,False,Single,0,0,Drew Gilbert singles on a ground ball to third baseman Brooks Lee.
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790041880692.0,1790041961369.0,False,True,Strikeout,0,0,Jonah Cox strikes out swinging.
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790041961133.0,1790042179452.0,False,False,Single,0,0,Bo Davidson singles on a sharp line drive to right fielder Luke Keaschall. Drew Gilbert to 3rd.
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790042181347.0,1790042338617.0,False,True,Strikeout,0,0,Marcelo Mayer called out on strikes. Bo Davidson steals (1) 2nd base.
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790042342660.0,1790042487831.0,True,False,Single,0,2,Brett Harris singles on a ground ball to center fielder Walker Jenkins. Drew Gilbert scores. Bo Davidson scores.
+mlb-min-sf-2026-09-21,823169,1,bottom,False,1790042558525.0,1790042583239.0,False,True,Groundout,0,2,"Drew Cavanaugh grounds out, second baseman Kody Clemens to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-21,823169,2,top,True,1790042622903.0,1790042760391.0,False,True,Flyout,0,2,Kody Clemens flies out to left fielder Scott Bandura.
+mlb-min-sf-2026-09-21,823169,2,top,True,1790042759824.0,1790042871622.0,False,True,Strikeout,0,2,Ryan Jeffers called out on strikes.
+mlb-min-sf-2026-09-21,823169,2,top,True,1790042879812.0,1790043096658.0,False,False,Single,0,2,Alan Roden singles on a ground ball to right fielder Bo Davidson.
+mlb-min-sf-2026-09-21,823169,2,top,True,1790043095387.0,1790043198410.0,False,True,Strikeout,0,2,Aaron Sabato strikes out swinging.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043318873.0,1790043373031.0,False,False,Single,0,2,Osleivis Basabe singles on a ground ball to shortstop Ryan Kreidler.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043380246.0,1790043475775.0,False,True,Strikeout,0,2,Scott Bandura strikes out on a foul tip.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043477349.0,1790043553601.0,False,False,Double,0,2,Christian Koss doubles (6) on a sharp line drive to left fielder Emmanuel Rodriguez. Osleivis Basabe to 3rd.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043562122.0,1790043754756.0,True,False,Single,0,4,Drew Gilbert singles on a line drive to left fielder Emmanuel Rodriguez. Osleivis Basabe scores. Christian Koss scores.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043758370.0,1790043909911.0,False,True,Strikeout,0,4,Jonah Cox strikes out swinging.
+mlb-min-sf-2026-09-21,823169,2,bottom,False,1790043911237.0,1790044011110.0,False,True,Groundout,0,4,"Bo Davidson grounds out, shortstop Ryan Kreidler to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-21,823169,3,top,True,1790044051356.0,1790044183144.0,False,True,Strikeout,0,4,Emmanuel Rodriguez strikes out swinging.
+mlb-min-sf-2026-09-21,823169,3,top,True,1790044185395.0,1790044270118.0,False,True,Groundout,0,4,"Ryan Kreidler grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,3,top,True,1790044272722.0,1790044376813.0,False,False,Single,0,4,Walker Jenkins singles on a ground ball to center fielder Drew Gilbert.
+mlb-min-sf-2026-09-21,823169,3,top,True,1790044376160.0,1790044511563.0,False,True,Strikeout,0,4,Luke Keaschall strikes out swinging.
+mlb-min-sf-2026-09-21,823169,3,bottom,False,1790044535763.0,1790044734586.0,False,True,Strikeout,0,4,Marcelo Mayer strikes out swinging.
+mlb-min-sf-2026-09-21,823169,3,bottom,False,1790044734853.0,1790044764102.0,False,True,Flyout,0,4,Brett Harris flies out to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-21,823169,3,bottom,False,1790044763461.0,1790044837831.0,False,True,Groundout,0,4,Drew Cavanaugh grounds out to first baseman Aaron Sabato.
+mlb-min-sf-2026-09-21,823169,4,top,True,1790044871141.0,1790045078178.0,True,False,Home Run,1,4,"Umpire reviewed (home run), call on the field was upheld: Brooks Lee homers (24) on a fly ball to right center field."
+mlb-min-sf-2026-09-21,823169,4,top,True,1790045079728.0,1790045194271.0,False,True,Flyout,1,4,Kody Clemens flies out to left fielder Scott Bandura.
+mlb-min-sf-2026-09-21,823169,4,top,True,1790045194073.0,1790045637735.0,False,True,Strikeout,1,4,Ryan Jeffers strikes out swinging.
+mlb-min-sf-2026-09-21,823169,4,top,True,1790045638868.0,1790045708772.0,False,True,Groundout,1,4,"Alan Roden grounds out, first baseman Brett Harris to pitcher Tristan Beck."
+mlb-min-sf-2026-09-21,823169,4,bottom,False,1790045761322.0,1790045855972.0,False,True,Groundout,1,4,"Osleivis Basabe grounds out, third baseman Brooks Lee to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-21,823169,4,bottom,False,1790045859211.0,1790045994773.0,False,True,Strikeout,1,4,Scott Bandura strikes out swinging.
+mlb-min-sf-2026-09-21,823169,4,bottom,False,1790045994819.0,1790046078651.0,False,True,Strikeout,1,4,Christian Koss called out on strikes.
+mlb-min-sf-2026-09-21,823169,5,top,True,1790046103293.0,1790046217144.0,False,True,Flyout,1,4,Aaron Sabato flies out to center fielder Drew Gilbert.
+mlb-min-sf-2026-09-21,823169,5,top,True,1790046216236.0,1790046335326.0,False,True,Groundout,1,4,"Emmanuel Rodriguez grounds out, pitcher Tristan Beck to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,5,top,True,1790046336977.0,1790046448553.0,False,True,Groundout,1,4,"Ryan Kreidler grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,5,bottom,False,1790046550413.0,1790046602492.0,True,False,Home Run,1,5,Drew Gilbert homers (11) on a line drive to right field.
+mlb-min-sf-2026-09-21,823169,5,bottom,False,1790046594044.0,1790046646039.0,False,False,Double,1,5,Jonah Cox doubles (3) on a sharp line drive to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-21,823169,5,bottom,False,1790046649089.0,1790046683271.0,False,True,Groundout,1,5,"Bo Davidson grounds out, shortstop Ryan Kreidler to first baseman Aaron Sabato. Jonah Cox to 3rd."
+mlb-min-sf-2026-09-21,823169,5,bottom,False,1790046692607.0,1790046870341.0,False,True,Strikeout,1,5,Marcelo Mayer strikes out swinging.
+mlb-min-sf-2026-09-21,823169,5,bottom,False,1790046871738.0,1790047015048.0,False,True,Strikeout,1,5,Brett Harris strikes out swinging.
+mlb-min-sf-2026-09-21,823169,6,top,True,1790047037981.0,1790047190339.0,False,True,Groundout,1,5,"Walker Jenkins grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,6,top,True,1790047192261.0,1790047317451.0,False,True,Flyout,1,5,Luke Keaschall flies out to center fielder Drew Gilbert.
+mlb-min-sf-2026-09-21,823169,6,top,True,1790047317416.0,1790047456644.0,False,True,Groundout,1,5,"Brooks Lee grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,6,bottom,False,1790047602725.0,1790047642698.0,False,False,Single,1,5,Andrew Knizner singles on a fly ball to right fielder Luke Keaschall.
+mlb-min-sf-2026-09-21,823169,6,bottom,False,1790047641185.0,1790047809258.0,False,True,Flyout,1,5,Osleivis Basabe flies out to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-21,823169,6,bottom,False,1790047806406.0,1790047880712.0,False,True,Flyout,1,5,Scott Bandura flies out to right fielder Luke Keaschall.
+mlb-min-sf-2026-09-21,823169,6,bottom,False,1790047879251.0,1790048063376.0,False,True,Groundout,1,5,"Christian Koss grounds out, third baseman Brooks Lee to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-21,823169,7,top,True,1790048206941.0,1790048284569.0,False,False,Strikeout,1,5,Kody Clemens strikes out swinging. Kody Clemens to 1st. Wild pitch by pitcher Sam Hentges.
+mlb-min-sf-2026-09-21,823169,7,top,True,1790048308772.0,1790048426978.0,False,True,Strikeout,1,5,Ryan Jeffers strikes out on a foul tip.
+mlb-min-sf-2026-09-21,823169,7,top,True,1790048429102.0,1790048568235.0,False,False,Walk,1,5,Alan Roden walks. Kody Clemens to 2nd.
+mlb-min-sf-2026-09-21,823169,7,top,True,1790048567514.0,1790048647345.0,False,True,Grounded Into DP,1,5,"Aaron Sabato grounds into a double play, shortstop Christian Koss to second baseman Jonah Cox to first baseman Brett Har"
+mlb-min-sf-2026-09-21,823169,7,bottom,False,1790048685684.0,1790048894319.0,False,True,Strikeout,1,5,Drew Gilbert strikes out on a foul tip.
+mlb-min-sf-2026-09-21,823169,7,bottom,False,1790049043966.0,1790049089563.0,False,True,Strikeout,1,5,Jonah Cox strikes out swinging.
+mlb-min-sf-2026-09-21,823169,7,bottom,False,1790049090807.0,1790049195422.0,False,True,Strikeout,1,5,Bo Davidson strikes out swinging.
+mlb-min-sf-2026-09-21,823169,8,top,True,1790049328651.0,1790049353609.0,True,False,Home Run,2,5,Emmanuel Rodriguez homers (2) on a fly ball to center field.
+mlb-min-sf-2026-09-21,823169,8,top,True,1790049339052.0,1790049461314.0,False,True,Flyout,2,5,Ryan Kreidler flies out to shortstop Christian Koss.
+mlb-min-sf-2026-09-21,823169,8,top,True,1790049459098.0,1790049495979.0,False,True,Flyout,2,5,Walker Jenkins flies out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-21,823169,8,top,True,1790049496600.0,1790049605227.0,False,True,Groundout,2,5,"Luke Keaschall grounds out, third baseman Osleivis Basabe to first baseman Brett Harris."
+mlb-min-sf-2026-09-21,823169,8,bottom,False,1790049636976.0,1790049818507.0,False,True,Strikeout,2,5,Marcelo Mayer strikes out swinging.
+mlb-min-sf-2026-09-21,823169,8,bottom,False,1790049819361.0,1790049903965.0,False,False,Single,2,5,Brett Harris singles on a fly ball to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-21,823169,8,bottom,False,1790049901653.0,1790049975300.0,False,True,Grounded Into DP,2,5,"Andrew Knizner grounds into a double play, shortstop Ryan Kreidler to second baseman Kody Clemens to first baseman Aaron"
+mlb-min-sf-2026-09-21,823169,9,top,True,1790050145352.0,1790050258906.0,False,True,Flyout,2,5,Brooks Lee flies out to center fielder Drew Gilbert.
+mlb-min-sf-2026-09-21,823169,9,top,True,1790050258546.0,1790050400587.0,False,True,Strikeout,2,5,Kody Clemens strikes out swinging.
+mlb-min-sf-2026-09-21,823169,9,top,True,1790050400871.0,1790050484813.0,False,True,Pop Out,2,5,Ryan Jeffers pops out to third baseman Shay Whitcomb in foul territory.

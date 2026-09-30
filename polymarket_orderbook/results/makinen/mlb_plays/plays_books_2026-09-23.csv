@@ -1,0 +1,150 @@
+slug,gamePk,inning,half,is_top,start_ms,end_ms,is_scoring,has_out,event,away_score,home_score,description
+mlb-min-sf-2026-09-23,823168,1,top,True,1790192757949.0,1790192781547.0,False,True,Groundout,0,0,"Luke Keaschall grounds out softly, pitcher Cesar Perdomo to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,1,top,True,1790192782365.0,1790192842113.0,False,True,Flyout,0,0,Brooks Lee flies out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-23,823168,1,top,True,1790192842890.0,1790192911585.0,False,True,Groundout,0,0,"Josh Bell grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,1,bottom,False,1790192926796.0,1790193122360.0,False,True,Flyout,0,0,Jonah Cox flies out to center fielder Emmanuel Rodriguez.
+mlb-min-sf-2026-09-23,823168,1,bottom,False,1790193122024.0,1790193171338.0,False,True,Flyout,0,0,Turner Hill flies out to shortstop Ben Ross.
+mlb-min-sf-2026-09-23,823168,1,bottom,False,1790193175698.0,1790193246791.0,False,True,Lineout,0,0,Victor Bericoto lines out to pitcher Connor Prielipp.
+mlb-min-sf-2026-09-23,823168,2,top,True,1790193267145.0,1790193413674.0,False,True,Flyout,0,0,Ryan Jeffers flies out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-23,823168,2,top,True,1790193414185.0,1790193524107.0,False,True,Lineout,0,0,Alan Roden lines out to third baseman Shay Whitcomb.
+mlb-min-sf-2026-09-23,823168,2,top,True,1790193524190.0,1790193594839.0,False,False,Single,0,0,Royce Lewis singles on a line drive to right fielder Bo Davidson.
+mlb-min-sf-2026-09-23,823168,2,top,True,1790193594034.0,1790193681447.0,False,True,Lineout,0,0,Emmanuel Rodriguez lines out to right fielder Bo Davidson.
+mlb-min-sf-2026-09-23,823168,2,bottom,False,1790193782592.0,1790193888503.0,False,True,Groundout,0,0,Bo Davidson grounds out to first baseman Aaron Sabato.
+mlb-min-sf-2026-09-23,823168,2,bottom,False,1790193889259.0,1790193954119.0,False,True,Groundout,0,0,"Andrew Knizner grounds out, third baseman Brooks Lee to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-23,823168,2,bottom,False,1790193960161.0,1790194059633.0,False,True,Groundout,0,0,"Brett Harris grounds out, pitcher Connor Prielipp to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-23,823168,3,top,True,1790194179339.0,1790194230998.0,False,True,Strikeout,0,0,Aaron Sabato strikes out swinging.
+mlb-min-sf-2026-09-23,823168,3,top,True,1790194234686.0,1790194287399.0,False,True,Groundout,0,0,"Ben Ross grounds out, shortstop Christian Koss to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,3,top,True,1790194288187.0,1790194419451.0,True,False,Home Run,1,0,Luke Keaschall homers (10) on a fly ball to left field.
+mlb-min-sf-2026-09-23,823168,3,top,True,1790194405922.0,1790194462458.0,False,True,Groundout,1,0,"Brooks Lee grounds out, third baseman Shay Whitcomb to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,3,bottom,False,1790194505679.0,1790194644148.0,False,True,Strikeout,1,0,Marcelo Mayer strikes out swinging.
+mlb-min-sf-2026-09-23,823168,3,bottom,False,1790194645085.0,1790194772094.0,False,False,Single,1,0,Shay Whitcomb singles on a fly ball to left fielder Alan Roden.
+mlb-min-sf-2026-09-23,823168,3,bottom,False,1790194772412.0,1790194911392.0,False,True,Strikeout,1,0,Christian Koss strikes out swinging.
+mlb-min-sf-2026-09-23,823168,3,bottom,False,1790194914084.0,1790195046597.0,False,False,Walk,1,0,Jonah Cox walks. Shay Whitcomb to 2nd.
+mlb-min-sf-2026-09-23,823168,3,bottom,False,1790195048530.0,1790195151975.0,False,True,Flyout,1,0,Turner Hill flies out to left fielder Alan Roden.
+mlb-min-sf-2026-09-23,823168,4,top,True,1790195267457.0,1790195335845.0,False,True,Groundout,1,0,"Josh Bell grounds out, second baseman Jonah Cox to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,4,top,True,1790195337624.0,1790195484331.0,False,False,Single,1,0,"Ryan Jeffers singles on a ground ball to right fielder Bo Davidson, deflected by first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,4,top,True,1790195484779.0,1790195634234.0,False,False,Single,1,0,"Alan Roden singles on a line drive to left fielder Victor Bericoto, deflected by shortstop Christian Koss. Ryan Jeffers "
+mlb-min-sf-2026-09-23,823168,4,top,True,1790195635115.0,1790195670413.0,False,True,Pop Out,1,0,Royce Lewis pops out to first baseman Brett Harris on the infield fly rule.
+mlb-min-sf-2026-09-23,823168,4,top,True,1790195675923.0,1790195724621.0,False,True,Flyout,1,0,Emmanuel Rodriguez flies out to second baseman Jonah Cox.
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790195837777.0,1790195884029.0,False,True,Groundout,1,0,"Victor Bericoto grounds out softly, pitcher Connor Prielipp to first baseman Aaron Sabato. Victor Bericoto out on batter"
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790195901431.0,1790195949215.0,False,False,Single,1,0,Bo Davidson singles on a ground ball to shortstop Ben Ross.
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790195968652.0,1790196069767.0,False,False,Double,1,0,Andrew Knizner doubles (4) on a ground ball to left fielder Alan Roden. Bo Davidson to 3rd.
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790196073008.0,1790196173986.0,False,True,Strikeout,1,0,Brett Harris strikes out swinging.
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790196184552.0,1790196308491.0,False,False,Walk,1,0,Marcelo Mayer walks.
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790196377376.0,1790196393636.0,True,False,Single,1,2,Shay Whitcomb singles on a fly ball to right fielder Luke Keaschall. Bo Davidson scores. Andrew Knizner scores. Marcelo 
+mlb-min-sf-2026-09-23,823168,4,bottom,False,1790196419676.0,1790196476017.0,False,True,Bunt Groundout,1,2,Christian Koss bunt grounds out softly to first baseman Aaron Sabato.
+mlb-min-sf-2026-09-23,823168,5,top,True,1790196494617.0,1790196700344.0,False,True,Groundout,1,2,"Aaron Sabato grounds out, shortstop Christian Koss to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,5,top,True,1790196701168.0,1790196776724.0,False,False,Triple,1,2,Ben Ross triples (1) on a fly ball to left fielder Victor Bericoto.
+mlb-min-sf-2026-09-23,823168,5,top,True,1790196780911.0,1790196854320.0,True,True,Sac Fly,2,2,Luke Keaschall out on a sacrifice fly to center fielder Turner Hill. Ben Ross scores.
+mlb-min-sf-2026-09-23,823168,5,top,True,1790196861226.0,1790196927897.0,False,True,Strikeout,2,2,Brooks Lee strikes out swinging.
+mlb-min-sf-2026-09-23,823168,5,bottom,False,1790197049876.0,1790197061729.0,False,True,Groundout,2,2,"Jonah Cox grounds out, third baseman Brooks Lee to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-23,823168,5,bottom,False,1790197063429.0,1790197107829.0,False,True,Flyout,2,2,Turner Hill flies out to left fielder Alan Roden.
+mlb-min-sf-2026-09-23,823168,5,bottom,False,1790197108488.0,1790197177820.0,False,True,Groundout,2,2,"Victor Bericoto grounds out, pitcher Connor Prielipp to second baseman Royce Lewis to first baseman Aaron Sabato."
+mlb-min-sf-2026-09-23,823168,6,top,True,1790197209305.0,1790197321602.0,False,True,Groundout,2,2,"Josh Bell grounds out, third baseman Shay Whitcomb to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,6,top,True,1790197476365.0,1790197610221.0,False,True,Strikeout,2,2,Ryan Jeffers strikes out swinging.
+mlb-min-sf-2026-09-23,823168,6,top,True,1790197610550.0,1790197730816.0,False,False,Walk,2,2,Alan Roden walks.
+mlb-min-sf-2026-09-23,823168,6,top,True,1790197730159.0,1790197848072.0,False,True,Forceout,2,2,"Royce Lewis grounds into a force out, shortstop Christian Koss to second baseman Jonah Cox. Alan Roden out at 2nd."
+mlb-min-sf-2026-09-23,823168,6,bottom,False,1790197883853.0,1790198090368.0,False,True,Lineout,2,2,Bo Davidson lines out to shortstop Ben Ross.
+mlb-min-sf-2026-09-23,823168,6,bottom,False,1790198245851.0,1790198310489.0,False,True,Flyout,2,2,Andrew Knizner flies out to center fielder Emmanuel Rodriguez.
+mlb-min-sf-2026-09-23,823168,6,bottom,False,1790198309962.0,1790198419779.0,False,True,Strikeout,2,2,Brett Harris strikes out swinging.
+mlb-min-sf-2026-09-23,823168,7,top,True,1790198558653.0,1790198620458.0,False,False,Walk,2,2,Emmanuel Rodriguez walks.
+mlb-min-sf-2026-09-23,823168,7,top,True,1790198686750.0,1790198756242.0,False,True,Fielders Choice Out,2,2,"Kody Clemens reaches on a fielder's choice out, first baseman Brett Harris to shortstop Christian Koss. Emmanuel Rodrigu"
+mlb-min-sf-2026-09-23,823168,7,top,True,1790198864508.0,1790198877814.0,True,False,Single,3,2,Walker Jenkins singles on a ground ball to right fielder Bo Davidson. Kody Clemens scores.
+mlb-min-sf-2026-09-23,823168,7,top,True,1790198887442.0,1790199113532.0,False,True,Strikeout,3,2,"Giants challenged (hit by pitch), call on the field was overturned: Luke Keaschall strikes out on a foul tip."
+mlb-min-sf-2026-09-23,823168,7,top,True,1790199508025.0,1790199570992.0,False,False,Walk,3,2,Brooks Lee walks. Walker Jenkins to 2nd.
+mlb-min-sf-2026-09-23,823168,7,top,True,1790199571001.0,1790199635956.0,True,False,Single,4,2,Josh Bell singles on a line drive to center fielder Turner Hill. Walker Jenkins scores. Brooks Lee to 3rd.
+mlb-min-sf-2026-09-23,823168,7,top,True,1790199639193.0,1790199735469.0,False,True,Strikeout,4,2,Ryan Jeffers called out on strikes.
+mlb-min-sf-2026-09-23,823168,7,bottom,False,1790199867986.0,1790199964981.0,False,True,Lineout,4,2,Marcelo Mayer lines out to second baseman Royce Lewis.
+mlb-min-sf-2026-09-23,823168,7,bottom,False,1790199965429.0,1790200086347.0,False,True,Groundout,4,2,"Shay Whitcomb grounds out, shortstop Ryan Kreidler to first baseman Kody Clemens."
+mlb-min-sf-2026-09-23,823168,7,bottom,False,1790200090749.0,1790200200598.0,False,True,Strikeout,4,2,Christian Koss strikes out swinging.
+mlb-min-sf-2026-09-23,823168,8,top,True,1790200336204.0,1790200398978.0,False,True,Groundout,4,2,"Alan Roden grounds out, shortstop Christian Koss to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,8,top,True,1790200401418.0,1790200518067.0,False,True,Strikeout,4,2,Royce Lewis strikes out swinging.
+mlb-min-sf-2026-09-23,823168,8,top,True,1790200520398.0,1790200603851.0,False,False,Single,4,2,Emmanuel Rodriguez singles on a line drive to right fielder Bo Davidson.
+mlb-min-sf-2026-09-23,823168,8,top,True,1790200603986.0,1790200704335.0,False,True,Flyout,4,2,Kody Clemens flies out to left fielder Victor Bericoto.
+mlb-min-sf-2026-09-23,823168,8,bottom,False,1790200837503.0,1790200849545.0,False,True,Flyout,4,2,Jonah Cox flies out to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-23,823168,8,bottom,False,1790200848996.0,1790200933853.0,False,True,Lineout,4,2,Turner Hill lines out to center fielder Walker Jenkins.
+mlb-min-sf-2026-09-23,823168,8,bottom,False,1790200933200.0,1790200989308.0,False,True,Groundout,4,2,"Victor Bericoto grounds out, third baseman Brooks Lee to first baseman Kody Clemens."
+mlb-min-sf-2026-09-23,823168,9,top,True,1790201115750.0,1790201196083.0,False,True,Flyout,4,2,Walker Jenkins flies out to center fielder Turner Hill.
+mlb-min-sf-2026-09-23,823168,9,top,True,1790201197554.0,1790201234729.0,False,True,Groundout,4,2,"Ryan Kreidler grounds out, shortstop Christian Koss to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,9,top,True,1790201240181.0,1790201391938.0,False,False,Single,4,2,Brooks Lee singles on a fly ball to center fielder Turner Hill.
+mlb-min-sf-2026-09-23,823168,9,top,True,1790201545307.0,1790201683904.0,False,True,Groundout,4,2,"Josh Bell grounds out, shortstop Christian Koss to first baseman Brett Harris."
+mlb-min-sf-2026-09-23,823168,9,bottom,False,1790201820413.0,1790201862714.0,False,True,Groundout,4,2,"Grant McCray grounds out, second baseman Royce Lewis to first baseman Kody Clemens."
+mlb-min-sf-2026-09-23,823168,9,bottom,False,1790201903437.0,1790201941435.0,False,True,Strikeout,4,2,Drew Cavanaugh called out on strikes.
+mlb-min-sf-2026-09-23,823168,9,bottom,False,1790201986816.0,1790202102420.0,False,False,Single,4,2,Drew Gilbert singles on a sharp line drive to right fielder Emmanuel Rodriguez.
+mlb-min-sf-2026-09-23,823168,9,bottom,False,1790202104776.0,1790202210075.0,False,False,Walk,4,2,"Ryan Jeffers challenged (pitch result), call on the field was confirmed: Marcelo Mayer walks."
+mlb-min-sf-2026-09-23,823168,9,bottom,False,1790202303589.0,1790202416827.0,False,True,Strikeout,4,2,Shay Whitcomb strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,1,top,True,1790183550150.0,1790183629199.0,False,True,Strikeout,0,0,James Wood called out on strikes.
+mlb-wsh-det-2026-09-23,824223,1,top,True,1790183629896.0,1790183678659.0,False,True,Groundout,0,0,"Andrés Chaparro grounds out, shortstop John Peck to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,1,top,True,1790183683561.0,1790183735502.0,False,True,Strikeout,0,0,Brady House strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,1,bottom,False,1790183836063.0,1790183894248.0,False,True,Groundout,0,0,"Kevin McGonigle grounds out, first baseman Yohandy Morales to pitcher Richard Lovelady."
+mlb-wsh-det-2026-09-23,824223,1,bottom,False,1790183897932.0,1790183989326.0,False,False,Single,0,0,Hao-Yu Lee singles on a line drive to left fielder Dylan Crews.
+mlb-wsh-det-2026-09-23,824223,1,bottom,False,1790183991113.0,1790184027516.0,False,True,Flyout,0,0,Ben Malgeri flies out to right fielder James Wood.
+mlb-wsh-det-2026-09-23,824223,1,bottom,False,1790184029186.0,1790184055547.0,False,True,Groundout,0,0,Riley Greene grounds out to first baseman Yohandy Morales.
+mlb-wsh-det-2026-09-23,824223,2,top,True,1790184165498.0,1790184238987.0,False,True,Groundout,0,0,CJ Abrams grounds out to first baseman Spencer Torkelson.
+mlb-wsh-det-2026-09-23,824223,2,top,True,1790184251145.0,1790184312574.0,False,True,Pop Out,0,0,Dylan Crews pops out to first baseman Spencer Torkelson in foul territory.
+mlb-wsh-det-2026-09-23,824223,2,top,True,1790184325896.0,1790184430561.0,False,True,Strikeout,0,0,Yohandy Morales strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,2,bottom,False,1790184507545.0,1790184706570.0,False,False,Walk,0,0,Dillon Dingler walks.
+mlb-wsh-det-2026-09-23,824223,2,bottom,False,1790184736326.0,1790184768739.0,False,True,Sac Bunt,0,0,"Max Clark out on a sacrifice bunt, pitcher Richard Lovelady to first baseman Yohandy Morales. Dillon Dingler to 2nd."
+mlb-wsh-det-2026-09-23,824223,2,bottom,False,1790184952703.0,1790185019493.0,False,True,Strikeout,0,0,Spencer Torkelson strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,2,bottom,False,1790185030393.0,1790185093569.0,False,True,Strikeout,0,0,John Peck strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,3,top,True,1790185206459.0,1790185321422.0,False,True,Strikeout,0,0,Harry Ford strikes out on a foul tip.
+mlb-wsh-det-2026-09-23,824223,3,top,True,1790185322020.0,1790185387521.0,False,True,Groundout,0,0,"Jacob Young grounds out, catcher Dillon Dingler to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,3,top,True,1790185392425.0,1790185438381.0,False,True,Groundout,0,0,"Nasim Nuñez grounds out, second baseman Zach McKinstry to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,3,bottom,False,1790185538441.0,1790185660739.0,False,True,Flyout,0,0,Zach McKinstry flies out sharply to center fielder Jacob Young.
+mlb-wsh-det-2026-09-23,824223,3,bottom,False,1790185662293.0,1790185753421.0,False,False,Double,0,0,Kevin McGonigle doubles (28) on a sharp fly ball to right fielder James Wood.
+mlb-wsh-det-2026-09-23,824223,3,bottom,False,1790185771818.0,1790185882585.0,False,True,Groundout,0,0,"Hao-Yu Lee grounds out, second baseman CJ Abrams to first baseman Yohandy Morales. Kevin McGonigle to 3rd."
+mlb-wsh-det-2026-09-23,824223,3,bottom,False,1790185894017.0,1790185917568.0,False,True,Groundout,0,0,"Ben Malgeri grounds out, second baseman CJ Abrams to first baseman Yohandy Morales."
+mlb-wsh-det-2026-09-23,824223,4,top,True,1790185990933.0,1790186075419.0,False,True,Groundout,0,0,"James Wood grounds out, third baseman Kevin McGonigle to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,4,top,True,1790186079122.0,1790186201231.0,False,True,Strikeout,0,0,Andrés Chaparro strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,4,top,True,1790186202973.0,1790186270480.0,False,False,Single,0,0,Brady House singles on a line drive to left fielder Riley Greene.
+mlb-wsh-det-2026-09-23,824223,4,top,True,1790186273814.0,1790186373908.0,False,False,Walk,0,0,CJ Abrams walks. Brady House to 2nd.
+mlb-wsh-det-2026-09-23,824223,4,top,True,1790186386552.0,1790186468587.0,False,True,Groundout,0,0,"Dylan Crews grounds out, shortstop John Peck to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,4,bottom,False,1790186599093.0,1790186716428.0,False,False,Walk,0,0,Riley Greene walks.
+mlb-wsh-det-2026-09-23,824223,4,bottom,False,1790186721569.0,1790186839010.0,False,True,Pop Out,0,0,Dillon Dingler pops out to second baseman CJ Abrams.
+mlb-wsh-det-2026-09-23,824223,4,bottom,False,1790186845046.0,1790187026392.0,False,True,Grounded Into DP,0,0,"Max Clark grounds into a double play, first baseman Yohandy Morales to shortstop Nasim Nuñez. Riley Greene out at 2nd. M"
+mlb-wsh-det-2026-09-23,824223,5,top,True,1790187107845.0,1790187214336.0,False,True,Pop Out,0,0,Yohandy Morales pops out to first baseman Spencer Torkelson in foul territory.
+mlb-wsh-det-2026-09-23,824223,5,top,True,1790187224278.0,1790187339213.0,False,False,Walk,0,0,Harry Ford walks.
+mlb-wsh-det-2026-09-23,824223,5,top,True,1790187342293.0,1790187478817.0,False,True,Lineout,0,0,Jacob Young lines out sharply to center fielder Max Clark.
+mlb-wsh-det-2026-09-23,824223,5,top,True,1790187481257.0,1790187633422.0,False,False,Walk,0,0,"Dillon Dingler challenged (pitch result), call on the field was confirmed: Nasim Nuñez walks."
+mlb-wsh-det-2026-09-23,824223,5,top,True,1790187666461.0,1790187711196.0,False,True,Strikeout,0,0,James Wood strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,5,bottom,False,1790187792528.0,1790187888469.0,False,True,Strikeout,0,0,Spencer Torkelson called out on strikes.
+mlb-wsh-det-2026-09-23,824223,5,bottom,False,1790187890505.0,1790187921651.0,False,True,Groundout,0,0,"John Peck grounds out, shortstop Nasim Nuñez to first baseman Yohandy Morales."
+mlb-wsh-det-2026-09-23,824223,5,bottom,False,1790187930363.0,1790188043419.0,False,False,Walk,0,0,Zach McKinstry walks.
+mlb-wsh-det-2026-09-23,824223,5,bottom,False,1790188211053.0,1790188241676.0,False,False,Single,0,0,"Kevin McGonigle singles on a ground ball to center fielder Jacob Young, deflected by second baseman CJ Abrams. Zach McKi"
+mlb-wsh-det-2026-09-23,824223,5,bottom,False,1790188264726.0,1790188381300.0,False,True,Strikeout,0,0,Hao-Yu Lee strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790188464784.0,1790188522175.0,False,False,Single,0,0,Andrés Chaparro singles on a ground ball to center fielder Max Clark.
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790188525114.0,1790188567663.0,False,False,Single,0,0,Brady House singles on a line drive to center fielder Max Clark. Andrés Chaparro to 2nd.
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790188572723.0,1790188675586.0,True,True,Single,1,0,CJ Abrams singles on a line drive to right fielder Ben Malgeri. Andrés Chaparro scores. CJ Abrams out at 2nd on the thro
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790188835961.0,1790188908893.0,False,True,Flyout,1,0,Dylan Crews flies out to right fielder Ben Malgeri.
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790188920865.0,1790189099650.0,True,False,Home Run,3,0,Yohandy Morales homers (4) on a fly ball to right center field. Brady House scores.
+mlb-wsh-det-2026-09-23,824223,6,top,True,1790189093906.0,1790189161978.0,False,True,Groundout,3,0,"Harry Ford grounds out, second baseman Zach McKinstry to first baseman Spencer Torkelson."
+mlb-wsh-det-2026-09-23,824223,6,bottom,False,1790189281733.0,1790189321962.0,True,False,Home Run,3,1,Ben Malgeri homers (5) on a fly ball to left center field.
+mlb-wsh-det-2026-09-23,824223,6,bottom,False,1790189311411.0,1790189527327.0,False,True,Flyout,3,1,Riley Greene flies out to right fielder James Wood.
+mlb-wsh-det-2026-09-23,824223,6,bottom,False,1790189530741.0,1790189630333.0,False,True,Pop Out,3,1,Dillon Dingler pops out to shortstop Nasim Nuñez.
+mlb-wsh-det-2026-09-23,824223,6,bottom,False,1790189637465.0,1790189703981.0,False,False,Double,3,1,Max Clark doubles (11) on a line drive to left fielder Dylan Crews.
+mlb-wsh-det-2026-09-23,824223,6,bottom,False,1790189765526.0,1790189854308.0,False,True,Strikeout,3,1,Spencer Torkelson strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,7,top,True,1790189997167.0,1790190082408.0,False,True,Strikeout,3,1,Jacob Young strikes out on a foul tip.
+mlb-wsh-det-2026-09-23,824223,7,top,True,1790190087025.0,1790190153017.0,False,False,Single,3,1,Nasim Nuñez singles on a fly ball to center fielder Max Clark.
+mlb-wsh-det-2026-09-23,824223,7,top,True,1790190156082.0,1790190251768.0,True,True,Groundout,4,1,James Wood grounds out to first baseman Spencer Torkelson. Nasim Nuñez scores.
+mlb-wsh-det-2026-09-23,824223,7,top,True,1790190261717.0,1790190421778.0,False,True,Strikeout,4,1,Andrés Chaparro strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,7,bottom,False,1790190512286.0,1790190623880.0,False,False,Walk,4,1,John Peck walks.
+mlb-wsh-det-2026-09-23,824223,7,bottom,False,1790190658767.0,1790190710262.0,False,True,Strikeout,4,1,Eduardo Valencia called out on strikes.
+mlb-wsh-det-2026-09-23,824223,7,bottom,False,1790190714266.0,1790190864782.0,False,True,Strikeout,4,1,Kevin McGonigle called out on strikes.
+mlb-wsh-det-2026-09-23,824223,7,bottom,False,1790191021248.0,1790191090336.0,False,True,Flyout,4,1,Hao-Yu Lee flies out to center fielder Jacob Young.
+mlb-wsh-det-2026-09-23,824223,8,top,True,1790191231141.0,1790191257591.0,False,True,Flyout,4,1,Brady House flies out to left fielder Riley Greene.
+mlb-wsh-det-2026-09-23,824223,8,top,True,1790191259385.0,1790191348786.0,False,False,Walk,4,1,CJ Abrams walks.
+mlb-wsh-det-2026-09-23,824223,8,top,True,1790191353771.0,1790191437689.0,False,True,Grounded Into DP,4,1,"Dylan Crews grounds into a double play, second baseman Jace Jung to first baseman Spencer Torkelson. CJ Abrams out at 2n"
+mlb-wsh-det-2026-09-23,824223,8,bottom,False,1790191577795.0,1790191631010.0,False,True,Groundout,4,1,Ben Malgeri grounds out to first baseman Yohandy Morales.
+mlb-wsh-det-2026-09-23,824223,8,bottom,False,1790191636053.0,1790191745487.0,False,False,Walk,4,1,Riley Greene walks.
+mlb-wsh-det-2026-09-23,824223,8,bottom,False,1790191806867.0,1790191893853.0,False,True,Lineout,4,1,Dillon Dingler lines out sharply to third baseman Brady House.
+mlb-wsh-det-2026-09-23,824223,8,bottom,False,1790191900556.0,1790192056835.0,False,False,Walk,4,1,Max Clark walks.
+mlb-wsh-det-2026-09-23,824223,8,bottom,False,1790192236257.0,1790192281336.0,False,True,Strikeout,4,1,Spencer Torkelson strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,9,top,True,1790192424102.0,1790192436723.0,False,True,Pop Out,4,1,Yohandy Morales pops out to second baseman Jace Jung.
+mlb-wsh-det-2026-09-23,824223,9,top,True,1790192460689.0,1790192536659.0,False,True,Flyout,4,1,Daylen Lile flies out to left fielder Riley Greene.
+mlb-wsh-det-2026-09-23,824223,9,top,True,1790192537445.0,1790192637583.0,False,True,Flyout,4,1,Jacob Young flies out sharply to center fielder Max Clark.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790192775297.0,1790192890034.0,False,True,Strikeout,4,1,Brett Callahan strikes out swinging.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790192891968.0,1790192926576.0,False,False,Single,4,1,Jace Jung singles on a line drive to right fielder James Wood.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790192926504.0,1790192985545.0,False,False,Single,4,1,Kevin McGonigle singles on a sharp line drive to center fielder Jacob Young. Jace Jung to 2nd.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790193039709.0,1790193111111.0,False,True,Pop Out,4,1,Hao-Yu Lee pops out to catcher Keibert Ruiz on the infield fly rule.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790193192466.0,1790193206605.0,True,False,Single,4,2,Ben Malgeri singles on a line drive to right fielder James Wood. Jace Jung scores. Kevin McGonigle to 3rd.
+mlb-wsh-det-2026-09-23,824223,9,bottom,False,1790193279164.0,1790193370702.0,False,True,Flyout,4,2,Riley Greene flies out to left fielder Dylan Crews.

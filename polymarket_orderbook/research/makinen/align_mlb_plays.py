@@ -77,7 +77,10 @@ def slug_to_gamepk(slugs: list[str], us_date: str) -> dict[str, int]:
     games = ps.schedule(us_date)
     by_pair = {}
     for g in games:
-        by_pair[frozenset((g["away_abbr"].lower(), g["home_abbr"].lower()))] = g["gamePk"]
+        # MLB's abbreviation is not always Polymarket's (az -> ari, ath -> oak)
+        for a in ps.candidates(g["away_abbr"].lower()):
+            for h in ps.candidates(g["home_abbr"].lower()):
+                by_pair[frozenset((a, h))] = g["gamePk"]
     out = {}
     for s in slugs:
         parts = s.split("-")
