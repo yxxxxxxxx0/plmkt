@@ -245,7 +245,8 @@ def save_report(name, table):
     p = os.path.join(OUT, 'reports.csv')
     old = pd.read_csv(p) if os.path.exists(p) else pd.DataFrame()
     old = old[old.get('method', pd.Series(dtype=str)) != name] if len(old) else old
-    pd.concat([old, table], ignore_index=True).to_csv(p, index=False)
+    # drop columns no remaining row uses (left over from runs with other settings)
+    pd.concat([old, table], ignore_index=True).dropna(axis=1, how='all').to_csv(p, index=False)
 
 
 class PanelCache:
