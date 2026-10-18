@@ -1,0 +1,151 @@
+
+========================================================================
+books_2026-08-28
+========================================================================
+    [ok  ] parquet rows == tensor rows  30,481,811 vs 30,481,811
+    [ok  ] tensor is (n, 4, levels)  (30481811, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 135 series, 135 assets, 135 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  1 suspect steps (0.000003%), tolerance 304
+    ... adjacent-step mid change: mean 0.0156, p99.9 3.00, max 49.00 ticks
+    ... 1,523 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    ... SUSPECT steps by market type: {'total': 1}
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.077
+    [ok  ] mid strictly inside (0, 1)  range 0.0015-0.9965
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+books_2026-08-30
+========================================================================
+    [ok  ] parquet rows == tensor rows  11,653,622 vs 11,653,622
+    [ok  ] tensor is (n, 4, levels)  (11653622, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 127 series, 127 assets, 127 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  0 suspect steps (0.000000%), tolerance 116
+    ... adjacent-step mid change: mean 0.0502, p99.9 9.50, max 57.00 ticks
+    ... 3,289 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.180
+    [ok  ] mid strictly inside (0, 1)  range 0.0015-0.9985
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+books_2026-09-10
+========================================================================
+    [ok  ] parquet rows == tensor rows  4,857,353 vs 4,857,353
+    [ok  ] tensor is (n, 4, levels)  (4857353, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 45 series, 45 assets, 45 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  0 suspect steps (0.000000%), tolerance 48
+    ... adjacent-step mid change: mean 0.0487, p99.9 9.50, max 44.00 ticks
+    ... 1,796 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.161
+    [ok  ] mid strictly inside (0, 1)  range 0.0015-0.9915
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+books_2026-09-11
+========================================================================
+    [ok  ] parquet rows == tensor rows  18,105,340 vs 18,105,340
+    [ok  ] tensor is (n, 4, levels)  (18105340, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 135 series, 135 assets, 135 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  0 suspect steps (0.000000%), tolerance 180
+    ... adjacent-step mid change: mean 0.0529, p99.9 12.00, max 72.00 ticks
+    ... 8,791 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.139
+    [ok  ] mid strictly inside (0, 1)  range 0.0015-0.9975
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+books_2026-09-12
+========================================================================
+    [ok  ] parquet rows == tensor rows  14,404,892 vs 14,404,892
+    [ok  ] tensor is (n, 4, levels)  (14404892, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 135 series, 135 assets, 135 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  0 suspect steps (0.000000%), tolerance 143
+    ... adjacent-step mid change: mean 0.0494, p99.9 9.50, max 47.50 ticks
+    ... 4,545 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.158
+    [ok  ] mid strictly inside (0, 1)  range 0.0015-0.9980
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+books_2026-09-13
+========================================================================
+    [ok  ] parquet rows == tensor rows  11,812,566 vs 11,812,566
+    [ok  ] tensor is (n, 4, levels)  (11812566, 4, 10)
+    [ok  ] tensor sample is finite
+    [ok  ] every series id has 4 fields (slug|market_type|line|asset_id)  field counts [4]
+    [ok  ] one asset_id per series  0 series carry more than one asset
+    [ok  ] one series per asset_id  0 assets appear under several series
+    [ok  ] sid maps to exactly one series  0 sids straddle series
+    [ok  ] no series has an empty asset_id  0 series
+    ... 135 series, 135 assets, 135 sids
+    [ok  ] no systematic >20-tick mid step at a tight (<=2 tick) spread -- the merged-asset signature  0 suspect steps (0.000000%), tolerance 118
+    ... adjacent-step mid change: mean 0.0941, p99.9 20.00, max 50.85 ticks
+    ... 11,839 large steps explained by a wide book (touch pulled; excluded from trading anyway)
+    [ok  ] no row carries a book from its own future
+    [ok  ] ts strictly increasing within a series  0 non-increasing steps
+    [ok  ] every in-series time step is a grid multiple
+    [ok  ] path max >= |endpoint move| on every valid row
+    [ok  ] fraction of rows that move at all is plausible  0.198
+    [ok  ] mid strictly inside (0, 1)  range 0.0020-0.9980
+    [ok  ] spread is positive  min 0.10
+
+========================================================================
+SUMMARY
+========================================================================
+  PASS  books_2026-08-28
+  PASS  books_2026-08-30
+  PASS  books_2026-09-10
+  PASS  books_2026-09-11
+  PASS  books_2026-09-12
+  PASS  books_2026-09-13
+
+6 sessions, 0 failed checks

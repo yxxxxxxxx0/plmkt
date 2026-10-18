@@ -1,5 +1,9 @@
 # Polymarket order book recorder & tick-level replay
 
+> **Note (2026-09-21).** Some scripts named below were deleted in the codebase
+> tidy. They are recoverable at commit `40437ab` (`git show 40437ab:<path>`),
+> and what each one did is recorded in `METHODS_AND_EXPERIMENTS.md`.
+
 Records live Polymarket order books for MLB games, reconstructs the exact
 tick-level history, and serves a browser viewer that steps through **every
 recorded change** — down to microsecond resolution.
@@ -42,6 +46,7 @@ python live_recorder.py                      # all matches in matches.py
 python live_recorder.py --duration 120       # short smoke test
 python live_recorder.py --core-only          # only moneyline/spread/total/NRFI
 python live_recorder.py --live-discover 60   # test against any open markets
+python live_recorder.py --mlb-futures --depth-cents 0.05 --session mlb_futures
 ```
 
 Records **every order-book market** on the event by default — 15–17 per game
@@ -60,6 +65,14 @@ API (`discovery.py`). Edit `matches.py` to change which games are tracked.
 
 Output: `data/live/books.jsonl` (one complete book snapshot per line) and
 `data/live/top_of_book.csv`.
+
+`--mlb-futures` discovers every active MLB-tagged non-game market directly
+from the CLOB catalog (World Series, league/division winners, postseason,
+awards and season leaders) and shards the assets across independent sockets.
+Use a separate session because futures must outlive one game slate.
+`--depth-cents 0.05` stores the native price levels within 5 cents of each
+side's current touch. It does not resample ticks, merge timestamps, or cap the
+full internal state used to follow a moving best price.
 
 ---
 
@@ -212,6 +225,24 @@ asynchronous updates.
 | `rebuild_all_slates.py` | every slate -> viewer, one slate at a time |
 | `sim_jump_capture.py` | perfect-foresight jump-capture cost simulation |
 | `test_sim_jump_capture.py` | pins the simulator's swing filter and ladder walk |
+| `maker_regime_scanner.py` | read-only all-market maker-regime screen for a small bankroll |
+
+## Maker regime screen (paper mode)
+
+```powershell
+python maker_regime_scanner.py --bankroll 50 --allocation 0.10
+```
+
+The first pass discovers every active binary CLOB market and reads both token
+books. It then repeatedly monitors only the best static shortlist. `ENTER`
+means eligible for paper-fill tracking, **not** proven profitable and not an
+instruction to place an order. The screen requires a positive paired-bid
+margin, a narrow two-sided book, enough displayed size, capital fit, spread
+persistence, at least one touch update, and bounded short-horizon movement.
+
+The command checks Polymarket's geoblock endpoint on every run. The scanner is
+read-only in all locations; do not attach an execution layer where order entry
+is restricted.
 
 ## Requirements
 

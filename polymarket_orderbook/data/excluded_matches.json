@@ -1,0 +1,162 @@
+{
+ "note": "Matches whose recording is too incomplete to use, from continuity_scan.py. Raw archives are untouched; match_filter.judge_match drops these slugs.",
+ "max_lost_s": 300,
+ "hole_s": 30,
+ "matches": {
+  "mlb-ari-col-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 145.1 of 146 min (late start 131m, early stop 15m)"
+  },
+  "mlb-bal-nyy-2026-09-27": {
+   "session": "2026-09-27",
+   "verdict": "no_game",
+   "reason": "no game window"
+  },
+  "mlb-bos-nyy-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 24.4 of 170 min (late start 0m, early stop 0m)"
+  },
+  "mlb-cin-atl-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 162.4 of 163 min (late start 0m, early stop 162m)"
+  },
+  "mlb-cin-chc-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 8.0 of 196 min (late start 0m, early stop 0m)"
+  },
+  "mlb-cle-bos-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 154.9 of 158 min (late start 0m, early stop 153m)"
+  },
+  "mlb-col-atl-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 23.5 of 164 min (late start 0m, early stop 0m)"
+  },
+  "mlb-cws-kc-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 152.1 of 152 min (late start 152m, early stop 152m)"
+  },
+  "mlb-cws-min-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 18.2 of 137 min (late start 0m, early stop 0m)"
+  },
+  "mlb-det-cws-2026-09-19": {
+   "session": "2026-09-19",
+   "verdict": "severe",
+   "reason": "lost 83.2 of 161 min (late start 0m, early stop 0m)"
+  },
+  "mlb-hou-sea-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 200.3 of 201 min (late start 41m, early stop 160m)"
+  },
+  "mlb-kc-cle-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 24.3 of 175 min (late start 0m, early stop 0m)"
+  },
+  "mlb-laa-oak-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 179.1 of 180 min (late start 71m, early stop 108m)"
+  },
+  "mlb-lad-det-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 25.8 of 219 min (late start 0m, early stop 0m)"
+  },
+  "mlb-mia-chc-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 175.1 of 175 min (late start 175m, early stop 175m)"
+  },
+  "mlb-mia-wsh-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 26.3 of 172 min (late start 0m, early stop 0m)"
+  },
+  "mlb-mil-bal-2026-09-19": {
+   "session": "2026-09-19",
+   "verdict": "severe",
+   "reason": "lost 9.6 of 139 min (late start 0m, early stop 0m)"
+  },
+  "mlb-mil-bal-2026-09-20": {
+   "session": "2026-09-20",
+   "verdict": "severe",
+   "reason": "lost 24.0 of 175 min (late start 0m, early stop 24m)"
+  },
+  "mlb-mil-phi-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 124.9 of 156 min (late start 0m, early stop 120m)"
+  },
+  "mlb-nym-tex-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 152.7 of 153 min (late start 153m, early stop 153m)"
+  },
+  "mlb-pit-stl-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 13.1 of 175 min (late start 0m, early stop 0m)"
+  },
+  "mlb-sd-lad-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 184.7 of 185 min (late start 41m, early stop 144m)"
+  },
+  "mlb-sd-tb-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 26.6 of 198 min (late start 0m, early stop 0m)"
+  },
+  "mlb-sea-tor-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 23.6 of 147 min (late start 0m, early stop 0m)"
+  },
+  "mlb-stl-pit-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 141.2 of 172 min (late start 0m, early stop 136m)"
+  },
+  "mlb-tb-nyy-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 168.1 of 175 min (late start 0m, early stop 164m)"
+  },
+  "mlb-tex-mil-2026-08-30": {
+   "session": "2026-08-30",
+   "verdict": "severe",
+   "reason": "lost 18.2 of 207 min (late start 0m, early stop 0m)"
+  },
+  "mlb-tor-bal-2026-09-21": {
+   "session": "2026-09-21",
+   "verdict": "severe",
+   "reason": "lost 179.0 of 197 min (late start 179m, early stop 0m)"
+  },
+  "mlb-tor-bal-2026-09-22": {
+   "session": "2026-09-22",
+   "verdict": "no_game",
+   "reason": "no game window"
+  },
+  "mlb-tor-bal-2026-09-23": {
+   "session": "2026-09-23",
+   "verdict": "severe",
+   "reason": "lost 107.0 of 143 min (late start 0m, early stop 102m)"
+  },
+  "mlb-wsh-det-2026-09-21": {
+   "session": "2026-09-21",
+   "verdict": "severe",
+   "reason": "lost 140.7 of 141 min (late start 141m, early stop 141m)"
+  }
+ }
+}

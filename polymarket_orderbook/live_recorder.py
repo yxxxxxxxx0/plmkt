@@ -71,6 +71,12 @@ OUT_DIR = os.path.join(BASE_DIR, "data", "live")
 
 CLOB_REST_BOOK_URL = "https://clob.polymarket.com/book"
 CLOB_WS_MARKET_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+
+# How often each match's socket asserts liveness into the data stream when no
+# messages are arriving. Must be well under the shortest gap worth attributing
+# -- 30s means any silence longer than that is provably either covered by
+# heartbeats (the market was quiet) or not (the feed was down).
+HEARTBEAT_S = 30.0
 GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
 
 TOP_HEADER = [
@@ -102,7 +108,11 @@ class Writer(threading.Thread):
         self.q = queue.Queue()
         self.fsync_interval = fsync_interval
         self.batch = batch
-        self._stop = threading.Event()
+        # NOT `self._stop`: threading.Thread already defines a private _stop()
+        # method that join() calls internally, so assigning an Event over it
+        # makes every clean shutdown raise "'Event' object is not callable"
+        # after the data is written -- which also skips the final summary.
+        self._stop_evt = threading.Event()
         self.written = 0
         self.dropped = 0
         os.makedirs(OUT_DIR, exist_ok=True)
@@ -113,11 +123,6 @@ class Writer(threading.Thread):
         tag = f"_{session}" if session else ""
         self.books_path = os.path.join(OUT_DIR, f"books{tag}.jsonl")
         self.top_path = os.path.join(OUT_DIR, f"top_of_book{tag}.csv")
-        # Trades go to their OWN file, never into books.jsonl. rebuild_duckdb
-        # reads that file with read_ndjson under a fixed column list, so a
-        # record carrying no bids/asks would either break the parse or be
-        # coerced to nulls and silently become a phantom empty book.
-        self.trades_path = os.path.join(OUT_DIR, f"trades{tag}.jsonl")
 
     def put(self, kind, payload):
         # never blocks the event loop; the queue is unbounded on purpose so a
@@ -128,14 +133,13 @@ class Writer(threading.Thread):
     def run(self):
         new_top = not (os.path.exists(self.top_path) and os.path.getsize(self.top_path) > 0)
         bf = open(self.books_path, "a", encoding="utf-8")
-        xf = open(self.trades_path, "a", encoding="utf-8")
         tf = open(self.top_path, "a", newline="", encoding="utf-8")
         tw = csv.writer(tf)
         if new_top:
             tw.writerow(TOP_HEADER)
         last_sync = time.monotonic()
         try:
-            while not (self._stop.is_set() and self.q.empty()):
+            while not (self._stop_evt.is_set() and self.q.empty()):
                 drained = 0
                 try:
                     kind, payload = self.q.get(timeout=0.5)
@@ -145,9 +149,6 @@ class Writer(threading.Thread):
                     if kind == "book":
                         bf.write(payload)
                         bf.write("\n")
-                    elif kind == "trade":
-                        xf.write(payload)
-                        xf.write("\n")
                     else:
                         tw.writerow(payload)
                     self.written += 1
@@ -160,22 +161,20 @@ class Writer(threading.Thread):
                         break
                 if drained:
                     bf.flush()
-                    xf.flush()
                     tf.flush()
                 now = time.monotonic()
                 if now - last_sync >= self.fsync_interval:
                     # durability checkpoint, off the event loop and rare
                     os.fsync(bf.fileno())
-                    os.fsync(xf.fileno())
                     os.fsync(tf.fileno())
                     last_sync = now
         finally:
-            bf.flush(); xf.flush(); tf.flush()
-            os.fsync(bf.fileno()); os.fsync(xf.fileno()); os.fsync(tf.fileno())
-            bf.close(); xf.close(); tf.close()
+            bf.flush(); tf.flush()
+            os.fsync(bf.fileno()); os.fsync(tf.fileno())
+            bf.close(); tf.close()
 
     def stop(self):
-        self._stop.set()
+        self._stop_evt.set()
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +232,13 @@ class Seq:
 class MatchRecorder:
     """One match, one websocket, its own reconnect loop and its own state."""
 
-    def __init__(self, slug, assets, writer, stop_event, seq):
+    def __init__(self, slug, assets, writer, stop_event, seq, depth_cents=None):
         self.seq = seq
         self.slug = slug
         self.assets = assets          # asset_id -> meta
         self.writer = writer
         self.stop_event = stop_event
+        self.depth_cents = depth_cents
         self.books = {aid: new_book() for aid in assets}
         self.last_top = {}
         self.msgs = 0
@@ -247,6 +247,7 @@ class MatchRecorder:
         self.reconnects = 0
         self.unknown = 0
         self.last_msg_ms = None
+        self.last_rx = time.monotonic()   # for the heartbeat task
         self.lag_sum = 0.0
         self.lag_n = 0
 
@@ -258,6 +259,7 @@ class MatchRecorder:
         ba = asks[0][0] if asks else None
         bbs = bids[0][1] if bids else None
         bas = asks[0][1] if asks else None
+        stored_bids, stored_asks = self._stored_depth(bids, asks)
 
         self.writer.put("book", json.dumps({
             "seq": self.seq.next(),
@@ -267,7 +269,7 @@ class MatchRecorder:
             "market_question": meta.get("market_question"),
             "outcome_name": meta.get("outcome_name"),
             "line": meta["line"], "condition_id": meta["condition_id"],
-            "bids": bids, "asks": asks,
+            "bids": stored_bids, "asks": stored_asks,
         }, separators=(",", ":")))
         self.snapshots += 1
 
@@ -281,6 +283,144 @@ class MatchRecorder:
                 meta["line"], meta["outcome"], meta["condition_id"], asset_id,
                 bb, bbs, ba, bas, mid, spr,
             ])
+
+    def _stored_depth(self, bids, asks):
+        """Trim output around each touch without changing prices or ticks.
+
+        State remains full-depth internally. The cap is applied independently
+        to each side at write time: bids within N dollars below best bid and
+        asks within N dollars above best ask. Thus a moving touch never leaves
+        the reconstruction without its new local ladder.
+        """
+        if self.depth_cents is None:
+            return bids, asks
+        bb = bids[0][0] if bids else None
+        ba = asks[0][0] if asks else None
+        kept_bids = ([level for level in bids
+                      if level[0] >= bb - self.depth_cents - 1e-12]
+                     if bb is not None else [])
+        kept_asks = ([level for level in asks
+                      if level[0] <= ba + self.depth_cents + 1e-12]
+                     if ba is not None else [])
+        return kept_bids, kept_asks
+
+    # -- trades and metadata ------------------------------------------------
+    def emit_trade(self, msg, ts_ex, ts_recv):
+        """One row per print, carrying the book top as of that instant.
+
+        Shapes vary, so parse defensively the way the price_change handler
+        does: an unrecognised trade is logged once rather than silently
+        dropped, because a missing print is unrecoverable after the fact.
+        """
+        aid = msg.get("asset_id") or msg.get("market")
+        if aid not in self.books:
+            return
+        try:
+            price = float(msg["price"])
+            size = float(msg.get("size") or msg.get("amount") or 0.0)
+        except (KeyError, TypeError, ValueError):
+            self.unknown += 1
+            log(f"[{self.slug}] unrecognised last_trade_price shape, "
+                f"keys={sorted(msg.keys())}")
+            return
+
+        meta = self.assets[aid]
+        bids, asks = sorted_book(self.books[aid])
+        bb = bids[0][0] if bids else None
+        ba = asks[0][0] if asks else None
+        # `side` as sent is the maker's side on some feeds and the taker's on
+        # others, so keep it verbatim AND record what the touch implies.
+        at_bid = bb is not None and abs(price - bb) < 1e-9
+        at_ask = ba is not None and abs(price - ba) < 1e-9
+        aggressor = "sell" if at_bid and not at_ask else (
+            "buy" if at_ask and not at_bid else None)
+        stored_bids, stored_asks = self._stored_depth(bids, asks)
+
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": ts_ex, "recv": ts_recv, "et": "trade",
+            "slug": self.slug, "asset_id": aid,
+            "market_type": meta["market_type"], "outcome": meta["outcome"],
+            "market_question": meta.get("market_question"),
+            "outcome_name": meta.get("outcome_name"),
+            "line": meta["line"], "condition_id": meta["condition_id"],
+            "price": price, "size": size,
+            "side_raw": msg.get("side"), "aggressor": aggressor,
+            "fee_rate_bps": msg.get("fee_rate_bps"),
+            "bids": stored_bids, "asks": stored_asks,
+        }, separators=(",", ":")))
+        self.trades += 1
+
+    def emit_meta(self, msg, ts_ex, ts_recv, event_type):
+        aid = msg.get("asset_id") or msg.get("market")
+        if aid not in self.books:
+            return
+        meta = self.assets[aid]
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": ts_ex, "recv": ts_recv, "et": event_type,
+            "slug": self.slug, "asset_id": aid,
+            "market_type": meta["market_type"], "outcome": meta["outcome"],
+            "condition_id": meta["condition_id"],
+            "payload": {k: v for k, v in msg.items()
+                        if k not in ("bids", "asks")},
+        }, separators=(",", ":")))
+
+    def emit_status(self, kind, **fields):
+        """Write a connection/liveness record INTO the data stream.
+
+        `kind` is the record type written to `et` ("conn" or "heartbeat").
+        It is deliberately NOT called `event`: callers pass an `event=` field
+        (connected / disconnected / outage_end) through **fields, and naming
+        the positional parameter `event` made every such call raise
+        "got multiple values for argument 'event'" -- which surfaced as an
+        immediate disconnect on every socket right after a successful
+        handshake.
+
+        Why this exists: outages were only ever written to the text log, which
+        is gitignored and never travels with the recording. So downstream a
+        46-minute hole in an asset's updates was indistinguishable from a
+        market that simply did not trade for 46 minutes -- verify_recording.py
+        could only say 'a quiet market and a dead socket look identical here'.
+
+        That ambiguity is not cosmetic. On reconnect only the current book is
+        recovered; every price_change during an outage is gone for good. A
+        gap that is really an outage means missing data, and a gap that is
+        really quiet means the market was genuinely still. Any analysis that
+        conflates them is measuring its own coverage, not the market.
+
+        Two record types make gaps attributable after the fact:
+          conn        connect / disconnect / reconnect, with the outage length
+          heartbeat   periodic proof that the socket was alive and the market
+                      was merely quiet
+
+        Both carry no bids/asks, so every existing consumer skips them: the
+        readers in jump_data.py require a non-empty book.
+        """
+        self.writer.put("book", json.dumps({
+            "seq": self.seq.next(),
+            "ts": now_ms(), "recv": now_ms(), "et": kind,
+            "slug": self.slug, "n_assets": len(self.assets),
+            "reconnects": self.reconnects,
+            "snapshots": self.snapshots, "trades": self.trades,
+            **fields,
+        }, separators=(",", ":")))
+
+    async def _heartbeat_loop(self):
+        """Emit a liveness record while the socket is connected but silent.
+
+        Separate task on purpose: the read loop must never have its `recv()`
+        cancelled (see the comment in run()). This only observes `last_rx`,
+        so it cannot interfere with the connection at all.
+        """
+        try:
+            while not self.stop_event.is_set():
+                await asyncio.sleep(HEARTBEAT_S)
+                quiet = time.monotonic() - self.last_rx
+                if quiet >= HEARTBEAT_S:
+                    self.emit_status("heartbeat", quiet_s=round(quiet, 1))
+        except asyncio.CancelledError:
+            pass
 
     # -- message handling ---------------------------------------------------
     def handle(self, msg, ts_recv):
@@ -334,40 +474,27 @@ class MatchRecorder:
             return
 
         if et == "last_trade_price":
-            # NOT book state, so it never touches self.books -- but it is the
-            # only record of when a trade actually happened, and the exchange
-            # stamps it in milliseconds. The public data-api tape can be
-            # backfilled later, but only at SECOND resolution, and one second
-            # here holds a median of ~85 book updates. That precision cannot
-            # be recovered afterwards, so it has to be caught live.
-            for tr in (msg.get("trades") or [msg]):
-                aid = tr.get("asset_id") or msg.get("asset_id")
-                meta = self.assets.get(aid)
-                if meta is None:
-                    self.unknown += 1
-                    continue
-                try:
-                    price = float(tr["price"])
-                    size = float(tr["size"])
-                except (KeyError, TypeError, ValueError):
-                    self.unknown += 1
-                    continue
-                self.writer.put("trade", json.dumps({
-                    "seq": self.seq.next(),
-                    "ts": ts_ex, "recv": ts_recv, "et": "trade",
-                    "slug": self.slug, "asset_id": aid,
-                    "market_type": meta["market_type"], "outcome": meta["outcome"],
-                    "market_question": meta.get("market_question"),
-                    "outcome_name": meta.get("outcome_name"),
-                    "line": meta["line"], "condition_id": meta["condition_id"],
-                    "price": price, "size": size, "side": tr.get("side"),
-                    "fee_rate_bps": tr.get("fee_rate_bps"),
-                    "tx": tr.get("transaction_hash"),
-                }, separators=(",", ":")))
-                self.trades += 1
+            # A genuine print. Not book state, so it gets its own row rather
+            # than being folded into the book -- but it must be recorded,
+            # because without it a size decrease at the touch is ambiguous
+            # between a fill and a cancel. That ambiguity was the single
+            # biggest limitation of snapshot-only recordings: ~45% of
+            # one-tick touch moves turned out to be reprices, and they carry
+            # a spurious edge (a pulled quote cannot be adversely selected).
+            #
+            # The book top is stamped onto the row so the aggressor side can
+            # be inferred later: a print at the bid is a taker selling, a
+            # print at the ask is a taker buying.
+            self.emit_trade(msg, ts_ex, ts_recv)
             return
 
-        # tick_size_change / anything else: not book state.
+        if et == "tick_size_change":
+            # Changes the minimum price increment, which rescales every
+            # spread and depth measurement taken after it.
+            self.emit_meta(msg, ts_ex, ts_recv, "tick_size_change")
+            return
+
+        # anything else: not book state and not a trade.
 
     # -- seeding ------------------------------------------------------------
     async def seed(self):
@@ -399,29 +526,58 @@ class MatchRecorder:
                     CLOB_WS_MARKET_URL,
                     ping_interval=20,
                     ping_timeout=60,      # generous: a slow moment must not kill the feed
+                    # The library default open_timeout is 10s, and the CLOB
+                    # handshake intermittently takes longer than that -- a
+                    # probe measured the same endpoint failing at exactly
+                    # 10.0s and then connecting in 1.8s and 0.7s moments
+                    # later. Left at the default, every socket on the slate
+                    # failed its handshake, the recorder logged "timed out
+                    # during opening handshake" for each, and a 100s test
+                    # captured ZERO messages while still writing seed rows --
+                    # so the run looks superficially alive but records nothing.
+                    open_timeout=45,
                     max_queue=None,       # buffer bursts instead of back-pressuring
                     max_size=None,
                     close_timeout=5,
                 ) as ws:
                     await ws.send(json.dumps({"assets_ids": ids, "type": "market"}))
                     log(f"[{self.slug}] connected, {len(ids)} assets")
+                    self.emit_status("conn", event="connected")
                     backoff = 1
-                    while not self.stop_event.is_set():
-                        raw = await ws.recv()
-                        ts_recv = now_ms()
-                        try:
-                            payload = json.loads(raw)
-                        except json.JSONDecodeError:
-                            self.unknown += 1
-                            continue
-                        if isinstance(payload, dict):
-                            payload = [payload]
-                        self.msgs += len(payload)
-                        for m in payload:
+                    self.last_rx = time.monotonic()
+                    # Heartbeats run in their OWN task rather than by putting a
+                    # timeout on recv(). Wrapping `ws.recv()` in
+                    # asyncio.wait_for cancels the pending read when it fires,
+                    # and cancelling a websockets read leaves the connection
+                    # unusable -- a 90s live test recorded ZERO messages and
+                    # reconnected on every heartbeat interval, because each
+                    # timeout silently tore down the socket that had just been
+                    # rebuilt. The read below must stay an uninterrupted await.
+                    hb = asyncio.create_task(self._heartbeat_loop())
+                    try:
+                        while not self.stop_event.is_set():
+                            raw = await ws.recv()
+                            ts_recv = now_ms()
+                            self.last_rx = time.monotonic()
                             try:
-                                self.handle(m, ts_recv)
-                            except Exception as e:
-                                log(f"[{self.slug}] handler error: {e}")
+                                payload = json.loads(raw)
+                            except json.JSONDecodeError:
+                                self.unknown += 1
+                                continue
+                            if isinstance(payload, dict):
+                                payload = [payload]
+                            self.msgs += len(payload)
+                            for m in payload:
+                                try:
+                                    self.handle(m, ts_recv)
+                                except Exception as e:
+                                    log(f"[{self.slug}] handler error: {e}")
+                    finally:
+                        hb.cancel()
+                        try:
+                            await hb
+                        except (asyncio.CancelledError, Exception):
+                            pass
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -430,14 +586,21 @@ class MatchRecorder:
                 self.reconnects += 1
                 down_since = time.monotonic()
                 log(f"[{self.slug}] disconnected ({e}); retry in {backoff}s")
+                self.emit_status("conn", event="disconnected",
+                                 reason=str(e)[:200], retry_in_s=backoff)
                 try:
                     await asyncio.sleep(backoff)
                 except asyncio.CancelledError:
                     raise
                 backoff = min(backoff * 2, 20)
                 if down_since:
-                    log(f"[{self.slug}] outage ~{time.monotonic()-down_since:.1f}s "
+                    out_s = time.monotonic() - down_since
+                    log(f"[{self.slug}] outage ~{out_s:.1f}s "
                         f"-- price_changes during it are unrecoverable")
+                    # the length goes into the data, so a downstream gap of
+                    # this size can be attributed to loss rather than quiet
+                    self.emit_status("conn", event="outage_end",
+                                     outage_s=round(out_s, 3))
 
 
 # ---------------------------------------------------------------------------
@@ -618,6 +781,64 @@ def assets_live_discover(limit):
     return per_match
 
 
+def assets_mlb_futures(shard_size=80):
+    """Discover active MLB-tagged non-game markets from the CLOB catalog.
+
+    The sampling-markets endpoint is cursor-paginated and already exposes the
+    exact token IDs accepted by the market WebSocket. Ordinary markets tagged
+    `Games` are excluded because the match recorder captures them separately.
+    Futures are sharded so one connection failure cannot affect every series.
+    """
+    url = "https://clob.polymarket.com/sampling-markets"
+    cursor = None
+    assets = []
+    seen = set()
+    while True:
+        params = {"next_cursor": cursor} if cursor else {}
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        payload = r.json()
+        for m in payload.get("data", []):
+            tags = {str(t).strip().lower() for t in (m.get("tags") or [])}
+            if "mlb" not in tags or "games" in tags:
+                continue
+            if (not m.get("active", True) or m.get("closed")
+                    or not m.get("accepting_orders", True)
+                    or not m.get("enable_order_book", True)):
+                continue
+            tokens = m.get("tokens") or []
+            if len(tokens) != 2:
+                continue
+            cid = m.get("condition_id")
+            for i, token in enumerate(tokens):
+                aid = str(token.get("token_id") or "")
+                if not aid or aid in seen:
+                    continue
+                seen.add(aid)
+                assets.append((aid, {
+                    "market_type": "mlb_future",
+                    "market_question": m.get("question"),
+                    "line": None,
+                    "condition_id": cid,
+                    "outcome": "YES" if i == 0 else "NO",
+                    "outcome_name": token.get("outcome"),
+                    "market_slug": m.get("market_slug"),
+                    "tags": sorted(tags),
+                    "seconds_delay": m.get("seconds_delay"),
+                }))
+        nxt = payload.get("next_cursor")
+        if not nxt or nxt == "LTE=" or nxt == cursor:
+            break
+        cursor = nxt
+
+    per_shard = defaultdict(dict)
+    for i, (aid, meta) in enumerate(assets):
+        per_shard[f"mlb-futures-{i // shard_size:02d}"][aid] = meta
+    log(f"[discovery] MLB futures: {len(assets)} assets / "
+        f"{len(assets)//2} markets across {len(per_shard)} websocket shards")
+    return per_shard
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -632,10 +853,10 @@ async def stats_loop(recs, writer, interval, stop_event, t0):
         el = time.monotonic() - t0
         tot_m = sum(r.msgs for r in recs)
         tot_s = sum(r.snapshots for r in recs)
+        tot_t = sum(r.trades for r in recs)
         rc = sum(r.reconnects for r in recs)
-        tot_tr = sum(r.trades for r in recs)
         log(f"[stats] {el:6.0f}s  msgs {tot_m:>8,} ({tot_m/max(el,1):>6.1f}/s)  "
-            f"snapshots {tot_s:>8,}  trades {tot_tr:>6,}  reconnects {rc}  "
+            f"snapshots {tot_s:>8,}  trades {tot_t:>6,}  reconnects {rc}  "
             f"queued {writer.q.qsize():>6,}  written {writer.written:>8,}")
         stale = []
         for r in recs:
@@ -647,7 +868,9 @@ async def stats_loop(recs, writer, interval, stop_event, t0):
 
 
 async def main_async(args):
-    if args.event_slugs:
+    if args.mlb_futures:
+        per_match = assets_mlb_futures(args.futures_shard_size)
+    elif args.event_slugs:
         per_match = assets_from_event_slugs(args.event_slugs, core_only=args.core_only)
     elif args.live_discover:
         per_match = assets_live_discover(args.live_discover)
@@ -662,7 +885,8 @@ async def main_async(args):
 
     stop_event = asyncio.Event()
     seq = Seq()
-    recs = [MatchRecorder(slug, assets, writer, stop_event, seq)
+    recs = [MatchRecorder(slug, assets, writer, stop_event, seq,
+                          depth_cents=args.depth_cents)
             for slug, assets in sorted(per_match.items())]
 
     log(f"Recording {len(recs)} matches / {sum(len(r.assets) for r in recs)} assets, "
@@ -706,11 +930,11 @@ async def main_async(args):
     for r in sorted(recs, key=lambda x: -x.snapshots):
         lag = (r.lag_sum / r.lag_n) if r.lag_n else float("nan")
         log(f"  {r.slug:<34} msgs {r.msgs:>7,}  snapshots {r.snapshots:>7,}  "
-            f"trades {r.trades:>6,}  reconnects {r.reconnects:>3}  "
-            f"mean delivery lag {lag:>7.0f} ms")
+            f"trades {r.trades:>6,}  "
+            f"reconnects {r.reconnects:>3}  mean delivery lag {lag:>7.0f} ms")
     tot_s = sum(r.snapshots for r in recs)
-    tot_tr = sum(r.trades for r in recs)
-    log(f"  TOTAL {tot_s:,} snapshots, {tot_tr:,} trades in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
+    log(f"  TOTAL {tot_s:,} snapshots, {sum(r.trades for r in recs):,} trades "
+        f"in {el:.0f}s  ({tot_s/max(el,1):.1f}/s), "
         f"{sum(r.reconnects for r in recs)} reconnects, "
         f"{writer.written:,} records written, {writer.q.qsize()} still queued")
 
@@ -723,6 +947,14 @@ def main():
     ap.add_argument("--event-slugs", nargs="*", default=None,
                      help="record these Gamma event slugs instead of matches.py "
                           "(any sport or non-sport event, one websocket each)")
+    ap.add_argument("--mlb-futures", action="store_true",
+                    help="record every active MLB-tagged non-game market from the "
+                         "CLOB catalog (World Series, awards, divisions, etc.)")
+    ap.add_argument("--futures-shard-size", type=int, default=80,
+                    help="maximum futures assets per independent websocket")
+    ap.add_argument("--depth-cents", type=float, default=None, metavar="DOLLARS",
+                    help="write only levels within this amount of each side's touch; "
+                         "prices/ticks and every update remain unresampled")
     ap.add_argument("--core-only", action="store_true",
                      help="record only moneyline/spread/total/first-inning-run. "
                           "Default records EVERY order-book market on the event, "

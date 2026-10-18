@@ -224,8 +224,18 @@ def build_one(slug, out_root, chunk_seconds, window, window_mode="game", event=N
     # interrupted (kill, reboot, full disk) after some tokens are written; the
     # half-built directory is otherwise indistinguishable from a finished one,
     # and a resumed run would skip it and ship a game missing tokens.
-    with open(os.path.join(slug_dir, "entry.json"), "wb") as f:
-        f.write(orjson.dumps(entry))
+    # Serialize first, then write, then rename. Doing it in that order is what
+    # makes the marker mean something: open()ing the destination before
+    # dumps() has succeeded creates the file even when the dump raises, which
+    # leaves a zero-length "this game is complete" marker behind.
+    marker = os.path.join(slug_dir, "entry.json")
+    blob = orjson.dumps(entry, option=orjson.OPT_SERIALIZE_NUMPY)
+    tmp = marker + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(blob)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, marker)
 
     return entry, {
         "runs": total_runs, "chunk_mb": total_bytes / 1e6,
@@ -278,12 +288,23 @@ def main():
         else:
             event = cache.get(slug)
 
+        # A marker only counts if it actually parses. os.path.exists() alone
+        # trusted a zero-length entry.json left behind by a run that crashed
+        # inside orjson.dumps -- the file was created, the write raised, and
+        # the next run then skipped that game as "already built" and crashed
+        # on the empty marker instead. An unreadable marker means not built.
         marker = os.path.join(args.out_dir, slug, "entry.json")
         if os.path.exists(marker) and not args.force:
-            with open(marker, "rb") as f:
-                manifest.append(orjson.loads(f.read()))
-            print(f"  {slug}: already built, skipping (--force to rebuild)")
-            continue
+            prev = None
+            try:
+                with open(marker, "rb") as f:
+                    prev = orjson.loads(f.read())
+            except Exception as e:
+                print(f"  [warn] {slug}: unusable completion marker ({type(e).__name__}); rebuilding")
+            if prev is not None:
+                manifest.append(prev)
+                print(f"  {slug}: already built, skipping (--force to rebuild)")
+                continue
 
         window = windows.get(slug, {})
         if not window:

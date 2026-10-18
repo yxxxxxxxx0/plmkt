@@ -1,0 +1,2 @@
+model,J,H,threshold,n_jumps,n_detected,detection_rate,lead_p25,lead_median,lead_p75,lead_p90,frac_lead_under_2s,frac_lead_over_10s,alert_duty_cycle
+cnn,0.02,30,0.7528047561645508,6174,861,0.13945578231292516,0.0,1.0,8.0,25.0,0.5423925667828107,0.2229965156794425,0.05

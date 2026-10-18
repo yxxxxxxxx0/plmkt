@@ -1,0 +1,24 @@
+trimming 6 session(s), one at a time, in_game_only=True drop_broken=True
+  books_2026-08-28: 30,481,811 rows across 30 row group(s), batch size 500,000
+  books_2026-08-28: 5,599,167 of 30,481,811 rows kept (18.4%)
+  books_2026-08-28: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-08-28_trimmed.parquet (183 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-08-28_trimmed.npy (896 MB)
+  books_2026-08-30: 11,653,622 rows across 12 row group(s), batch size 500,000
+  books_2026-08-30: excluding 2 broken match(es): mlb-bos-nyy-2026-08-30, mlb-kc-cle-2026-08-30
+  books_2026-08-30: 4,459,338 of 11,653,622 rows kept (38.3%)
+  books_2026-08-30: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-08-30_trimmed.parquet (140 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-08-30_trimmed.npy (713 MB)
+  books_2026-09-10: 4,857,353 rows across 5 row group(s), batch size 500,000
+  books_2026-09-10: 1,784,419 of 4,857,353 rows kept (36.7%)
+  books_2026-09-10: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-09-10_trimmed.parquet (57 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-09-10_trimmed.npy (286 MB)
+  books_2026-09-11: 18,105,340 rows across 18 row group(s), batch size 500,000
+  books_2026-09-11: excluding 1 broken match(es): mlb-cin-mil-2026-09-11
+  books_2026-09-11: 5,474,888 of 18,105,340 rows kept (30.2%)
+  books_2026-09-11: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-09-11_trimmed.parquet (159 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-09-11_trimmed.npy (876 MB)
+  books_2026-09-12: 14,404,892 rows across 14 row group(s), batch size 500,000
+  books_2026-09-12: 5,269,717 of 14,404,892 rows kept (36.6%)
+  books_2026-09-12: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-09-12_trimmed.parquet (150 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-09-12_trimmed.npy (843 MB)
+  books_2026-09-13: 11,812,566 rows across 12 row group(s), batch size 500,000
+  books_2026-09-13: excluding 1 broken match(es): mlb-hou-tb-2026-09-13
+  books_2026-09-13: 5,414,754 of 11,812,566 rows kept (45.8%)
+  books_2026-09-13: wrote C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\feat_books_2026-09-13_trimmed.parquet (161 MB) and C:\Users\JustinCHENG\Documents\plmkt\polymarket_orderbook\data\jump\lob_books_2026-09-13_trimmed.npy (866 MB)
+
+done. Original lob_*.npy total 14.61 GB; trimmed caches are the small files training now reads.

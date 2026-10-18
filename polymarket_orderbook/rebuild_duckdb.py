@@ -91,6 +91,18 @@ def load_columns(slug, split_dir=JSONL_SPLIT_DIR):
 
     Metadata is verified constant per asset in the recorder's output, so
     any_value() over the group is exact, not a sample.
+
+    asset_id IS NOT NULL matters. The recorder also writes connection
+    telemetry -- et='conn' rows carrying disconnected / outage_end / connected
+    and no asset, because a socket drop belongs to the session, not to any one
+    token. Without the filter those rows group into a single NULL "asset" that
+    owns no book, and the first thing downstream to touch it dies:
+    build_match_index does `label = outcome or asset_id[:8]` and raises
+    TypeError: 'NoneType' object is not subscriptable. That is what happened on
+    the 2026-09-20 slate, which is the first recorded one with a reconnect in
+    it (88 conn events, mlb-atl-hou). A NULL asset would also add a bogus
+    boundary to asset_boundaries and bogus timestamps to the shared tick axis,
+    so it is excluded at source rather than patched downstream.
     """
     path = os.path.join(split_dir, f"{slug}.jsonl").replace("\\", "/")
     con = duckdb.connect()
@@ -101,6 +113,7 @@ def load_columns(slug, split_dir=JSONL_SPLIT_DIR):
                any_value(line) AS line, any_value(outcome) AS outcome,
                any_value(condition_id) AS condition_id
         FROM read_ndjson('{path}', columns={{{SCALAR_COLS}}})
+        WHERE asset_id IS NOT NULL
         GROUP BY asset_id
         ORDER BY asset_id
     """).fetchall()
@@ -123,6 +136,7 @@ def load_columns(slug, split_dir=JSONL_SPLIT_DIR):
                list_transform(asks, x -> x[1]) AS ask_px,
                list_transform(asks, x -> x[2]) AS ask_sz
         FROM read_ndjson('{path}', columns={{{BOOK_COLS}}})
+        WHERE asset_id IS NOT NULL
         ORDER BY asset_id, seq
     """).arrow().read_all()
 
@@ -322,8 +336,15 @@ def prepare_game(slug, window, window_mode="game", split_dir=JSONL_SPLIT_DIR):
     if window and window_mode == "game":
         start_ts, end_ts = window["kickoff_ts"], window["game_end_ts"]
     else:
-        start_ts = min(a[0] for a in ts_adj_by_asset.values())
-        end_ts = max(a[-1] for a in ts_adj_by_asset.values())
+        # float(), because these come out of numpy arrays here while the
+        # windowed branch above takes them from JSON as plain Python numbers.
+        # Everything downstream inherits the type: chunk_edges are built from
+        # start_ts and land in entry.json, which orjson refuses to serialize as
+        # numpy.float64. The full-span fallback is a supported path -- it is
+        # what runs whenever game_windows.json has no entry for a slug -- but
+        # nothing had exercised it, so the whole 2026-09-20 build died on it.
+        start_ts = float(min(a[0] for a in ts_adj_by_asset.values()))
+        end_ts = float(max(a[-1] for a in ts_adj_by_asset.values()))
 
     n_before = n_after = 0
     # Distinct real in-window change timestamps, matching rebuild_multi's

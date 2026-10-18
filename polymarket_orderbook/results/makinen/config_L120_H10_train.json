@@ -1,0 +1,25 @@
+{
+  "tag": "L120_H10_train",
+  "lookback": 120,
+  "horizon": 10,
+  "normalisation": "train",
+  "n_windows": 14963,
+  "prevalence": 0.1551827842010292,
+  "train_sessions": [
+    "books_2026-08-28",
+    "books_2026-08-30",
+    "books_2026-09-10",
+    "books_2026-09-11"
+  ],
+  "val_sessions": [
+    "books_2026-09-12"
+  ],
+  "test_sessions": [
+    "books_2026-09-13"
+  ],
+  "shape": [
+    14963,
+    120,
+    69
+  ]
+}

@@ -1,0 +1,120 @@
+[15:04:24] === data/live/books_2026-09-10.jsonl.xz ===
+[15:05:26]   5,000,000 lines, 3,289,712 grid rows, 81,372/s
+[15:06:14]   10,000,000 lines, 4,652,838 grid rows, 91,233/s
+[15:06:24]   11,307,252 lines -> 4,857,353 grid rows in 120s (2,656 silences truncated at 60s)
+[15:06:44]   features (4857353, 29), tensor (4857353, 4, 10)
+[15:06:45]   jump base rate: 0.0599  (290,978 of 4,856,228 samples)
+[15:06:45]   book age ms: p50 4,817 p90 35,156 p99 56,530 max 60,052
+[15:06:45]   rows carrying a book older than the 5s horizon: 49.4%
+[15:06:45]   grid is 200ms; median book age 4,817ms => ~24x oversampled
+[15:06:45]   excursion ticks: endpoint mean 0.332  path-max mean 0.567
+[15:06:45]   by market type:
+                     size      mean
+mt                                 
+first_inning_run   266412  0.033317
+moneyline          622948  0.014892
+spread            2235789  0.072594
+total             1731079  0.063845
+[15:06:53] === ../data/live/books_2026-08-30.jsonl.xz ===
+[15:08:20]   5,000,000 lines, 6,423,323 grid rows, 57,418/s
+[15:09:11]   10,000,000 lines, 7,597,368 grid rows, 72,701/s
+[15:09:58]   15,000,000 lines, 8,675,475 grid rows, 81,206/s
+[15:11:35]   25,000,000 lines, 10,400,529 grid rows, 88,560/s
+[15:12:31]   30,741,211 lines -> 11,653,622 grid rows in 338s (5,237 silences truncated at 60s)
+[15:13:33]   features (11653622, 29), tensor (11653622, 4, 10)
+[15:13:37]   jump base rate: 0.0763  (888,475 of 11,650,447 samples)
+[15:13:37]   book age ms: p50 2,858 p90 30,998 p99 55,841 max 60,000
+[15:13:37]   rows carrying a book older than the 5s horizon: 41.4%
+[15:13:37]   grid is 200ms; median book age 2,858ms => ~14x oversampled
+[15:13:37]   excursion ticks: endpoint mean 0.463  path-max mean 0.683
+[15:13:37]   by market type:
+[15:14:13] === data/live/books_2026-09-10.jsonl.xz ===
+[15:15:14]   5,000,000 lines, 3,289,712 grid rows, 82,399/s
+[15:16:00]   10,000,000 lines, 4,652,838 grid rows, 93,991/s
+[15:16:11]   11,307,252 lines -> 4,857,353 grid rows in 118s (2,656 silences truncated at 60s)
+[15:16:29]   features (4857353, 29), tensor (4857353, 4, 10)
+[15:16:29]   jump base rate: 0.0599  (290,978 of 4,856,228 samples)
+[15:16:29]   book age ms: p50 4,817 p90 35,156 p99 56,530 max 60,052
+[15:16:29]   rows carrying a book older than the 5s horizon: 49.4%
+[15:16:30]   grid is 200ms; median book age 4,817ms => ~24x oversampled
+[15:16:30]   excursion ticks: endpoint mean 0.332  path-max mean 0.567
+[15:16:30]   by market type:
+                     size      mean
+mt                                 
+first_inning_run   266412  0.033317
+moneyline          622948  0.014892
+spread            2235789  0.072594
+total             1731079  0.063845
+[15:16:37] === data/live/books_2026-09-13.jsonl.xz ===
+[15:18:02]   5,000,000 lines, 5,766,427 grid rows, 58,873/s
+[15:18:51]   10,000,000 lines, 7,178,988 grid rows, 74,747/s
+[15:19:39]   15,000,000 lines, 8,608,264 grid rows, 82,459/s
+[15:20:25]   20,000,000 lines, 9,811,772 grid rows, 87,918/s
+[15:21:10]   25,000,000 lines, 10,905,828 grid rows, 91,703/s
+[15:21:51]   29,695,237 lines -> 11,812,566 grid rows in 314s (5,675 silences truncated at 60s)
+[15:22:42]   features (11812566, 29), tensor (11812566, 4, 10)
+[15:22:48]   jump base rate: 0.1053  (1,243,637 of 11,809,191 samples)
+[15:22:49]   book age ms: p50 3,783 p90 33,020 p99 56,049 max 60,000
+[15:22:49]   rows carrying a book older than the 5s horizon: 45.8%
+[15:22:50]   grid is 200ms; median book age 3,783ms => ~19x oversampled
+[15:22:50]   excursion ticks: endpoint mean 0.791  path-max mean 1.212
+[15:22:50]   by market type:
+                     size      mean
+mt                                 
+first_inning_run   599788  0.030481
+moneyline         1582955  0.029091
+spread            5529474  0.125510
+total             4096974  0.118453
+[15:23:18] === data/live/books_2026-09-12.jsonl.xz ===
+[15:26:33]   15,000,000 lines, 10,995,834 grid rows, 76,808/s
+[15:27:25]   20,000,000 lines, 12,915,540 grid rows, 80,952/s
+[15:28:19]   26,148,350 lines -> 14,404,892 grid rows in 301s (7,979 silences truncated at 60s)
+[15:29:29]   features (14404892, 29), tensor (14404892, 4, 10)
+[15:29:42]   jump base rate: 0.0727  (1,046,363 of 14,401,517 samples)
+[15:29:42]   book age ms: p50 5,400 p90 35,222 p99 56,579 max 60,000
+[15:29:42]   rows carrying a book older than the 5s horizon: 51.4%
+[15:29:43]   grid is 200ms; median book age 5,400ms => ~27x oversampled
+[15:29:43]   excursion ticks: endpoint mean 0.443  path-max mean 0.660
+[15:29:43]   by market type:
+                     size      mean
+mt                                 
+first_inning_run   865404  0.022884
+moneyline         1932968  0.021967
+spread            6677885  0.084036
+total             4925260  0.085867
+[15:30:14] === data/live/books_2026-09-11.jsonl.xz ===
+[15:34:13]   15,000,000 lines, 15,108,249 grid rows, 62,789/s
+[15:35:44]   25,000,000 lines, 17,177,122 grid rows, 75,801/s
+[15:36:28]   30,000,000 lines, 17,973,834 grid rows, 80,264/s
+[15:36:37]   31,057,804 lines -> 18,105,340 grid rows in 383s (8,318 silences truncated at 60s)
+[15:38:07]   features (18105340, 29), tensor (18105340, 4, 10)
+[15:38:22]   jump base rate: 0.0617  (1,116,717 of 18,101,965 samples)
+[15:38:23]   book age ms: p50 6,800 p90 35,000 p99 55,974 max 60,000
+[15:38:23]   rows carrying a book older than the 5s horizon: 56.0%
+[15:38:23]   grid is 200ms; median book age 6,800ms => ~34x oversampled
+[15:38:23]   excursion ticks: endpoint mean 0.433  path-max mean 0.669
+[15:38:23]   by market type:
+                     size      mean
+mt                                 
+first_inning_run  1076100  0.014645
+moneyline         2350988  0.014625
+spread            8336161  0.074206
+total             6338716  0.070674
+[15:39:04] === ../data/live/books_2026-08-28.jsonl.xz ===
+[15:44:21]   15,000,000 lines, 25,313,766 grid rows, 47,357/s
+[15:46:02]   25,000,000 lines, 27,040,481 grid rows, 59,810/s
+[15:47:00]   30,000,000 lines, 28,118,785 grid rows, 63,022/s
+[15:49:42]   47,264,936 lines -> 30,481,811 grid rows in 638s (25,639 silences truncated at 60s)
+[15:52:53]   features (30481811, 29), tensor (30481811, 4, 10)
+[15:53:21]   jump base rate: 0.0251  (763,565 of 30,478,436 samples)
+[15:53:22]   book age ms: p50 8,352 p90 41,125 p99 57,702 max 60,000
+[15:53:22]   rows carrying a book older than the 5s horizon: 59.8%
+[15:53:23]   grid is 200ms; median book age 8,352ms => ~42x oversampled
+[15:53:23]   excursion ticks: endpoint mean 0.146  path-max mean 0.210
+[15:53:23]   by market type:
+                      size      mean
+mt                                  
+first_inning_run   2224619  0.009271
+moneyline          4081398  0.007783
+spread            13895479  0.029980
+total             10276940  0.028665
