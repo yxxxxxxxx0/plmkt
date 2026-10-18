@@ -74,6 +74,50 @@ Use a separate session because futures must outlive one game slate.
 side's current touch. It does not resample ticks, merge timestamps, or cap the
 full internal state used to follow a moving best price.
 
+### 1b. Kalshi — `kalshi_recorder.py` (no API key)
+
+```
+python kalshi_recorder.py --events KXEPLGAME-26OCT18BOUSUN --duration 60
+```
+
+Kalshi's websocket needs an API key (HTTP 401 without one), so this polls the
+public REST API instead:
+
+- **One batch request** (`/markets/orderbooks?tickers=…`) returns every
+  tracked book, so the request rate doesn't grow with the number of matches.
+- **Phase-offset pollers:** `--pollers` requests stay in flight, launched
+  evenly, so a snapshot lands every ~round-trip ÷ pollers (~80–140 ms from
+  Hong Kong, faster from us-east-1). `--max-rps` caps it; a 429 doubles the
+  interval until a quiet spell.
+- **Only changed books are written**, diffed in *arrival* order. ~17% of
+  replies overtake an earlier-sent one; measured on live matches, arrival
+  order tracks the server's state (22 one-poll flickers vs 168 in send
+  order). Such replies are kept and flagged `overtook`. Neither order is
+  perfect, so `clean_kalshi.py` rebuilds every reply after download and keeps
+  a state only once two consecutive replies agree (flickers 15% → ~5%),
+  writing `kbooks_clean_TAG.jsonl.xz`; the pull job runs it automatically.
+- **No exchange timestamp on books:** each snapshot has `t_send`/`t_recv`.
+  Trades come from the global trade feed with Kalshi's own `created_time`.
+
+Output in `data/live/kalshi/`: `kbooks_TAG.jsonl` (books, YES terms: NO bid p
+→ YES ask 1−p), `ktrades_TAG.jsonl`, `kpolls_TAG.jsonl` (every request, plus
+market status changes), `ktop_TAG.csv`.
+
+### 1c. Both venues, unattended — `pairing.py` + `run_session.py`
+
+`pairing.py --hkt-date D` lists games on both venues (team codes, then fuzzy
+names + kickoff), with real kickoff (Polymarket `startTime`; Kalshi's
+`occurrence_datetime` is kickoff + 3 h for football) and MLB gamePk.
+
+`run_session.py --daemon` re-plans every 20 min and starts both recorders 30
+min before each kickoff, then compresses (`compress_raw.py`) and moves the
+`.xz` files to `data/outbox/<session>/` (or uploads to S3 with `--s3`).
+`deploy/pull_recordings.sh` runs on the Mac every 30 min (launchd), downloads
+the outbox, `xz -t`s it, and only then deletes it from the server, so the
+server disk holds only sessions not yet pulled. Server setup:
+`deploy/setup_ec2.sh` (Ubuntu or Amazon Linux; systemd unit
+`deploy/plmkt-recorder.service`).
+
 ---
 
 ## 2. Reconstruction — `rebuild_duckdb.py`

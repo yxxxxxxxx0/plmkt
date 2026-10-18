@@ -10,6 +10,9 @@
 requests>=2.31
 websockets>=13.0
 
+# kalshi_recorder.py (REST polling; orjson above is optional there)
+aiohttp>=3.9
+
 # rebuild_duckdb.py (fast rebuild path). pyarrow is not imported by name --
 # duckdb needs it for the .arrow() zero-copy interface load_columns() relies
 # on, so it is a hard requirement, not an optional extra.
@@ -24,3 +27,6 @@ ijson>=3.5
 # liquidity_collapse.py, depth5c_plot.py, collapse_summary_plot.py.
 # All three use the Agg backend, so no GUI toolkit is needed.
 matplotlib>=3.8
+
+# analyze_collapse.py
+pandas>=2.2

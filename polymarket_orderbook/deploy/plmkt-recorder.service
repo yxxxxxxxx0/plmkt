@@ -1,0 +1,25 @@
+# Polymarket + Kalshi recorder daemon (run_session.py --daemon).
+# Installed by deploy/setup_ec2.sh (which fills in User); edit ExecStart to change leagues.
+# Finished sessions go to data/outbox/, pulled to the Mac by deploy/pull_recordings.sh.
+[Unit]
+Description=Polymarket + Kalshi order book recorder
+Wants=network-online.target time-sync.target
+After=network-online.target time-sync.target
+
+[Service]
+Type=simple
+User=RECORDER_USER
+WorkingDirectory=/opt/plmkt/polymarket_orderbook
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/plmkt/.venv/bin/python run_session.py --daemon
+StandardOutput=append:/opt/plmkt/polymarket_orderbook/logs/daemon.log
+StandardError=append:/opt/plmkt/polymarket_orderbook/logs/daemon.log
+Restart=always
+RestartSec=30
+# Only the daemon is stopped/restarted with the unit. Recordings it launched
+# run in their own session and must survive a daemon restart; state.json
+# stops them being launched twice.
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

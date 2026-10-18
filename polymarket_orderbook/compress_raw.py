@@ -51,6 +51,11 @@ def md5_stream(cmd, bufsize=1 << 22):
     return h.hexdigest(), n, p.returncode
 
 
+def xz_name(src):
+    """books.jsonl -> books.jsonl.xz; books.jsonl.gz -> books.jsonl.xz"""
+    return (src[:-3] if src.endswith(".gz") else src) + ".xz"
+
+
 def log(m):
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
@@ -71,18 +76,33 @@ def main():
         if not os.path.exists(src):
             log(f"SKIP {src}: missing")
             continue
-        dst = src + ".xz"
+        dst = xz_name(src)
         size = os.path.getsize(src)
         log(f"=== {os.path.basename(src)}  ({size/1e9:.1f} GB) ===")
 
         t = time.time()
-        m_before = md5_file(src)
+        partial = False
+        if src.endswith(".gz"):
+            # recorded as gzip (live_recorder.py --gzip): the original is the
+            # decompressed stream. A recorder killed mid-write leaves a
+            # truncated last block; everything before it is kept.
+            m_before, size, grc = md5_stream(["gzip", "-dc", src])
+            if grc != 0:
+                partial = True
+                log(f"  gzip -dc exited {grc} (truncated tail?); archiving the {size/1e9:.2f} GB "
+                    f"it decoded, and KEEPING the .gz")
+            with open(dst, "wb") as out:
+                g = subprocess.Popen(["gzip", "-dc", src], stdout=subprocess.PIPE)
+                rc = subprocess.run([XZ, f"-{args.level}", "-T0", "-c"], stdin=g.stdout,
+                                    stdout=out).returncode
+                g.stdout.close()
+                g.wait()
+        else:
+            m_before = md5_file(src)
+            with open(dst, "wb") as out:
+                rc = subprocess.run([XZ, f"-{args.level}", "-T0", "-c", src],
+                                    stdout=out).returncode
         log(f"  md5 original    {m_before}  ({time.time()-t:.0f}s)")
-
-        t = time.time()
-        with open(dst, "wb") as out:
-            rc = subprocess.run([XZ, f"-{args.level}", "-T0", "-c", src],
-                                stdout=out).returncode
         if rc != 0:
             log(f"  !! xz failed rc={rc}; leaving original alone")
             continue
@@ -105,11 +125,12 @@ def main():
 
         total_before += size
         total_after += csize
-        if args.keep:
-            log("  --keep: original retained")
+        if args.keep or partial:
+            log("  original retained")
         else:
+            freed = os.path.getsize(src)
             os.remove(src)
-            log(f"  deleted original, reclaimed {size/1e9:.1f} GB")
+            log(f"  deleted original, reclaimed {freed/1e9:.1f} GB")
 
     if total_before:
         log(f"TOTAL {total_before/1e9:.1f} GB -> {total_after/1e9:.2f} GB "

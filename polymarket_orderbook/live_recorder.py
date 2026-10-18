@@ -52,6 +52,7 @@ Usage:
 import argparse
 import asyncio
 import csv
+import gzip
 import json
 import os
 import queue
@@ -103,7 +104,7 @@ def log(msg):
 # ---------------------------------------------------------------------------
 
 class Writer(threading.Thread):
-    def __init__(self, fsync_interval=30.0, batch=2000, session=None):
+    def __init__(self, fsync_interval=30.0, batch=2000, session=None, gzip_books=False):
         super().__init__(daemon=True)
         self.q = queue.Queue()
         self.fsync_interval = fsync_interval
@@ -121,7 +122,13 @@ class Writer(threading.Thread):
         # slower to split, awkward to archive, and impossible to hand over as
         # "one slate". `session` keeps each run in its own pair of files.
         tag = f"_{session}" if session else ""
-        self.books_path = os.path.join(OUT_DIR, f"books{tag}.jsonl")
+        # gzip_books: the full-depth book stream is ~0.5 GB per game-hour raw,
+        # enough to fill the server's disk on a busy night. Written as fast
+        # gzip instead (~10x smaller); compress_raw.py turns it into the usual
+        # .jsonl.xz at the end. The gzip stream is sync-flushed every few
+        # seconds, so a crash loses at most that much.
+        self.gzip_books = gzip_books
+        self.books_path = os.path.join(OUT_DIR, f"books{tag}.jsonl" + (".gz" if gzip_books else ""))
         self.top_path = os.path.join(OUT_DIR, f"top_of_book{tag}.csv")
 
     def put(self, kind, payload):
@@ -132,7 +139,11 @@ class Writer(threading.Thread):
 
     def run(self):
         new_top = not (os.path.exists(self.top_path) and os.path.getsize(self.top_path) > 0)
-        bf = open(self.books_path, "a", encoding="utf-8")
+        if self.gzip_books:
+            bf = gzip.open(self.books_path, "at", encoding="utf-8", compresslevel=1)
+        else:
+            bf = open(self.books_path, "a", encoding="utf-8")
+        last_gz_flush = time.monotonic()
         tf = open(self.top_path, "a", newline="", encoding="utf-8")
         tw = csv.writer(tf)
         if new_top:
@@ -159,10 +170,12 @@ class Writer(threading.Thread):
                         kind, payload = self.q.get_nowait()
                     except queue.Empty:
                         break
-                if drained:
-                    bf.flush()
-                    tf.flush()
                 now = time.monotonic()
+                if drained:
+                    tf.flush()
+                    if not self.gzip_books or now - last_gz_flush >= 5:
+                        bf.flush()             # gzip: also a zlib sync flush
+                        last_gz_flush = now
                 if now - last_sync >= self.fsync_interval:
                     # durability checkpoint, off the event loop and rare
                     os.fsync(bf.fileno())
@@ -697,7 +710,7 @@ def assets_from_matches(slugs=None, core_only=False):
     return per_match
 
 
-def assets_from_event_slugs(slugs, core_only=False):
+def assets_from_event_slugs(slugs, core_only=False, market_types=None):
     """Record arbitrary Gamma event slugs, not just the MLB slate in
     matches.py. Every order-book market on the event is taken; MLB market
     types get discovery.py's friendly names, anything else keeps its raw
@@ -723,6 +736,8 @@ def assets_from_event_slugs(slugs, core_only=False):
                 if core_only:
                     continue
                 mt = smt or "other"
+            if market_types and mt not in market_types:
+                continue
             try:
                 ids = json.loads(m.get("clobTokenIds") or "[]")
                 outs = json.loads(m.get("outcomes") or "[]")
@@ -871,7 +886,8 @@ async def main_async(args):
     if args.mlb_futures:
         per_match = assets_mlb_futures(args.futures_shard_size)
     elif args.event_slugs:
-        per_match = assets_from_event_slugs(args.event_slugs, core_only=args.core_only)
+        per_match = assets_from_event_slugs(args.event_slugs, core_only=args.core_only,
+                                            market_types=args.market_types)
     elif args.live_discover:
         per_match = assets_live_discover(args.live_discover)
     else:
@@ -880,7 +896,8 @@ async def main_async(args):
     if not per_match:
         raise SystemExit("No assets discovered; nothing to record.")
 
-    writer = Writer(fsync_interval=args.fsync_interval, session=args.session)
+    writer = Writer(fsync_interval=args.fsync_interval, session=args.session,
+                    gzip_books=args.gzip)
     writer.start()
 
     stop_event = asyncio.Event()
@@ -899,8 +916,11 @@ async def main_async(args):
     tasks.append(asyncio.create_task(stats_loop(recs, writer, args.stats_interval, stop_event, t0)))
 
     if args.stop_when_final:
-        pks = [m["gamePk"] for m in matches_module.matches
-               if m.get("gamePk") and (not args.slugs or m["slug"] in args.slugs)]
+        if args.game_pks:
+            pks = args.game_pks
+        else:
+            pks = [m["gamePk"] for m in matches_module.matches
+                   if m.get("gamePk") and (not args.slugs or m["slug"] in args.slugs)]
         if pks:
             tasks.append(asyncio.create_task(
                 final_watch(stop_event, pks, args.stop_when_final)))
@@ -959,6 +979,9 @@ def main():
                      help="record only moneyline/spread/total/first-inning-run. "
                           "Default records EVERY order-book market on the event, "
                           "including 1st-5-innings spreads/totals and extra innings.")
+    ap.add_argument("--market-types", nargs="*", default=None, metavar="TYPE",
+                     help="with --event-slugs, record only these market types "
+                          "(e.g. moneyline); default records every market")
     ap.add_argument("--duration", type=float, default=0, help="stop after N seconds (0 = run until Ctrl+C)")
     ap.add_argument("--stats-interval", type=float, default=30.0)
     ap.add_argument("--stop-when-final", type=float, default=0, metavar="MIN",
@@ -966,6 +989,11 @@ def main():
                          "game Final (0 = disabled). Needs gamePk in matches.py, "
                          "which plan_slate.py writes. --duration still applies as a "
                          "hard backstop.")
+    ap.add_argument("--game-pks", type=int, nargs="*", default=None,
+                    help="gamePks for --stop-when-final instead of reading matches.py "
+                         "(used by run_session.py with --event-slugs)")
+    ap.add_argument("--gzip", action="store_true",
+                    help="write books_TAG.jsonl.gz (fast gzip) instead of raw .jsonl")
     ap.add_argument("--session", default=None, metavar="TAG",
                     help="write to data/live/books_TAG.jsonl instead of books.jsonl. "
                          "Use one tag per slate (e.g. --session 2026-08-28); the files "

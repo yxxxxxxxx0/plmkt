@@ -4,6 +4,7 @@
 # window file and the analysis results are worth committing (see the
 # project-level .gitignore for those exceptions).
 polymarket_orderbook/data/live/
+polymarket_orderbook/data/sessions/
 polymarket_orderbook/data/viewer_full/
 polymarket_orderbook/data/uniform/
 polymarket_orderbook/data/plots/
