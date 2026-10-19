@@ -418,11 +418,11 @@ class KalshiRecorder:
         """Receive books and trades from the shared hub instead of polling.
         Starts the hub if none is running; reconnects if it goes away (the
         lost stretch shows as a gap in kpolls)."""
-        from kalshi_hub import SOCK
+        from kalshi_hub import open_hub_connection
         spawned = 0.0
         while not self.stop_event.is_set():
             try:
-                reader, w = await asyncio.open_unix_connection(SOCK, limit=1 << 26)
+                reader, w = await open_hub_connection(limit=1 << 26)
             except OSError:
                 if time.monotonic() - spawned > 20:
                     spawned = time.monotonic()
@@ -557,11 +557,12 @@ def spawn_hub():
     """Start kalshi_hub.py detached (its lock keeps it to one instance)."""
     import subprocess
     import sys
+    from kalshi_hub import DETACH
     os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
     out = open(os.path.join(BASE_DIR, "logs", "kalshi_hub.log"), "a")
     subprocess.Popen([sys.executable, "-u", os.path.join(BASE_DIR, "kalshi_hub.py")],
                      cwd=BASE_DIR, stdout=out, stderr=subprocess.STDOUT,
-                     stdin=subprocess.DEVNULL, start_new_session=True)
+                     stdin=subprocess.DEVNULL, **DETACH)
 
 
 def _iso_to_s(s):

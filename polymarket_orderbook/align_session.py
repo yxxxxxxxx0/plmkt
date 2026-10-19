@@ -109,6 +109,13 @@ def split_polymarket(path, slugs, levels, tmp, pm_time):
             slug = r["slug"]
             if slug not in outs:
                 continue
+            # main's live_recorder.py also writes conn / trade / tick_size_change
+            # rows into this stream; only book states belong on the timeline,
+            # but a reported outage is a gap just like a re-seed.
+            if r.get("et") == "conn" and r.get("event") == "outage_end":
+                gaps[slug].append((r["recv"] - int(r.get("outage_s", 0) * 1000), r["recv"]))
+            if "bids" not in r or r.get("et") == "trade":
+                continue
             aid = r["asset_id"]
             t = r["ts"] if pm_time == "ts" else r["recv"]
             if aid not in assets:

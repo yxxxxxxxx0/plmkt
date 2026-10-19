@@ -30,8 +30,8 @@ Usage (normally not run by hand):
 """
 import argparse
 import asyncio
-import fcntl
 import os
+import subprocess
 import statistics
 import time
 from collections import deque
@@ -55,6 +55,44 @@ except ImportError:
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SOCK = os.path.join(BASE_DIR, "data", "kalshi_hub.sock")
 LOCK = os.path.join(BASE_DIR, "data", "kalshi_hub.lock")
+# Windows has no unix sockets in asyncio, so the hub listens on loopback TCP
+# there instead.
+WINDOWS = os.name == "nt"
+HUB_PORT = 47613
+
+# Popen kwargs for a child that must outlive its parent: a new session on
+# POSIX; on Windows a detached process outside the parent's console, so
+# closing that console (or Ctrl+C in it) does not kill the recording.
+DETACH = ({"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
+          if WINDOWS else {"start_new_session": True})
+
+
+async def start_hub_server(handle, limit):
+    if WINDOWS:
+        return await asyncio.start_server(handle, "127.0.0.1", HUB_PORT, limit=limit)
+    if os.path.exists(SOCK):
+        os.unlink(SOCK)
+    return await asyncio.start_unix_server(handle, path=SOCK, limit=limit)
+
+
+async def open_hub_connection(limit):
+    if WINDOWS:
+        return await asyncio.open_connection("127.0.0.1", HUB_PORT, limit=limit)
+    return await asyncio.open_unix_connection(SOCK, limit=limit)
+
+
+def try_lock(f):
+    """Non-blocking exclusive lock on an open file; False if already held."""
+    try:
+        if WINDOWS:
+            import msvcrt
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        return False
 MAX_BUFFER = 64 << 20          # drop a subscriber that stops reading
 
 
@@ -269,10 +307,8 @@ class Hub:
         timeout = aiohttp.ClientTimeout(total=self.args.request_timeout)
         async with aiohttp.ClientSession(connector=conn, timeout=timeout, headers=HEADERS) as sess:
             self.sess = sess
-            if os.path.exists(SOCK):
-                os.unlink(SOCK)
-            server = await asyncio.start_unix_server(self.handle, path=SOCK, limit=1 << 20)
-            log(f"[hub] listening on {SOCK}")
+            server = await start_hub_server(self.handle, limit=1 << 20)
+            log(f"[hub] listening on {f'127.0.0.1:{HUB_PORT}' if WINDOWS else SOCK}")
             tasks = [asyncio.create_task(c) for c in (self.book_loop(), self.trade_loop(), self.stats_loop())]
             await self.stop.wait()
             server.close()
@@ -297,10 +333,8 @@ def main():
     ap.add_argument("--idle-exit", type=float, default=900.0)
     args = ap.parse_args()
     os.makedirs(os.path.dirname(LOCK), exist_ok=True)
-    lock = open(LOCK, "w")
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
+    lock = open(LOCK, "a")
+    if not try_lock(lock):
         print("another kalshi_hub is running; exiting")
         return
     asyncio.run(Hub(args).run())

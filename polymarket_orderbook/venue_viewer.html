@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Venue Viewer</title>
+<script src="/vendor/plotly-2.35.2.min.js"></script>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6b66; --line: #e3e2dd;
+  --accent: #2a5bd7; --pm: #2a5bd7; --pm-band: rgba(42,91,215,.12);
+  --ks: #d9761c; --ks-band: rgba(217,118,28,.14); --pos: #1f8a4c; --neg: #c2362f;
+  --grid: #ecebe6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151514; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
+    --accent: #7ea2ff; --pm: #7ea2ff; --pm-band: rgba(126,162,255,.16);
+    --ks: #f0a050; --ks-band: rgba(240,160,80,.16); --pos: #4cc27f; --neg: #ef6b62; --grid: #2a2a27;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151514; --panel: #1e1e1c; --ink: #ecebe6; --muted: #9a9993; --line: #33332f;
+  --accent: #7ea2ff; --pm: #7ea2ff; --pm-band: rgba(126,162,255,.16);
+  --ks: #f0a050; --ks-band: rgba(240,160,80,.16); --pos: #4cc27f; --neg: #ef6b62; --grid: #2a2a27;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.app { display: grid; grid-template-columns: 290px 1fr; min-height: 100vh; }
+aside { border-right: 1px solid var(--line); background: var(--panel); padding: 16px; overflow-y: auto; max-height: 100vh; position: sticky; top: 0; }
+aside h1 { font-size: 16px; margin: 0 0 4px; }
+aside .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+.sess { margin-bottom: 14px; }
+.sess h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; }
+.game { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: none; color: inherit;
+  padding: 7px 8px; border-radius: 7px; cursor: pointer; font: inherit; }
+.game:hover { background: var(--bg); }
+.game.active { border-color: var(--accent); background: var(--bg); }
+.game small { display: block; color: var(--muted); font-size: 11.5px; }
+main { padding: 18px 22px 40px; min-width: 0; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; margin-bottom: 10px; }
+.top h2 { margin: 0; font-size: 20px; }
+.top .meta { color: var(--muted); font-size: 13px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 14px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--panel); color: var(--ink); padding: 6px 11px; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent); color: #fff; }
+label.ctl { color: var(--muted); font-size: 12.5px; display: inline-flex; gap: 6px; align-items: center; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.tile .k { color: var(--muted); font-size: 11.5px; }
+.tile .v { font-size: 19px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.tile .n { color: var(--muted); font-size: 11.5px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 4px; margin-bottom: 14px; }
+.card h3 { margin: 0 0 2px; font-size: 13.5px; }
+.card p { margin: 0 0 4px; color: var(--muted); font-size: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+table.jt { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.jt th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+table.jt td { padding: 4px 8px; border-bottom: 1px solid var(--line); }
+table.jt tr.click { cursor: pointer; } table.jt tr.click:hover td { background: var(--bg); }
+.scroll { max-height: 300px; overflow-y: auto; }
+.empty { color: var(--muted); padding: 60px 0; text-align: center; }
+.themebtn { margin-top: 10px; font-size: 12px; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  aside { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  .row2 { grid-template-columns: 1fr; }
+  main { padding: 14px 16px 30px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Venue Viewer</h1>
+    <div class="sub">Polymarket vs Kalshi, same game, same clock</div>
+    <div id="list">Loading…</div>
+    <div class="seg themebtn"><button data-th="">Auto</button><button data-th="light">Light</button><button data-th="dark">Dark</button></div>
+  </aside>
+  <main id="main"><div class="empty">Pick a game on the left.</div></main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmtT = ms => new Date(ms).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+let G = null, K = null, showTrades = true, colRatio = 0.5, colSync = 2, COL = null, bucketS = 5, maxLag = 30, range = null, busy = false;
+
+// ---- theme ---------------------------------------------------------------
+function setTheme(th) {
+  if (th) document.documentElement.dataset.theme = th; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem('vv-theme', th); } catch (e) {}
+  document.querySelectorAll('.themebtn button').forEach(b => b.classList.toggle('on', b.dataset.th === th));
+  if (G) render();
+}
+document.querySelectorAll('.themebtn button').forEach(b => b.onclick = () => setTheme(b.dataset.th));
+let th0 = ''; try { th0 = localStorage.getItem('vv-theme') || ''; } catch (e) {}
+setTheme(th0);
+
+// ---- index ---------------------------------------------------------------
+fetch('/view/index.json').then(r => r.json()).then(idx => {
+  const tags = Object.keys(idx).sort().reverse();
+  if (!tags.length) { $('#list').textContent = 'No sessions built yet. Run prep_venue_view.py.'; return; }
+  $('#list').innerHTML = tags.map(tag => `<div class="sess"><h2>${tag.replace('_', ' · ')}</h2>` +
+    idx[tag].games.slice().sort((a, b) => a.kickoff_ms - b.kickoff_ms).map(g =>
+      `<button class="game" data-file="${g.file}">${g.title}
+        <small>${(g.league || '').toUpperCase()} · kickoff ${fmtT(g.kickoff_ms)} · ${g.pm_trades + g.ks_trades} trades</small></button>`
+    ).join('') + '</div>').join('');
+  document.querySelectorAll('.game').forEach(b => b.onclick = () => load(b));
+  const want = decodeURIComponent(location.hash.slice(1));
+  const hit = want && [...document.querySelectorAll('.game')].find(b => b.dataset.file.startsWith(want));
+  if (hit) load(hit);
+}).catch(() => $('#list').textContent = 'Could not load /view/index.json — is serve_venue_viewer.py running?');
+
+function load(btn) {
+  document.querySelectorAll('.game').forEach(b => b.classList.toggle('active', b === btn));
+  history.replaceState(null, '', '#' + btn.dataset.file.replace(/\.view\.json$/, ''));
+  $('#main').innerHTML = '<div class="empty">Loading…</div>';
+  fetch('/view/' + btn.dataset.file).then(r => r.json()).then(g => {
+    G = g; G.x = g.t.map(t => new Date(t)); K = g.outcomes[0].key; range = null; COL = null; render();
+  });
+}
+
+// ---- math ----------------------------------------------------------------
+function idxRange() {
+  if (!range) return [0, G.t.length - 1];
+  const a = +new Date(range[0]), b = +new Date(range[1]);
+  let i0 = G.t.findIndex(t => t >= a); if (i0 < 0) i0 = 0;
+  let i1 = G.t.length - 1; while (i1 > 0 && G.t[i1] > b) i1--;
+  return [i0, Math.max(i0, i1)];
+}
+function corr(a, b) {
+  let n = 0, sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i], y = b[i]; if (x == null || y == null) continue;
+    n++; sa += x; sb += y; saa += x * x; sbb += y * y; sab += x * y;
+  }
+  if (n < 3) return null;
+  const v = (saa - sa * sa / n) * (sbb - sb * sb / n);
+  return v > 0 ? (sab - sa * sb / n) / Math.sqrt(v) : null;
+}
+// sample a series every `step` rows (last value) and difference it
+function diffs(arr, i0, i1, step) {
+  const out = [];
+  let prev = null;
+  for (let i = i0; i <= i1; i += step) {
+    const v = arr[i];
+    out.push(v != null && prev != null ? v - prev : null);
+    if (v != null) prev = v;
+  }
+  return out;
+}
+function leadLag(i0, i1) {
+  const s = G.series[K], step = Math.max(1, Math.round(bucketS * 1000 / G.step_ms));
+  const dp = diffs(s.pm_mid, i0, i1, step), dk = diffs(s.ks_mid, i0, i1, step);
+  const lags = [], cs = [];
+  for (let L = -maxLag; L <= maxLag; L++) {
+    // L > 0: Polymarket's move at t vs Kalshi's at t+L  -> Polymarket leads
+    const a = [], b = [];
+    for (let i = 0; i < dp.length; i++) { const j = i + L; if (j >= 0 && j < dk.length) { a.push(dp[i]); b.push(dk[j]); } }
+    lags.push(L * bucketS); cs.push(corr(a, b));
+  }
+  return {lags, cs, c0: corr(dp, dk)};
+}
+function stats(i0, i1) {
+  const s = G.series[K];
+  let n = 0, sb = 0, sab = 0, cr = 0, both = 0, maxEdge = -1, spP = 0, spK = 0, nsP = 0, nsK = 0;
+  for (let i = i0; i <= i1; i++) {
+    const pm = s.pm_mid[i], km = s.ks_mid[i];
+    if (s.pm_ask[i] != null && s.pm_bid[i] != null) { spP += s.pm_ask[i] - s.pm_bid[i]; nsP++; }
+    if (s.ks_ask[i] != null && s.ks_bid[i] != null) { spK += s.ks_ask[i] - s.ks_bid[i]; nsK++; }
+    if (pm == null || km == null) continue;
+    n++; sb += pm - km; sab += Math.abs(pm - km);
+    if (s.pm_bid[i] != null && s.ks_ask[i] != null && s.ks_bid[i] != null && s.pm_ask[i] != null) {
+      both++;
+      const e = Math.max(s.pm_bid[i] - s.ks_ask[i], s.ks_bid[i] - s.pm_ask[i]);
+      if (e > 1e-9) cr++;
+      if (e > maxEdge) maxEdge = e;
+    }
+  }
+  const t0 = G.t[i0], t1 = G.t[i1];
+  const tr = (arr) => arr.filter(r => r[1] === K && r[0] >= t0 && r[0] <= t1);
+  const pt = tr(G.pm_trades), kt = tr(G.ks_trades);
+  return {
+    basis: n ? sb / n : null, absb: n ? sab / n : null,
+    clev: corr(s.pm_mid.slice(i0, i1 + 1), s.ks_mid.slice(i0, i1 + 1)),
+    crossed: both ? cr / both : null, maxEdge: both ? maxEdge : null,
+    spP: nsP ? spP / nsP : null, spK: nsK ? spK / nsK : null,
+    pt, kt, pv: pt.reduce((a, r) => a + r[3], 0), kv: kt.reduce((a, r) => a + r[3], 0),
+    hours: (t1 - t0) / 3.6e6,
+  };
+}
+const c = v => v == null ? '—' : (v * 100).toFixed(2) + '¢';
+const pct = v => v == null ? '—' : (v * 100).toFixed(1) + '%';
+const r2 = v => v == null ? '—' : v.toFixed(3);
+const big = v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : v.toFixed(0);
+
+// ---- render --------------------------------------------------------------
+function baseLayout(extra) {
+  return Object.assign({
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    font: {color: css('--ink'), family: 'system-ui, Segoe UI, sans-serif', size: 11.5},
+    margin: {l: 52, r: 14, t: 8, b: 34}, showlegend: false, hovermode: 'x unified',
+    xaxis: {gridcolor: css('--grid'), linecolor: css('--line'), zeroline: false},
+    yaxis: {gridcolor: css('--grid'), linecolor: css('--line'), zeroline: false},
+  }, extra);
+}
+const CFG = {displaylogo: false, responsive: true, modeBarButtonsToRemove: ['lasso2d', 'select2d']};
+
+function render() {
+  const o = G.outcomes;
+  $('#main').innerHTML = `
+    <div class="top"><h2>${G.title}</h2>
+      <span class="meta">${(G.league || '').toUpperCase()} · kickoff ${fmtT(G.kickoff_ms)} · ${G.session} · ${(G.t.length * G.step_ms / 3.6e6).toFixed(1)} h recorded</span></div>
+    <div class="controls">
+      <div class="seg" id="oc">${o.map(x => `<button data-k="${x.key}" title="${x.pm_question || ''} / ${x.kalshi}">${x.name}</button>`).join('')}</div>
+      <label class="ctl">lead-lag bucket
+        <span class="seg" id="bk">${[1, 5, 15, 60].map(b => `<button data-b="${b}">${b}s</button>`).join('')}</span></label>
+      <label class="ctl"><input type="checkbox" id="tr" ${showTrades ? 'checked' : ''}> show trades</label>
+      <span class="legend"><span><i class="sw" style="background:var(--pm)"></i>Polymarket</span><span><i class="sw" style="background:var(--ks)"></i>Kalshi</span></span>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div class="card"><h3>Price, both venues</h3>
+      <p>Shaded band = best bid to best ask; line = mid; faint markers = trades (size ∝ volume, ▲ taker buy, ▼ taker sell). Drag to zoom — every panel below follows the window.</p>
+      <div id="price" style="height:380px"></div></div>
+    <div class="card"><h3>Basis and crossed books</h3>
+      <p>Line = Polymarket mid − Kalshi mid. Green bars = an instant where one venue's bid was above the other's ask (raw edge, before fees).</p>
+      <div id="basis" style="height:220px"></div></div>
+    <div class="card"><h3>Order book collapse, both venues</h3>
+      <p>Depth = size on the top ${G.depth_levels || 5} bid + ask levels, summed over every outcome. Plotted as depth ÷ its own median over the previous 60 s → 5 s (1× = normal).
+        A collapse starts when it drops below the threshold (onsets ≥ 30 s apart). Green bands = both venues collapsed within the sync window.</p>
+      <div class="controls" style="margin:6px 0 4px">
+        <label class="ctl">threshold <span class="seg" id="cr">${[0.3, 0.4, 0.5, 0.6, 0.7].map(r => `<button data-r="${r}">${r}×</button>`).join('')}</span></label>
+        <label class="ctl">sync window <span class="seg" id="cs">${[1, 2, 5, 10, 30].map(r => `<button data-s="${r}">±${r}s</button>`).join('')}</span></label>
+      </div>
+      <div class="tiles" id="ctiles" style="margin-bottom:6px"></div>
+      <div id="col" style="height:260px"></div></div>
+    <div class="row2">
+      <div class="card"><h3>Joint collapses</h3>
+        <p>Click a row to zoom every chart to it. Move = largest mid change over any outcome, 5 s before → 15 s after.</p>
+        <div class="scroll" id="jtab"></div></div>
+      <div class="card"><h3>Collapse timing</h3>
+        <p>For each Polymarket collapse, when the nearest Kalshi collapse started (within ±30 s). Shaded = sync window; right of 0 → Kalshi collapsed after Polymarket.</p>
+        <div id="chist" style="height:280px"></div></div>
+    </div>
+    <div class="row2">
+      <div class="card"><h3>Who moves first</h3>
+        <p id="llnote">Correlation of price changes at a lag. Peak right of 0 → Polymarket leads; left → Kalshi leads.</p>
+        <div id="ll" style="height:280px"></div></div>
+      <div class="card"><h3>Polymarket mid vs Kalshi mid</h3>
+        <p>Each dot one instant in the window, coloured early → late. On the diagonal = same price.</p>
+        <div id="sc" style="height:280px"></div></div>
+    </div>`;
+  document.querySelectorAll('#oc button').forEach(b => { b.classList.toggle('on', b.dataset.k === K); b.onclick = () => { K = b.dataset.k; render(); }; });
+  document.querySelectorAll('#bk button').forEach(b => { b.classList.toggle('on', +b.dataset.b === bucketS); b.onclick = () => { bucketS = +b.dataset.b; document.querySelectorAll('#bk button').forEach(x => x.classList.toggle('on', x === b)); refresh(); }; });
+  $('#tr').onchange = e => { showTrades = e.target.checked; drawPrice(); if (range) Plotly.relayout('price', {'xaxis.range': range}); };
+  document.querySelectorAll('#cr button').forEach(b => { b.classList.toggle('on', +b.dataset.r === colRatio); b.onclick = () => { colRatio = +b.dataset.r; COL = null; render(); }; });
+  document.querySelectorAll('#cs button').forEach(b => { b.classList.toggle('on', +b.dataset.s === colSync); b.onclick = () => { colSync = +b.dataset.s; COL = null; render(); }; });
+  if (!COL) COL = collapses();
+  drawPrice(); drawBasis(); drawCollapse(); refresh();
+  if (range) ['price', 'basis', 'col'].forEach(id => document.getElementById(id) && Plotly.relayout(id, {'xaxis.range': range}));
+}
+
+function band(lo, hi, fill, name) {
+  return [
+    {x: G.x, y: lo, type: 'scatter', mode: 'lines', line: {width: 0, shape: 'hv'}, hoverinfo: 'skip', connectgaps: false},
+    {x: G.x, y: hi, type: 'scatter', mode: 'lines', line: {width: 0, shape: 'hv'}, fill: 'tonexty', fillcolor: fill, hoverinfo: 'skip', connectgaps: false},
+  ];
+}
+function tradeTrace(rows, color, name) {
+  const r = rows.filter(x => x[1] === K);
+  return {
+    x: r.map(x => new Date(x[0])), y: r.map(x => x[2]), type: 'scattergl', mode: 'markers', name,
+    marker: {color, opacity: .3, size: r.map(x => Math.min(11, 2.5 + Math.sqrt(x[3]) / 5)),
+             symbol: r.map(x => x[4] === 'buy' ? 'triangle-up' : x[4] === 'sell' ? 'triangle-down' : 'circle')},
+    text: r.map(x => `${name} ${x[4] || ''} ${big(x[3])} @ ${(x[2] * 100).toFixed(1)}¢`), hovertemplate: '%{text}<extra></extra>',
+  };
+}
+function kickShape() {
+  return [{type: 'line', xref: 'x', yref: 'paper', x0: new Date(G.kickoff_ms), x1: new Date(G.kickoff_ms), y0: 0, y1: 1,
+           line: {color: css('--muted'), width: 1, dash: 'dot'}}];
+}
+function drawPrice() {
+  const s = G.series[K];
+  const traces = [
+    ...band(s.pm_bid, s.pm_ask, css('--pm-band')), ...band(s.ks_bid, s.ks_ask, css('--ks-band')),
+    {x: G.x, y: s.pm_mid, type: 'scatter', mode: 'lines', name: 'Polymarket mid', line: {color: css('--pm'), width: 1.6, shape: 'hv'}, hovertemplate: '%{y:.3f}'},
+    {x: G.x, y: s.ks_mid, type: 'scatter', mode: 'lines', name: 'Kalshi mid', line: {color: css('--ks'), width: 1.6, shape: 'hv'}, hovertemplate: '%{y:.3f}'},
+  ];
+  if (showTrades) traces.splice(4, 0, tradeTrace(G.pm_trades, css('--pm'), 'PM'), tradeTrace(G.ks_trades, css('--ks'), 'Kalshi'));
+  Plotly.newPlot('price', traces, baseLayout({shapes: kickShape(), yaxis: {gridcolor: css('--grid'), tickformat: '.0%', title: {text: 'P(' + G.outcomes.find(x => x.key === K).name + ')'}}}), CFG);
+  $('#price').on('plotly_relayout', ev => syncRange(ev, 'price'));
+}
+function drawBasis() {
+  const s = G.series[K];
+  const basis = s.pm_mid.map((p, i) => p != null && s.ks_mid[i] != null ? p - s.ks_mid[i] : null);
+  const edge = s.pm_bid.map((_, i) => {
+    if ([s.pm_bid[i], s.ks_ask[i], s.ks_bid[i], s.pm_ask[i]].some(v => v == null)) return null;
+    const e = Math.max(s.pm_bid[i] - s.ks_ask[i], s.ks_bid[i] - s.pm_ask[i]);
+    return e > 1e-9 ? e : null;
+  });
+  Plotly.newPlot('basis', [
+    {x: G.x, y: edge, type: 'scattergl', mode: 'markers', marker: {color: css('--pos'), size: 3}, name: 'crossed edge', hovertemplate: 'edge %{y:.3f}'},
+    {x: G.x, y: basis, type: 'scattergl', mode: 'lines', line: {color: css('--ink'), width: 1}, name: 'PM − Kalshi', hovertemplate: '%{y:.3f}'},
+  ], baseLayout({shapes: kickShape(), yaxis: {gridcolor: css('--grid'), zeroline: true, zerolinecolor: css('--muted'), tickformat: '.1%'}}), CFG);
+  $('#basis').on('plotly_relayout', ev => syncRange(ev, 'basis'));
+}
+function syncRange(ev, other) {
+  if (busy) return;
+  let r = null;
+  if (ev['xaxis.range[0]']) r = [ev['xaxis.range[0]'], ev['xaxis.range[1]']];
+  else if (ev['xaxis.range']) r = ev['xaxis.range'];
+  else if (!ev['xaxis.autorange']) return;
+  setRange(r, other);
+}
+function setRange(r, from) {
+  range = r; busy = true;
+  const others = ['price', 'basis', 'col'].filter(id => id !== from && document.getElementById(id));
+  Promise.all(others.map(id => Plotly.relayout(id, r ? {'xaxis.range': r} : {'xaxis.autorange': true}))).then(() => { busy = false; });
+  clearTimeout(setRange.t); setRange.t = setTimeout(refresh, 150);
+}
+
+// ---- collapse ------------------------------------------------------------
+// Same definition as analyze_collapse.py, on the viewer's coarser grid.
+function depthRatio(D) {
+  const r0 = Math.round(60000 / G.step_ms), r1 = Math.round(5000 / G.step_ms), out = new Array(D.length).fill(null);
+  for (let i = r0; i < D.length; i++) {
+    if (D[i] == null) continue;
+    const w = [];
+    for (let j = i - r0; j <= i - r1; j++) if (D[j] != null) w.push(D[j]);
+    if (w.length < (r0 - r1) / 2) continue;
+    w.sort((a, b) => a - b);
+    const med = w[w.length >> 1];
+    if (med > 0) out[i] = D[i] / med;
+  }
+  return out;
+}
+function onsetIdx(ratio) {
+  const gap = Math.round(30000 / G.step_ms), out = [];
+  let last = -1e9;
+  for (let i = 1; i < ratio.length; i++) {
+    const on = ratio[i] != null && ratio[i] < colRatio, was = ratio[i - 1] != null && ratio[i - 1] < colRatio;
+    if (on && !was && i - last >= gap) { out.push(i); last = i; }
+  }
+  return out;
+}
+function priceMove(i) {
+  const a = Math.max(0, i - Math.round(5000 / G.step_ms)), b = Math.min(G.t.length - 1, i + Math.round(15000 / G.step_ms));
+  const mv = v => Math.max(0, ...G.outcomes.map(o => {
+    const s = G.series[o.key][v + '_mid'];
+    return s[a] != null && s[b] != null ? Math.abs(s[b] - s[a]) : 0;
+  }));
+  return {pm: mv('pm'), ks: mv('ks')};
+}
+function nearestKs(i, ok) {
+  let best = null;
+  for (const j of ok) { const d = G.t[j] - G.t[i]; if (Math.abs(d) <= 30000 && (best == null || Math.abs(d) < Math.abs(best.d))) best = {j, d}; }
+  return best;
+}
+function collapses() {
+  if (!G.depth) return null;
+  const rp = depthRatio(G.depth.pm), rk = depthRatio(G.depth.ks);
+  const op = onsetIdx(rp), ok = onsetIdx(rk), joint = [], near = {};
+  for (const i of op) {
+    const best = nearestKs(i, ok);
+    if (!best) continue;
+    near[i] = best.d / 1000;
+    if (Math.abs(best.d) <= colSync * 1000)
+      joint.push({i, j: best.j, lag: best.d / 1000, dp: rp[i], dk: rk[best.j], move: priceMove(Math.max(i, best.j))});
+  }
+  return {rp, rk, op, ok, joint, near};
+}
+function drawCollapse() {
+  if (!COL) { $('#col').innerHTML = '<div class="empty">No depth in this file — rebuild with prep_venue_view.py --force.</div>'; return; }
+  const C = COL;
+  const shapes = kickShape().concat(C.joint.map(p => ({type: 'rect', xref: 'x', yref: 'paper', y0: 0, y1: 1,
+    x0: new Date(Math.min(G.t[p.i], G.t[p.j]) - 3000), x1: new Date(Math.max(G.t[p.i], G.t[p.j]) + 3000),
+    fillcolor: css('--pos'), opacity: .3, line: {width: 0}})),
+    [{type: 'line', xref: 'paper', x0: 0, x1: 1, y0: colRatio, y1: colRatio, line: {color: css('--neg'), width: 1, dash: 'dash'}}]);
+  const clip = r => r.map(v => v == null ? null : Math.max(0.03, Math.min(5, v)));
+  Plotly.newPlot('col', [
+    {x: G.x, y: clip(C.rp), type: 'scattergl', mode: 'lines', line: {color: css('--pm'), width: 1}, name: 'Polymarket', hovertemplate: 'PM %{y:.2f}×'},
+    {x: G.x, y: clip(C.rk), type: 'scattergl', mode: 'lines', line: {color: css('--ks'), width: 1}, name: 'Kalshi', hovertemplate: 'Kalshi %{y:.2f}×'},
+    {x: C.op.map(i => G.x[i]), y: C.op.map(() => 0.04), type: 'scatter', mode: 'markers', name: 'PM collapse',
+     marker: {symbol: 'triangle-up', size: 9, color: css('--pm')}, hovertemplate: 'PM collapse<extra></extra>'},
+    {x: C.ok.map(i => G.x[i]), y: C.ok.map(() => 0.06), type: 'scatter', mode: 'markers', name: 'Kalshi collapse',
+     marker: {symbol: 'triangle-up', size: 9, color: css('--ks')}, hovertemplate: 'Kalshi collapse<extra></extra>'},
+  ], baseLayout({shapes, yaxis: {type: 'log', gridcolor: css('--grid'), range: [Math.log10(0.03), Math.log10(5)],
+    tickvals: [0.05, 0.1, 0.25, 0.5, 1, 2, 4], ticktext: ['0.05×', '0.1×', '0.25×', '0.5×', '1×', '2×', '4×'], title: {text: 'depth ÷ recent median'}}}), CFG);
+  $('#col').on('plotly_relayout', ev => syncRange(ev, 'col'));
+}
+function refreshCollapse(i0, i1) {
+  if (!COL) return;
+  const C = COL, inW = i => i >= i0 && i <= i1;
+  const op = C.op.filter(inW), ok = C.ok.filter(inW), joint = C.joint.filter(p => inW(p.i));
+  let live = 0; for (let i = i0; i <= i1; i++) if (C.rk[i] != null) live++;
+  const secs = live * G.step_ms / 1000;
+  // chance a PM collapse has a Kalshi onset within +-sync if the two were unrelated
+  const expect = secs > 0 ? 1 - Math.exp(-ok.length / secs * 2 * colSync) : null;
+  const share = op.length ? joint.length / op.length : null;
+  $('#ctiles').innerHTML = [
+    ['PM collapses', op.length, 'in window'],
+    ['Kalshi collapses', ok.length, 'in window'],
+    ['Together', joint.length, `within ±${colSync}s`],
+    ['PM collapses matched', pct(share), 'have a Kalshi partner'],
+    ['By chance', pct(expect), 'if unrelated'],
+    ['Lift', share != null && expect ? (share / expect).toFixed(1) + '×' : '—', 'matched ÷ chance'],
+  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join('');
+
+  $('#jtab').innerHTML = joint.length ? `<table class="jt"><tr><th>Time</th><th>Kalshi lag</th><th>PM depth</th><th>Kalshi depth</th><th>Move PM / Kalshi</th></tr>` +
+    joint.map(p => `<tr class="click" data-t="${G.t[p.i]}"><td>${new Date(G.t[p.i]).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}</td>
+      <td>${p.lag > 0 ? '+' : ''}${p.lag.toFixed(0)}s</td><td>${p.dp.toFixed(2)}×</td><td>${p.dk.toFixed(2)}×</td>
+      <td>${c(p.move.pm)} / ${c(p.move.ks)}</td></tr>`).join('') + '</table>'
+    : '<div class="empty" style="padding:30px 0">No joint collapses in this window.</div>';
+  document.querySelectorAll('#jtab tr.click').forEach(tr => tr.onclick = () => {
+    const t = +tr.dataset.t;
+    setRange([new Date(t - 120000).toISOString(), new Date(t + 120000).toISOString()], null);
+    document.getElementById('price').scrollIntoView({behavior: 'smooth'});
+  });
+
+  const lags = op.filter(i => i in C.near).map(i => C.near[i]);
+  Plotly.react('chist', [{x: lags, type: 'histogram', xbins: {start: -30.5, end: 30.5, size: 1},
+    marker: {color: css('--pos')}, hovertemplate: 'lag %{x}s: %{y}<extra></extra>'}],
+    baseLayout({hovermode: 'closest', bargap: .05,
+      shapes: [{type: 'rect', xref: 'x', yref: 'paper', x0: -colSync - .5, x1: colSync + .5, y0: 0, y1: 1, fillcolor: css('--pos'), opacity: .12, line: {width: 0}}],
+      xaxis: {gridcolor: css('--grid'), title: {text: '← Kalshi first   Kalshi onset − PM onset (s)   PM first →'}, range: [-31, 31]},
+      yaxis: {gridcolor: css('--grid'), title: {text: 'PM collapses'}}}), CFG);
+}
+
+function refresh() {
+  const [i0, i1] = idxRange(), st = stats(i0, i1), ll = leadLag(i0, i1);
+  refreshCollapse(i0, i1);
+  let best = 0, bi = -1;
+  ll.cs.forEach((v, i) => { if (v != null && Math.abs(v) > best) { best = Math.abs(v); bi = i; } });
+  const peak = bi >= 0 ? ll.lags[bi] : null;
+  const who = peak == null ? '—' : peak > 0 ? `PM by ${peak}s` : peak < 0 ? `Kalshi by ${-peak}s` : 'together';
+  $('#tiles').innerHTML = [
+    ['Window', st.hours.toFixed(1) + ' h', range ? 'zoomed' : 'whole recording'],
+    ['Mean basis', c(st.basis), 'PM − Kalshi mid'],
+    ['Mean |basis|', c(st.absb), 'typical gap'],
+    ['Level correlation', r2(st.clev), 'mids'],
+    [`Change corr (${bucketS}s)`, r2(ll.c0), 'same bucket'],
+    ['Leader', who, peak == null ? '' : 'peak corr ' + r2(ll.cs[bi])],
+    ['Time crossed', pct(st.crossed), 'max edge ' + c(st.maxEdge)],
+    ['Avg spread', c(st.spP) + ' / ' + c(st.spK), 'PM / Kalshi'],
+    ['Trades', st.pt.length + ' / ' + st.kt.length, 'PM / Kalshi'],
+    ['Volume', big(st.pv) + ' / ' + big(st.kv), 'shares / contracts'],
+  ].map(([k, v, n]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n}</div></div>`).join('');
+
+  Plotly.react('ll', [{x: ll.lags, y: ll.cs, type: 'bar', marker: {color: ll.lags.map(l => l > 0 ? css('--pm') : l < 0 ? css('--ks') : css('--muted'))},
+    hovertemplate: 'lag %{x}s: %{y:.3f}<extra></extra>'}],
+    baseLayout({hovermode: 'closest', xaxis: {gridcolor: css('--grid'), title: {text: '← Kalshi leads   lag (s)   Polymarket leads →'}}, yaxis: {gridcolor: css('--grid'), title: {text: 'corr'}}}), CFG);
+
+  const s = G.series[K], xs = [], ys = [], cs = [];
+  const step = Math.max(1, Math.floor((i1 - i0) / 5000));
+  for (let i = i0; i <= i1; i += step) if (s.pm_mid[i] != null && s.ks_mid[i] != null) { xs.push(s.ks_mid[i]); ys.push(s.pm_mid[i]); cs.push(G.t[i]); }
+  const lo = Math.min(...xs, ...ys), hi = Math.max(...xs, ...ys);
+  Plotly.react('sc', [
+    {x: [lo, hi], y: [lo, hi], mode: 'lines', line: {color: css('--muted'), dash: 'dot', width: 1}, hoverinfo: 'skip'},
+    {x: xs, y: ys, type: 'scattergl', mode: 'markers', marker: {size: 4, opacity: .6, color: cs, colorscale: 'Viridis'},
+     hovertemplate: 'Kalshi %{x:.3f}<br>PM %{y:.3f}<extra></extra>'}],
+    baseLayout({hovermode: 'closest', xaxis: {gridcolor: css('--grid'), title: {text: 'Kalshi mid'}, tickformat: '.0%'},
+                yaxis: {gridcolor: css('--grid'), title: {text: 'Polymarket mid'}, tickformat: '.0%'}}), CFG);
+}
+</script>
+</body>
+</html>

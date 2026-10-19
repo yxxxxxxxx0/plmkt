@@ -47,6 +47,7 @@ import time
 
 import pairing
 from compress_raw import xz_name
+from kalshi_hub import DETACH
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 SESS_DIR = os.path.join(BASE, "data", "sessions")
@@ -119,7 +120,7 @@ def launch_group(games, args, state):
     out = open(os.path.join(LOGS, f"session_{tag}.log"), "a", encoding="utf-8")
     p = subprocess.Popen([PY, "-u", os.path.abspath(__file__), "--run-group", path],
                          cwd=BASE, stdout=out, stderr=subprocess.STDOUT,
-                         start_new_session=True)
+                         **DETACH)
     for g in games:
         state[game_key(g)] = {"session": tag, "launched": now.isoformat(), "pid": p.pid,
                               "title": g["title"], "kickoff": g["kickoff"]}

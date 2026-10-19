@@ -28,6 +28,8 @@ import shutil
 # is not the Git Bash PATH where xz lives. Resolving it up front turns a
 # mid-run FileNotFoundError into a clear failure before any work starts.
 XZ = shutil.which('xz') or r'C:\Program Files\Git\mingw64\bin\xz.exe'
+# Same trap for gzip, which Git for Windows ships in usr\bin, not mingw64\bin.
+GZIP = shutil.which('gzip') or r'C:\Program Files\Git\usr\bin\gzip.exe'
 import sys
 import time
 
@@ -86,13 +88,13 @@ def main():
             # recorded as gzip (live_recorder.py --gzip): the original is the
             # decompressed stream. A recorder killed mid-write leaves a
             # truncated last block; everything before it is kept.
-            m_before, size, grc = md5_stream(["gzip", "-dc", src])
+            m_before, size, grc = md5_stream([GZIP, "-dc", src])
             if grc != 0:
                 partial = True
                 log(f"  gzip -dc exited {grc} (truncated tail?); archiving the {size/1e9:.2f} GB "
                     f"it decoded, and KEEPING the .gz")
             with open(dst, "wb") as out:
-                g = subprocess.Popen(["gzip", "-dc", src], stdout=subprocess.PIPE)
+                g = subprocess.Popen([GZIP, "-dc", src], stdout=subprocess.PIPE)
                 rc = subprocess.run([XZ, f"-{args.level}", "-T0", "-c"], stdin=g.stdout,
                                     stdout=out).returncode
                 g.stdout.close()
