@@ -1,7 +1,25 @@
-# Two-venue jump study (Polymarket + Kalshi), 12 games of 2026-10-18/19
+# Polymarket strategy search, 2026-10-29
 
-Run every script from `polymarket_orderbook/`. Each reads `data/view/` (built by
-`prep_venue_view.py`) plus `data/view/score_marks.json` from `mark_scores.py`.
+Started as a two-venue jump study (Polymarket + Kalshi, 12 games of 2026-10-18/19)
+and widened into a search for anything a $100 Polymarket-only bot could trade.
+Run every script from `polymarket_orderbook/`. The two-venue scripts read
+`data/view/` (built by `prep_venue_view.py`) plus `data/view/score_marks.json`
+from `mark_scores.py`.
+
+## Where it stands
+
+| Idea | Verdict | Why |
+|---|---|---|
+| Taker on jumps (any timing, any filter) | Dead | Can't enter before the move. After it, what's left doesn't cover the spread. |
+| Kalshi moves first, trade Polymarket | Dead | Polymarket follows only 14-24% of the time. -5 to -7c per trade. |
+| Latency trading off a data feed (Tank01) | Dead | Polymarket's MLB price moves about 1.7 s *before* MLB's own play timestamp. |
+| Maker at the touch, cancel on collapse | Not profitable | 30 s edge is negative. The cancel switch makes Polymarket worse. |
+| Polymarket vs Kalshi arbitrage | Small, and needs Kalshi | About 3 catchable windows a game, about $5 a game. Kalshi is US-only. |
+| 3-way football arbitrage (home/draw/away) | Out of reach | 95% of the profit is during jumps, when the 1 s delay lets makers cancel. |
+| Multi-outcome arbitrage (politics, IPO ranges) | Tiny | 2 of 82 events had a gap, worth $0.11 and $2.60, with money locked for months. |
+| MLB arbitrage between main market and props | None | 3.2M checks over 2 World Series games, zero violations. |
+| Futures arbitrage (champion vs conference) | None | NFL and NBA snapshot: closest gap -0.1c to -0.25c. |
+| **Market making props off the moneyline** | **Open, untested** | Props are priced consistently but with wide spreads (see 13). |
 
 ## Findings, in order
 
@@ -28,12 +46,50 @@ Run every script from `polymarket_orderbook/`. Each reads `data/view/` (built by
    direction the average is about 0c (early entries -1.3c). Depth correlation
    is above 0.8 for 208 of the 268, so it doesn't separate real from noise.
    Joint collapses look like market makers protecting themselves on both venues.
-
 7. **Maker with a collapse cancel switch** (`maker_cancel.py`; 5-share quotes at
    the touch, inventory cap 20, $100 bankroll). The edge per share 30 s after a
-   fill is negative in every mode on both venues: the 0.6-0.9c of spread
-   captured is lost to adverse moves. Cancelling on a collapse on either venue
-   cuts Kalshi losses from -$252 to -$28 but doesn't make it positive.
-   Polymarket's positive totals (+$27 for own-venue and both-venue cancels) come
-   from positions held to the end of the game, not from edge. Kalshi results
-   assume a maker fee of 0.0175 x p(1-p).
+   fill is negative in every mode on both venues. Polymarket on its own: -$4 to
+   -$18 over 12 games once each fill is valued 30 s later. With no switch it's
+   nearly break-even (-0.09c a share); every switch makes it worse. The +$27
+   totals in some modes come from positions held to the end of the game, not
+   from edge. Kalshi results assume a maker fee of 0.0175 x p(1-p).
+8. **MLB latency** (one-off check against MLB's free stats API, game 849817).
+   Half of each Polymarket move happened a median 1.7 s *before* MLB's official
+   end-of-play time; 82% of moves were half done before it. A resold feed like
+   Tank01 arrives after the price has moved. Polymarket's matching engine is in
+   AWS eu-west-2 (London); eu-west-1 (Dublin) is the usual nearby host.
+9. **Kalshi moves first, trade Polymarket** (`kalshi_leads.py`). 149-800 alerts
+   depending on threshold. Polymarket followed 14-24% of the time. -5 to -7c
+   per trade, -5.1c on MLB with no delay, and -4.8c even on alerts that became
+   real jumps.
+10. **Polymarket vs Kalshi arbitrage** (`cross_arb.py`). 473 windows with fresh
+    quotes; 279 last only 1 s. 38 lasted 2 s+ with 2c+ edge: about 3 a game at
+    a median 3.2c on about 49 shares, about $5 a game. Legging risk on the
+    delayed Polymarket leg; settlement-rule mismatch; Kalshi needs US residency.
+11. **3-way football arbitrage within Polymarket** (`pm_internal_arb.py`). The
+    three YES asks normally sum to $1.01-1.02. 90 windows, 41 lasting 2 s+,
+    $120 in total, but $114 of that was within 60 s of a 6c+ jump, exactly when
+    the 1 s taker delay lets makers cancel. About $6 in calm periods. MLB can't
+    do this: it's one two-outcome market with a shared YES/NO book.
+12. **Taker delay by market** (Gamma `secondsDelay`, snapshot 2026-10-29).
+    Football, NFL and NHL: 1 s on the main market *and* every prop. NBA and MLB:
+    0 s. Futures and awards (season champions, MVP, Ballon d'Or-type markets):
+    no delay (8,059 of 8,075 markets unset, the rest 0).
+13. **MLB logical arbitrage** (`mlb_logic_arb.py`, recorded top of book
+    2026-10-26/27). Over L1 >= Over L2, Team -k <= Team wins, Team -k1 >=
+    Team -k2, A -k + B -k <= 1. 3.2M checks, zero windows; the closest was
+    -0.7c after fees. But the props have wide spreads. Median spread: moneyline
+    1c, totals 6-11c, run line 8-12c, first-five / first-inning / extra
+    innings 13-28c, with about 50 shares at the best bid.
+14. **Futures arbitrage** (snapshot, inline check). Team champion <= its
+    conference champion, NFL and NBA 2027: 65 pairs, closest -0.1c / -0.25c.
+    Multi-outcome sum-of-prices check over 82 open events: 2 gaps, Waymo cities
+    (4.7 shares, about $0.11) and OpenAI IPO market cap (71 shares, about $2.60,
+    locked until end-2027).
+
+## Next
+Market-make MLB/NBA props (no delay) around a fair value derived from the 1c
+moneyline and main total, quoting inside the 6-28c spreads and repricing when
+the moneyline moves. The test should report fills, edge 30 s after each fill,
+and P&L at $100 scale. The risk is the one that closed the earlier maker work:
+too few fills, or fills only from better-informed traders.
