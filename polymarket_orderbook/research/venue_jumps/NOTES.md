@@ -108,10 +108,15 @@ Nested futures: NFL closest -0.11c, NBA -0.25c, no arbitrage.
 Before trading any hit: confirm it on the CLOB order book (Gamma prices are a
 summary and can lag), check how many shares are available, and read the
 resolution rules ("buy all YES" is only safe if exactly one outcome must win).
-SC-02 is the interesting lead: it settles in 6 days, so the money isn't locked
-for months.
+SC-02 was a **false positive**: on the CLOB book the YES bids sum to $0.989
+(edge -1.1c before fees) and its placeholder outcomes have no bids at all. Gamma's
+summary prices were stale. The Waymo and OpenAI gaps were also present in a
+snapshot an hour earlier, so the real ones last hours: they survive because they
+are tiny and lock money for months, not because nobody is fast enough.
 
 Next for this goal:
+0. Make `arb_scan.py` confirm every hit against the CLOB book (with shares
+   available) before reporting it.
 1. Run `arb_scan.py` on a schedule for a week and log every gap (size, shares,
    how long it lasted). That shows how often gaps open and whether they're
    catchable, before building an order-sending bot.
