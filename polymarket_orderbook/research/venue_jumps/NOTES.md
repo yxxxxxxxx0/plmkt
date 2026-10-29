@@ -29,6 +29,11 @@ Run every script from `polymarket_orderbook/`. Each reads `data/view/` (built by
    is above 0.8 for 208 of the 268, so it doesn't separate real from noise.
    Joint collapses look like market makers protecting themselves on both venues.
 
-## Next
-Maker strategy: quote at the touch and use the joint-collapse detector to cancel
-(`maker_sim.py`). Bankroll $100.
+7. **Maker with a collapse cancel switch** (`maker_cancel.py`; 5-share quotes at
+   the touch, inventory cap 20, $100 bankroll). The edge per share 30 s after a
+   fill is negative in every mode on both venues: the 0.6-0.9c of spread
+   captured is lost to adverse moves. Cancelling on a collapse on either venue
+   cuts Kalshi losses from -$252 to -$28 but doesn't make it positive.
+   Polymarket's positive totals (+$27 for own-venue and both-venue cancels) come
+   from positions held to the end of the game, not from edge. Kalshi results
+   assume a maker fee of 0.0175 x p(1-p).
