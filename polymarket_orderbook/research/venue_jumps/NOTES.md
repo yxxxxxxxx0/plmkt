@@ -87,7 +87,38 @@ from `mark_scores.py`.
     (4.7 shares, about $0.11) and OpenAI IPO market cap (71 shares, about $2.60,
     locked until end-2027).
 
-## Next
+## Goal (set 2026-10-29)
+Arbitrage in ordinary markets (politics, weather, economics, ...) and in futures
+(season champions, awards), all on Polymarket, all of which have no taker delay.
+
+Tool: `arb_scan.py`, a snapshot scan of every open event for (1) outcomes
+summing to under $1 (or bids over $1) and (2) nested futures (champion <=
+conference). First full run, 2026-10-29: 2,100 open events, 763 multi-outcome,
+**4 with a positive edge**:
+
+| Edge | Trade | Event | Ends |
+|---|---|---|---|
+| +2.91c | buy all YES | How many cities will Waymo operate in by Dec 31? (4.7 shares at best price) | 2027-01-01 |
+| +1.37c | buy all NO | SC-02 House Election Winner | **2026-11-04** |
+| +0.40c | buy all YES | Brazil Annual Inflation 2026 | 2027-01-13 |
+| +0.37c | buy all YES | OpenAI IPO Closing Market Cap (71 shares) | 2028-01-01 |
+
+Nested futures: NFL closest -0.11c, NBA -0.25c, no arbitrage.
+
+Before trading any hit: confirm it on the CLOB order book (Gamma prices are a
+summary and can lag), check how many shares are available, and read the
+resolution rules ("buy all YES" is only safe if exactly one outcome must win).
+SC-02 is the interesting lead: it settles in 6 days, so the money isn't locked
+for months.
+
+Next for this goal:
+1. Run `arb_scan.py` on a schedule for a week and log every gap (size, shares,
+   how long it lasted). That shows how often gaps open and whether they're
+   catchable, before building an order-sending bot.
+2. Add more nested relationships: a team's league title vs. making the playoffs,
+   division vs. conference, an election's party winner vs. its candidates.
+
+## Next (sports props, parked)
 Market-make MLB/NBA props (no delay) around a fair value derived from the 1c
 moneyline and main total, quoting inside the 6-28c spreads and repricing when
 the moneyline moves. The test should report fills, edge 30 s after each fill,
