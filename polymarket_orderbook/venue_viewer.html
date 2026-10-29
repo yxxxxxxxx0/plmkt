@@ -89,6 +89,8 @@ table.jt tr.click { cursor: pointer; } table.jt tr.click:hover td { background: 
 const $ = s => document.querySelector(s);
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const fmtT = ms => new Date(ms).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+let MARKS = {};  // score_marks.json from mark_scores.py: goal times + every jump labelled score / event / noise
+fetch('/view/score_marks.json').then(r => r.ok ? r.json() : {}).then(m => MARKS = m).catch(() => {});
 let G = null, K = null, showTrades = true, colRatio = 0.5, colSync = 2, COL = null, bucketS = 5, maxLag = 30, range = null, busy = false;
 
 // ---- theme ---------------------------------------------------------------
@@ -227,6 +229,7 @@ function render() {
     <div class="tiles" id="tiles"></div>
     <div class="card"><h3>Price, both venues</h3>
       <p>Shaded band = best bid to best ask; line = mid; faint markers = trades (size ∝ volume, ▲ taker buy, ▼ taker sell). Drag to zoom — every panel below follows the window.</p>
+      <p>Solid vertical lines = scores (from match reports, snapped to the price move); dashed = score with no visible move. Diamonds along the top = every 6¢+ / 30 s jump on any outcome: <b style="color:var(--pos)">green</b> caused by a score, <b style="color:#c99a1a">amber</b> near a red card / penalty / VAR call, <b style="color:var(--muted)">grey</b> noise.</p>
       <div id="price" style="height:380px"></div></div>
     <div class="card"><h3>Basis and crossed books</h3>
       <p>Line = Polymarket mid − Kalshi mid. Green bars = an instant where one venue's bid was above the other's ask (raw edge, before fees).</p>
@@ -285,6 +288,24 @@ function kickShape() {
   return [{type: 'line', xref: 'x', yref: 'paper', x0: new Date(G.kickoff_ms), x1: new Date(G.kickoff_ms), y0: 0, y1: 1,
            line: {color: css('--muted'), width: 1, dash: 'dot'}}];
 }
+function scoreShapes() {
+  const m = MARKS[G.slug]; if (!m) return [];
+  return m.scores.map(e => ({type: 'line', xref: 'x', yref: 'paper', x0: new Date(e.t), x1: new Date(e.t), y0: 0, y1: 1,
+    line: {color: e.team === K ? css('--pos') : css('--neg'), width: 1.5, dash: e.matched ? 'solid' : 'dash'}}));
+}
+function scoreNotes() {
+  const m = MARKS[G.slug]; if (!m) return [];
+  return m.scores.map((e, i) => ({x: new Date(e.t), y: 1, yref: 'paper', yanchor: 'bottom', yshift: (i % 2) * 12, showarrow: false,
+    text: `${e.minute}' ${e.label}`, font: {size: 10, color: e.team === K ? css('--pos') : css('--neg')}}));
+}
+function jumpTrace() {
+  const m = MARKS[G.slug]; if (!m) return [];
+  const col = {score: css('--pos'), event: '#c99a1a', noise: css('--muted')};
+  return [{x: m.jumps.map(j => new Date(j.t)), y: m.jumps.map(() => 1.02), type: 'scatter', mode: 'markers', name: 'jumps',
+    marker: {symbol: 'diamond', size: 8, color: m.jumps.map(j => col[j.kind])},
+    text: m.jumps.map(j => `${j.kind}${j.why ? ': ' + j.why : ''} · ${j.outcome} ${j.move > 0 ? '+' : ''}${(j.move * 100).toFixed(1)}¢ / 30s`),
+    hovertemplate: '%{text}<extra></extra>'}];
+}
 function drawPrice() {
   const s = G.series[K];
   const traces = [
@@ -293,7 +314,8 @@ function drawPrice() {
     {x: G.x, y: s.ks_mid, type: 'scatter', mode: 'lines', name: 'Kalshi mid', line: {color: css('--ks'), width: 1.6, shape: 'hv'}, hovertemplate: '%{y:.3f}'},
   ];
   if (showTrades) traces.splice(4, 0, tradeTrace(G.pm_trades, css('--pm'), 'PM'), tradeTrace(G.ks_trades, css('--ks'), 'Kalshi'));
-  Plotly.newPlot('price', traces, baseLayout({shapes: kickShape(), yaxis: {gridcolor: css('--grid'), tickformat: '.0%', title: {text: 'P(' + G.outcomes.find(x => x.key === K).name + ')'}}}), CFG);
+  traces.push(...jumpTrace());
+  Plotly.newPlot('price', traces, baseLayout({shapes: [...kickShape(), ...scoreShapes()], annotations: scoreNotes(), margin: {l: 52, r: 14, t: 36, b: 34}, yaxis: {gridcolor: css('--grid'), tickformat: '.0%', title: {text: 'P(' + G.outcomes.find(x => x.key === K).name + ')'}}}), CFG);
   $('#price').on('plotly_relayout', ev => syncRange(ev, 'price'));
 }
 function drawBasis() {
