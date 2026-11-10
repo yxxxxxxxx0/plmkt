@@ -60,8 +60,10 @@ HKT = pairing.HKT
 FOOTBALL_PM_AFTER = dt.timedelta(hours=2, minutes=50)   # PM recorder stop after last kickoff
 FOOTBALL_BACKSTOP = dt.timedelta(hours=4)
 MLB_BACKSTOP = dt.timedelta(hours=7)
+NHL_PM_AFTER = dt.timedelta(hours=3, minutes=15)   # regulation ~2.5 h + OT/shootout
+NHL_BACKSTOP = dt.timedelta(hours=4)
 LOW_DISK_GB = 5.0   # warn below this; one busy football day is a few GB raw
-LATE_LIMIT = {"football": dt.timedelta(minutes=90), "mlb": dt.timedelta(hours=3)}
+LATE_LIMIT = {"football": dt.timedelta(minutes=90), "mlb": dt.timedelta(hours=3), "nhl": dt.timedelta(minutes=90)}
 
 
 def log(msg):
@@ -104,6 +106,9 @@ def launch_group(games, args, state):
     if sport == "football":
         pm_end = last + FOOTBALL_PM_AFTER
         backstop = last + FOOTBALL_BACKSTOP
+    elif sport == "nhl":
+        pm_end = last + NHL_PM_AFTER
+        backstop = last + NHL_BACKSTOP
     else:
         pm_end = backstop = last + MLB_BACKSTOP
     spec = {
@@ -197,7 +202,7 @@ def run_group(path):
     if spec["sport"] == "mlb" and pks:
         for cmd in (pm_cmd, k_cmd):
             cmd += ["--stop-when-final", "20", "--game-pks", *map(str, pks)]
-    if spec["sport"] == "football":
+    if spec["sport"] in ("football", "nhl"):
         k_cmd += ["--stop-when-closed", "10"]
 
     procs = {}

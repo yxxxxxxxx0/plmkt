@@ -48,6 +48,9 @@ FOOTBALL = {
     "por": "KXLIGAPORTUGALGAME", "elc": "KXEFLCHAMPIONSHIPGAME",
     "mex": "KXLIGAMXGAME", "bra": "KXBRASILEIROGAME",
 }
+NHL_GAME_SERIES = "KXNHLGAME"
+NHL_KICKOFF_LAG = dt.timedelta(hours=3)            # occurrence_datetime - face-off, observed 2026-11-10 (35/35 games)
+NHL_PM_TO_KALSHI = {"MON": "MTL", "LAK": "LA", "UTAH": "UTA", "LAS": "VGK", "CAL": "CGY"}
 MLB_GAME_SERIES = "KXMLBGAME"   # moneyline only; side markets are not recorded
 
 FOOTBALL_KICKOFF_LAG = dt.timedelta(hours=3)   # occurrence_datetime - kickoff, observed
@@ -152,9 +155,12 @@ def pm_main_events(sport):
     return out
 
 
-def pm_codes(slug):
+def pm_codes(slug, alias=None):
     m = re.match(r"^[a-z0-9]+-([a-z0-9]+)-([a-z0-9]+)-\d{4}-\d{2}-\d{2}", slug or "")
-    return (m.group(1) + m.group(2)).upper() if m else None
+    if not m:
+        return None
+    a = alias or {}
+    return "".join(a.get(x.upper(), x.upper()) for x in m.groups())
 
 
 def mlb_games(start, end):
@@ -167,7 +173,7 @@ def mlb_games(start, end):
 # Matching
 # ---------------------------------------------------------------------------
 
-def match_pm(kev, pms, approx_kickoff, used):
+def match_pm(kev, pms, approx_kickoff, used, alias=None):
     """Best Polymarket event for a Kalshi event, or (None, reason)."""
     teams = split_teams(kev.get("title"))
     codes = kalshi_codes(kev["event_ticker"])
@@ -179,7 +185,7 @@ def match_pm(kev, pms, approx_kickoff, used):
         t = _ts(e["startTime"])
         if approx_kickoff and abs(t - approx_kickoff) > window:
             continue
-        if codes and pm_codes(e["slug"]) == codes:
+        if codes and pm_codes(e["slug"], alias) == codes:
             cands.append((3.0, e))
             continue
         pt = split_teams(e["title"])
@@ -213,7 +219,7 @@ def match_mlb_game(teams, kickoff, games):
     return best[1] if best else None
 
 
-def plan(start, end, leagues=None, mlb=True, verbose=True):
+def plan(start, end, leagues=None, mlb=True, verbose=True, nhl=True):
     """Games kicking off in [start, end) listed on both venues."""
     games, report = [], []
     leagues = leagues or list(FOOTBALL)
@@ -242,6 +248,35 @@ def plan(start, end, leagues=None, mlb=True, verbose=True):
             used.add(pm["slug"])
             games.append({
                 "sport": "football", "league": sport, "title": pm["title"],
+                "kickoff": kickoff.isoformat(), "kickoff_source": "polymarket",
+                "kalshi_events": [ev["event_ticker"]], "pm_slug": pm["slug"],
+                "game_pk": None,
+                "kalshi_kickoff_lag_min": round((occ - kickoff).total_seconds() / 60) if occ else None,
+            })
+
+    if nhl:
+        try:
+            kev, pms = kalshi_events(NHL_GAME_SERIES), pm_main_events("nhl")
+        except Exception as e:
+            report.append(f"nhl: fetch failed: {e}")
+            kev = []
+        used = set()
+        for ev in kev:
+            occ = kalshi_occurrence(ev)
+            approx = occ - NHL_KICKOFF_LAG if occ else None
+            if approx and not (start - dt.timedelta(hours=6) <= approx < end + dt.timedelta(hours=6)):
+                continue
+            pm, why = match_pm(ev, pms, approx, used, NHL_PM_TO_KALSHI)
+            if pm is None:
+                if approx and start <= approx < end:
+                    report.append(f"nhl: unpaired {ev['event_ticker']} ({ev.get('title')}): {why}")
+                continue
+            kickoff = _ts(pm["startTime"])
+            if not (start <= kickoff < end):
+                continue
+            used.add(pm["slug"])
+            games.append({
+                "sport": "nhl", "league": "nhl", "title": pm["title"],
                 "kickoff": kickoff.isoformat(), "kickoff_source": "polymarket",
                 "kalshi_events": [ev["event_ticker"]], "pm_slug": pm["slug"],
                 "game_pk": None,
@@ -297,6 +332,7 @@ def main():
     g.add_argument("--hours", type=float, help="games kicking off in the next N hours")
     ap.add_argument("--leagues", nargs="*", default=None, help=f"subset of {list(FOOTBALL)}")
     ap.add_argument("--no-mlb", action="store_true")
+    ap.add_argument("--no-nhl", action="store_true")
     ap.add_argument("--json", help="write the plan here")
     a = ap.parse_args()
     if a.hkt_date:
@@ -305,7 +341,7 @@ def main():
     else:
         start = dt.datetime.now(UTC)
         end = start + dt.timedelta(hours=a.hours or 24)
-    games, _ = plan(start, end, a.leagues, mlb=not a.no_mlb)
+    games, _ = plan(start, end, a.leagues, mlb=not a.no_mlb, nhl=not a.no_nhl)
     for x in games:
         k = _ts(x["kickoff"]).astimezone(HKT)
         print(f"{k:%m-%d %H:%M} HKT  {x['league']:<4} {x['title']:<55} "
