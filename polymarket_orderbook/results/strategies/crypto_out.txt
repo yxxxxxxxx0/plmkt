@@ -1,0 +1,21 @@
+480 BTC 15-minute markets, 6184 minute samples; Up won 47.9%
+Brier score (lower is better): market price 0.1545 | my TWAP model on 0-60 s old candles 0.2022 | naive spot-vs-start 0.1661
+taker test: buy the side my TWAP model favours when it disagrees with the market by more than the threshold; pay price + 0.5c + fee 0.07*p*(1-p); hold to settlement
+  gap >  3c fit :  365 trades in 240 markets,  -4.59c/share (se 2.5) | opposite side  +0.53c | at $100, 20 shares a trade: $-334.76
+  gap >  3c test:  349 trades in 240 markets,  -0.18c/share (se 2.4) | opposite side  -3.86c | at $100, 20 shares a trade: $-12.30
+  gap >  6c fit :  333 trades in 240 markets,  -4.89c/share (se 2.6) | opposite side  +0.89c | at $100, 20 shares a trade: $-325.63
+  gap >  6c test:  314 trades in 239 markets,  -0.13c/share (se 2.5) | opposite side  -3.86c | at $100, 20 shares a trade: $-8.16
+  gap > 10c fit :  296 trades in 234 markets,  -6.43c/share (se 2.7) | opposite side  +2.49c | at $100, 20 shares a trade: $-380.61
+  gap > 10c test:  277 trades in 231 markets,  +1.87c/share (se 2.6) | opposite side  -5.81c | at $100, 20 shares a trade: $+103.81
+  gap > 15c fit :  231 trades in 212 markets,  -1.96c/share (se 3.1) | opposite side  -1.98c | at $100, 20 shares a trade: $-90.75
+  gap > 15c test:  217 trades in 202 markets,  +3.62c/share (se 3.0) | opposite side  -7.58c | at $100, 20 shares a trade: $+157.14
+does the market under-react to the locked-in TWAP? mean (outcome - price) by model-minus-price gap, minutes 5-13:
+                    n  markets  price    won  diff_c
+gap                                                 
+(-1.0, -0.15]   811.0    194.0  0.386  0.380   -0.67
+(-0.15, -0.06]  612.0    233.0  0.216  0.216    0.01
+(-0.06, -0.02]  343.0    183.0  0.148  0.117   -3.16
+(-0.02, 0.02]   685.0    281.0  0.467  0.451   -1.59
+(0.02, 0.06]    322.0    176.0  0.819  0.801   -1.81
+(0.06, 0.15]    598.0    228.0  0.781  0.793    1.15
+(0.15, 1.0]     894.0    205.0  0.602  0.578   -2.39

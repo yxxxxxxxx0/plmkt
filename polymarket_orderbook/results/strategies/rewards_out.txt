@@ -1,0 +1,31 @@
+reward markets with min size <= 50 shares: 10549; reward start date before 2026-11-07: 4708
+
+=== established (reward running 4+ days): 584 sampled with a two-sided book, 363 with mid 10-90c
+  daily pool per market: median $3.00, mean $5.09; capital for one two-sided quote: median $19
+  my daily reward per market: 25/50/75/90th pct $0.08 / $0.90 / $3.00 / $5.00
+  as % of capital per day:    25/50/75/90th pct 0.36% / 3.09% / 10.47% / 26.18%
+  markets where nobody else scores: 48%; median spread 8c; median 24h volume $0
+                                                           q  rew  mid  spread  others  usd_day  capital    v24  days
+   Will Canva's valuation hit (HIGH) $31.75B by November 30? 50.0 0.24    0.28     0.0     50.0     19.1 597.15 21.04
+    Will Canva's valuation hit (LOW) $29.25B by November 30? 50.0 0.22    0.37     0.0     50.0     19.1  60.00 21.04
+Will the Democratic Party candidate win the 2026 PA-08 House 25.0 0.44    0.69     0.0     25.0     18.9   0.00 -5.96
+Will the Republican Party candidate win the 2026 IN-09 House 25.0 0.55    0.64     0.0     25.0     18.9   0.00 -5.96
+Will the Democratic Party candidate win the 2026 MD-07 House 17.0 0.64    0.70     0.0     17.0     18.9   0.00 -5.96
+Will the Republican Party candidate win the 2026 TX-06 House 12.0 0.51    0.85     0.0     12.0     18.9   0.00 -5.96
+Will the Republican Party candidate win the 2026 MN-08 House 12.0 0.20    0.40     0.0     12.0     18.9   0.00 -5.96
+Will the Republican Party candidate win the 2026 MI-01 House 12.0 0.46    0.89     0.0     12.0     18.9  20.01 -5.96
+
+=== new (reward started in the last 2 days): 581 sampled with a two-sided book, 455 with mid 10-90c
+  daily pool per market: median $5.00, mean $15.80; capital for one two-sided quote: median $19
+  my daily reward per market: 25/50/75/90th pct $0.25 / $1.00 / $5.00 / $22.00
+  as % of capital per day:    25/50/75/90th pct 1.05% / 5.24% / 26.74% / 115.18%
+  markets where nobody else scores: 41%; median spread 7c; median 24h volume $40
+                                                           q   rew  mid  spread  others  usd_day  capital     v24   days
+Will there be no next Gemini Flash-Lite model (3.6+) release 178.0 0.48    0.25    0.00    178.0     19.1 4722.00  21.04
+Will "Victorian Psycho" score at least 70 on the Rotten Toma 100.0 0.51    0.94    0.00    100.0     18.7    0.00   6.46
+Will the Texas Democrat perform best among these tossup Sena 100.0 0.65    0.69    0.00    100.0     19.1  195.41  -6.17
+Will "Dirt Off Your Shoulder" be played at the 2027 Big Game 200.0 0.58    0.06    6.67     85.7     18.7    0.00  97.04
+Will the highest temperature in Chengdu be 16°C on November   65.0 0.47    0.20    0.00     65.0     19.1  704.22   0.33
+      Will Anthropic raise between $65B and $75B in its IPO?  60.0 0.53    0.34    0.00     60.0     19.1  814.79 417.04
+                  Will Bill Dally be the next CEO of NVIDIA?  60.0 0.48    0.91    0.00     60.0     19.1    0.00 783.04
+             Will Debora Shoquist be the next CEO of NVIDIA?  59.0 0.48    0.91    0.00     59.0     19.1    0.00 783.04

@@ -1,0 +1,67 @@
+5001 resolved non-sports markets (volume >= $10k), ended 2026-05-11 to 2026-11-10; YES won 38.2%; fee types {'zero_fees': 1956, 'politics_fees': 1440, 'crypto_fees_v2': 803, 'weather_fees': 293, '': 215, 'culture_fees': 161}
+
+  price 1 day(s) before the end: 4384 markets
+    NO  at (0.0, 0.02]  n   45/ 218  won 0.000/0.000 vs price 0.013/0.013 | at price  -1.30c (se 0.1) /  -1.33c (se 0.0) | after 1c + fee  -2.36c /  -2.40c
+    YES at (0.0, 0.02]  n  158/ 392  won 0.025/0.003 vs price 0.012/0.012 | at price  +1.35c (se 1.2) /  -0.97c (se 0.3) | after 1c + fee  +0.29c /  -2.03c
+    NO  at (0.02, 0.05] n   45/ 191  won 0.089/0.005 vs price 0.030/0.029 | at price  +5.91c (se 4.3) /  -2.42c (se 0.5) | after 1c + fee  +4.77c /  -3.56c
+    YES at (0.02, 0.05] n  123/ 200  won 0.065/0.015 vs price 0.033/0.031 | at price  +3.19c (se 2.2) /  -1.65c (se 0.8) | after 1c + fee  +2.03c /  -2.80c
+    NO  at (0.05, 0.1]  n   34/  82  won 0.059/0.073 vs price 0.068/0.071 | at price  -0.89c (se 4.2) /  +0.23c (se 2.9) | after 1c + fee  -2.21c /  -1.10c
+    YES at (0.05, 0.1]  n   71/ 133  won 0.127/0.075 vs price 0.074/0.073 | at price  +5.26c (se 4.0) /  +0.26c (se 2.3) | after 1c + fee  +3.91c /  -1.08c
+    NO  at (0.1, 0.25]  n   80/ 103  won 0.412/0.087 vs price 0.187/0.163 | at price +22.59c (se 5.4) /  -7.57c (se 2.8) | after 1c + fee +20.83c /  -9.25c
+    YES at (0.1, 0.25]  n  188/ 197  won 0.303/0.183 vs price 0.175/0.170 | at price +12.85c (se 3.3) /  +1.24c (se 2.8) | after 1c + fee +11.14c /  -0.46c
+    NO  at (0.25, 0.5]  n  559/ 162  won 0.438/0.346 vs price 0.442/0.386 | at price  -0.38c (se 2.1) /  -4.02c (se 3.6) | after 1c + fee  -2.58c /  -6.17c
+    YES at (0.25, 0.5]  n  754/ 268  won 0.505/0.410 vs price 0.429/0.370 | at price  +7.68c (se 1.8) /  +4.03c (se 3.0) | after 1c + fee  +5.48c /  +1.89c
+    NO  at (0.5, 0.75]  n  508/ 270  won 0.537/0.589 vs price 0.610/0.635 | at price  -7.26c (se 2.2) /  -4.65c (se 3.0) | after 1c + fee  -9.42c /  -6.78c
+    YES at (0.5, 0.75]  n  305/ 158  won 0.544/0.671 vs price 0.606/0.619 | at price  -6.19c (se 2.9) /  +5.23c (se 3.6) | after 1c + fee  -8.36c /  +3.08c
+    NO  at (0.75, 0.9]  n  186/ 198  won 0.699/0.823 vs price 0.831/0.835 | at price -13.20c (se 3.3) /  -1.21c (se 2.7) | after 1c + fee -14.90c /  -2.88c
+    YES at (0.75, 0.9]  n   82/ 103  won 0.598/0.913 vs price 0.815/0.838 | at price -21.79c (se 5.3) /  +7.43c (se 2.8) | after 1c + fee -23.53c /  +5.76c
+    NO  at (0.9, 0.95]  n   71/ 131  won 0.887/0.931 vs price 0.930/0.930 | at price  -4.27c (se 3.8) /  +0.12c (se 2.2) | after 1c + fee  -5.59c /  -1.20c
+    YES at (0.9, 0.95]  n   32/  81  won 0.938/0.926 vs price 0.934/0.929 | at price  +0.32c (se 4.4) /  -0.35c (se 2.9) | after 1c + fee  -0.98c /  -1.68c
+    NO  at (0.95, 0.98] n  120/ 201  won 0.933/0.985 vs price 0.968/0.969 | at price  -3.47c (se 2.3) /  +1.56c (se 0.8) | after 1c + fee  -4.62c /  +0.41c
+    YES at (0.95, 0.98] n   45/ 191  won 0.911/0.995 vs price 0.970/0.971 | at price  -5.91c (se 4.3) /  +2.42c (se 0.5) | after 1c + fee  -7.06c /  +1.28c
+    NO  at (0.98, 1.0]  n  265/ 609  won 0.985/0.998 vs price 0.992/0.991 | at price  -0.71c (se 0.8) /  +0.69c (se 0.2) | after 1c + fee  -1.75c /  -0.35c
+    YES at (0.98, 1.0]  n   58/ 242  won 1.000/1.000 vs price 0.989/0.988 | at price  +1.08c (se 0.1) /  +1.23c (se 0.0) | after 1c + fee  +0.03c /  +0.17c
+
+  price 3 day(s) before the end: 3090 markets
+    NO  at (0.0, 0.02]  n   32/ 116  won 0.000/0.000 vs price 0.013/0.014 | at price  -1.31c (se 0.1) /  -1.45c (se 0.0) | after 1c + fee  -2.38c /  -2.52c
+    YES at (0.0, 0.02]  n  117/ 302  won 0.009/0.003 vs price 0.011/0.013 | at price  -0.27c (se 0.8) /  -0.94c (se 0.3) | after 1c + fee  -1.33c /  -2.01c
+    NO  at (0.02, 0.05] n   33/ 270  won 0.030/0.004 vs price 0.032/0.031 | at price  -0.16c (se 3.0) /  -2.73c (se 0.4) | after 1c + fee  -1.31c /  -3.88c
+    YES at (0.02, 0.05] n  128/ 311  won 0.055/0.010 vs price 0.032/0.031 | at price  +2.25c (se 2.0) /  -2.15c (se 0.6) | after 1c + fee  +1.09c /  -3.30c
+    NO  at (0.05, 0.1]  n   39/  99  won 0.179/0.020 vs price 0.072/0.069 | at price +10.73c (se 6.2) /  -4.86c (se 1.4) | after 1c + fee  +9.40c /  -6.18c
+    YES at (0.05, 0.1]  n   83/ 116  won 0.145/0.009 vs price 0.070/0.073 | at price  +7.49c (se 3.9) /  -6.41c (se 0.9) | after 1c + fee  +6.17c /  -7.74c
+    NO  at (0.1, 0.25]  n   58/ 112  won 0.190/0.134 vs price 0.165/0.166 | at price  +2.44c (se 5.2) /  -3.20c (se 3.3) | after 1c + fee  +0.76c /  -4.88c
+    YES at (0.1, 0.25]  n  123/ 194  won 0.228/0.119 vs price 0.171/0.168 | at price  +5.67c (se 3.8) /  -4.95c (se 2.3) | after 1c + fee  +3.97c /  -6.64c
+    NO  at (0.25, 0.5]  n  118/ 120  won 0.466/0.258 vs price 0.396/0.374 | at price  +7.05c (se 4.5) / -11.54c (se 3.9) | after 1c + fee  +4.88c / -13.68c
+    YES at (0.25, 0.5]  n  194/ 157  won 0.500/0.401 vs price 0.371/0.364 | at price +12.92c (se 3.5) /  +3.71c (se 4.0) | after 1c + fee +10.79c /  +1.57c
+    NO  at (0.5, 0.75]  n  184/ 157  won 0.511/0.605 vs price 0.642/0.644 | at price -13.08c (se 3.6) /  -3.86c (se 4.0) | after 1c + fee -15.21c /  -5.98c
+    YES at (0.5, 0.75]  n  107/ 117  won 0.542/0.752 vs price 0.622/0.634 | at price  -8.01c (se 4.8) / +11.84c (se 3.9) | after 1c + fee -10.16c /  +9.71c
+    NO  at (0.75, 0.9]  n  122/ 194  won 0.762/0.892 vs price 0.833/0.836 | at price  -7.11c (se 3.9) /  +5.59c (se 2.2) | after 1c + fee  -8.80c /  +3.92c
+    YES at (0.75, 0.9]  n   57/ 112  won 0.825/0.866 vs price 0.842/0.837 | at price  -1.70c (se 5.1) /  +2.93c (se 3.3) | after 1c + fee  -3.36c /  +1.26c
+    NO  at (0.9, 0.95]  n   82/ 116  won 0.866/0.991 vs price 0.932/0.929 | at price  -6.61c (se 3.8) /  +6.19c (se 0.9) | after 1c + fee  -7.92c /  +4.86c
+    YES at (0.9, 0.95]  n   37/  97  won 0.811/0.979 vs price 0.929/0.932 | at price -11.86c (se 6.5) /  +4.75c (se 1.5) | after 1c + fee -13.18c /  +3.43c
+    NO  at (0.95, 0.98] n  128/ 315  won 0.945/0.990 vs price 0.968/0.969 | at price  -2.30c (se 2.0) /  +2.10c (se 0.5) | after 1c + fee  -3.45c /  +0.95c
+    YES at (0.95, 0.98] n   33/ 270  won 0.970/0.996 vs price 0.968/0.969 | at price  +0.16c (se 3.0) /  +2.73c (se 0.4) | after 1c + fee  -1.00c /  +1.58c
+    NO  at (0.98, 1.0]  n  190/ 461  won 0.995/0.998 vs price 0.992/0.991 | at price  +0.26c (se 0.5) /  +0.67c (se 0.2) | after 1c + fee  -0.78c /  -0.37c
+    YES at (0.98, 1.0]  n   36/ 120  won 1.000/1.000 vs price 0.988/0.986 | at price  +1.21c (se 0.1) /  +1.41c (se 0.0) | after 1c + fee  +0.15c /  +0.34c
+
+  price 7 day(s) before the end: 2372 markets
+    NO  at (0.0, 0.02]  n    7/  45  won 0.000/0.000 vs price 0.015/0.015 | at price  -1.49c (se 0.1) /  -1.55c (se 0.1) | after 1c + fee  -2.56c /  -2.62c
+    YES at (0.0, 0.02]  n   67/ 177  won 0.000/0.000 vs price 0.012/0.013 | at price  -1.17c (se 0.1) /  -1.34c (se 0.0) | after 1c + fee  -2.22c /  -2.41c
+    NO  at (0.02, 0.05] n   19/ 277  won 0.105/0.000 vs price 0.033/0.034 | at price  +7.20c (se 7.1) /  -3.42c (se 0.1) | after 1c + fee  +6.04c /  -4.59c
+    YES at (0.02, 0.05] n   92/ 320  won 0.087/0.000 vs price 0.034/0.033 | at price  +5.25c (se 3.0) /  -3.27c (se 0.1) | after 1c + fee  +4.08c /  -4.42c
+    NO  at (0.05, 0.1]  n   22/  82  won 0.091/0.012 vs price 0.070/0.069 | at price  +2.05c (se 6.3) /  -5.63c (se 1.2) | after 1c + fee  +0.72c /  -6.95c
+    YES at (0.05, 0.1]  n   73/ 156  won 0.110/0.026 vs price 0.073/0.073 | at price  +3.66c (se 3.7) /  -4.70c (se 1.3) | after 1c + fee  +2.32c /  -6.04c
+    NO  at (0.1, 0.25]  n   43/  92  won 0.163/0.109 vs price 0.179/0.173 | at price  -1.66c (se 5.7) /  -6.42c (se 3.2) | after 1c + fee  -3.39c /  -8.13c
+    YES at (0.1, 0.25]  n  116/ 187  won 0.276/0.091 vs price 0.172/0.156 | at price +10.43c (se 4.0) /  -6.52c (se 2.0) | after 1c + fee  +8.73c /  -8.17c
+    NO  at (0.25, 0.5]  n   80/ 103  won 0.375/0.340 vs price 0.368/0.370 | at price  +0.65c (se 5.4) /  -3.05c (se 4.6) | after 1c + fee  -1.49c /  -5.19c
+    YES at (0.25, 0.5]  n  108/ 134  won 0.380/0.455 vs price 0.355/0.360 | at price  +2.41c (se 4.6) /  +9.48c (se 4.2) | after 1c + fee  +0.29c /  +7.35c
+    NO  at (0.5, 0.75]  n  110/ 133  won 0.618/0.541 vs price 0.649/0.641 | at price  -3.05c (se 4.6) /  -9.93c (se 4.2) | after 1c + fee  -5.17c / -12.06c
+    YES at (0.5, 0.75]  n   80/ 104  won 0.637/0.673 vs price 0.635/0.633 | at price  +0.28c (se 5.3) /  +3.98c (se 4.5) | after 1c + fee  -1.85c /  +1.84c
+    NO  at (0.75, 0.9]  n  117/ 192  won 0.735/0.906 vs price 0.833/0.845 | at price  -9.78c (se 4.0) /  +6.09c (se 2.1) | after 1c + fee -11.47c /  +4.44c
+    YES at (0.75, 0.9]  n   42/  91  won 0.833/0.890 vs price 0.822/0.830 | at price  +1.11c (se 5.8) /  +6.06c (se 3.3) | after 1c + fee  -0.61c /  +4.36c
+    NO  at (0.9, 0.95]  n   71/ 158  won 0.873/0.981 vs price 0.929/0.929 | at price  -5.59c (se 4.0) /  +5.18c (se 1.1) | after 1c + fee  -6.92c /  +3.85c
+    YES at (0.9, 0.95]  n   22/  81  won 0.909/0.988 vs price 0.930/0.932 | at price  -2.05c (se 6.3) /  +5.58c (se 1.2) | after 1c + fee  -3.37c /  +4.26c
+    NO  at (0.95, 0.98] n   90/ 318  won 0.922/1.000 vs price 0.966/0.968 | at price  -4.36c (se 2.8) /  +3.21c (se 0.1) | after 1c + fee  -5.53c /  +2.05c
+    YES at (0.95, 0.98] n   19/ 277  won 0.895/1.000 vs price 0.967/0.966 | at price  -7.20c (se 7.1) /  +3.42c (se 0.1) | after 1c + fee  -8.36c /  +2.26c
+    NO  at (0.98, 1.0]  n  105/ 218  won 1.000/1.000 vs price 0.991/0.989 | at price  +0.86c (se 0.1) /  +1.11c (se 0.0) | after 1c + fee  -0.19c /  +0.05c
+    YES at (0.98, 1.0]  n    7/  47  won 1.000/1.000 vs price 0.985/0.985 | at price  +1.49c (se 0.1) /  +1.49c (se 0.1) | after 1c + fee  +0.41c /  +0.42c

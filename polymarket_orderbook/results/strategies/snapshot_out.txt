@@ -1,0 +1,62 @@
+19121 events, 194160 open markets
+
+--- taker fee rate by fee type (markets, 24h volume $k)
+                                            n   v24k
+fee                       rate rebate               
+sports_fees_v3            0.05 0.15    153182  13199
+politics_fees             0.04 0.25     13076   8031
+none                      0.00 0.00      1283   7436
+sports_fees_nfl_cfb_oct26 0.03 0.15      4136   7427
+crypto_fees_v2            0.07 0.20      6144   3290
+culture_fees              0.05 0.25      5122   2154
+finance_prices_fees       0.04 0.25      2487   1588
+economics_fees            0.05 0.25       957   1308
+sports_fees_v2            0.03 0.25      2778   1046
+tech_fees                 0.04 0.25      1973    992
+weather_fees              0.05 0.25      2730    874
+general_fees              0.05 0.25       116     19
+mentions_fees             0.04 0.25       149      3
+zero_fees                 0.00 0.00        26      2
+crypto_15_min             0.25 0.20         1      0
+
+--- 1. Liquidity rewards
+11178 markets pay a daily reward, $158,600/day in total; minimum qualifying order (shares): [20.0, 20.0, 50.0] (10/50/90th pct)
+   min size <=  20 shares:  8194 markets, $   74,745/day
+   min size <=  50 shares: 10608 markets, $   98,134/day
+   min size <= 100 shares: 10997 markets, $  107,774/day
+   min size <= 200 shares: 11147 markets, $  120,279/day
+   25 best by reward per resting dollar (usd_day_100 = my daily reward for $100 resting in the band, pro rata):
+                                                           q   rew  minsz  maxspr  mid    liq  band_usd  usd_day_100   v24   days
+Newsom's Democratic nomination odds dip to 8% by December 31 200.0     20     6.5 0.66  17.22      0.00       200.00 40.01  52.04
+Will "Empire State of Mind" be played at the 2027 Big Game h 200.0     20     6.5 0.86  48.50     79.29       111.55  0.00  97.04
+Will "On to the Next One" be played at the 2027 Big Game hal 200.0     20     6.5 0.17  91.08     74.11       114.87  0.00  97.04
+Will "Ghost Soldier" score at least 40 on the Rotten Tomatoe 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Ghost Soldier" score at least 20 on the Rotten Tomatoe 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Ghost Soldier" score at least 30 on the Rotten Tomatoe 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Ghost Soldier" score at least 50 on the Rotten Tomatoe 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Ghost Soldier" score at least 60 on the Rotten Tomatoe 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Victorian Psycho" score at least 75 on the Rotten Toma 100.0     20     6.5 0.50   6.85      0.00       100.00  0.00   6.46
+Will "Jigga What, Jigga Who" be played at the 2027 Big Game  200.0     20     6.5 0.30 113.80     92.51       103.89  0.00  97.04
+Will "Holy Grail" be played at the 2027 Big Game halftime sh 200.0     20     6.5 0.26 118.17    113.84        93.53  0.00  97.04
+Will "Victorian Psycho" score at least 70 on the Rotten Toma 100.0     20     6.5 0.51  13.15      0.00       100.00  0.00   6.46
+Will "Heart of the City (Ain't No Love)" be played at the 20 200.0     20     6.5 0.36 126.42    140.00        83.33  0.00  97.04
+Will "Victorian Psycho" score at least 80 on the Rotten Toma 100.0     20     6.5 0.49  15.85      0.00       100.00  0.00   6.46
+Will "Can I Get A..." be played at the 2027 Big Game halftim 200.0     20     6.5 0.34 139.02    113.88        93.51  0.00  97.04
+ Will "Encore" be played at the 2027 Big Game halftime show? 200.0     20     6.5 0.39 152.49    110.92        94.82 80.00  97.04
+         Will Ethereal launch a token by September 30, 2027?  80.0     20     4.5  NaN   1.00       NaN          NaN  0.00 325.00
+                Will 3jane launch a token by March 31, 2027?  80.0     20     4.5  NaN   1.50       NaN          NaN  0.00 417.04
+          Will Ethereal launch a token by December 31, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 417.04
+                 Will Yeet launch a token by March 31, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 142.00
+                Will Noble launch a token by March 31, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 142.00
+        Will Symbiotic launch a token by September 30, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 325.00
+          Will Hotstuff launch a token by December 31, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 417.04
+               Will Neutrl launch a token by March 31, 2027?  80.0     20     4.5  NaN   2.00       NaN          NaN  0.00 142.00
+             Will Ethereal launch a token by March 31, 2027?  80.0     20     4.5  NaN   2.40       NaN          NaN  0.00 142.00
+   of these, mid between 10c and 90c: 16; median $100.00/day per $100, but payouts under $1 a day are not paid
+
+--- 4. Near-certain, ending within 7 days, no taker delay, not sports
+   likelier side costs [0.95, 0.98):   363 markets, edge if it wins 3.24c, break-even win rate 0.9676
+   likelier side costs [0.98, 0.995):   681 markets, edge if it wins 0.96c, break-even win rate 0.9904
+   likelier side costs [0.995, 1):   883 markets, edge if it wins 0.10c, break-even win rate 0.9990
+
+--- holding rewards enabled on 586 markets; no-delay markets 59592 of 194160

@@ -1,0 +1,48 @@
+=== 1. Decided but not settled: what the winning side costs after the outcome is fixed
+  +  60s  at the final out     :   28 contracts quoted,   28 with a winner on offer below $1 | edge median 0.48c, mean 1.55c | per contract $1.116 | per game, best single contract $1.354 | quote age median 8s
+  +  60s  Over decided mid-game:   16 contracts quoted,   16 with a winner on offer below $1 | edge median 0.57c, mean 1.18c | per contract $1.000 | per game, best single contract $1.060 | quote age median 4s
+  + 300s  at the final out     :   14 contracts quoted,   14 with a winner on offer below $1 | edge median 0.14c, mean 0.57c | per contract $0.372 | per game, best single contract $0.423 | quote age median 122s
+  + 300s  Over decided mid-game:    7 contracts quoted,    7 with a winner on offer below $1 | edge median 0.10c, mean 0.75c | per contract $0.387 | per game, best single contract $0.387 | quote age median 15s
+  +1800s  at the final out     :    4 contracts quoted,    4 with a winner on offer below $1 | edge median 0.95c, mean 0.83c | per contract $0.317 | per game, best single contract $0.390 | quote age median 1490s
+  the biggest edges at +60s (check for stale or stub quotes):
+                                                                                                  slug market_type   cost       sz  age      edge
+asset_id                                                                                                                                         
+106076003505514111288937512040819257275957620185680340899758884192931040684317  mlb-wsh-stl-2026-09-20      spread  0.880  1000.00   34  0.114720
+14714454324413704075866452108613917575649864303998946374122661403285532192733   mlb-chc-cin-2026-09-18      spread  0.890    50.00    0  0.105105
+61749410321348233438726719013110467652639171058284250625459955622578915108630   mlb-mil-phi-2026-09-24       total  0.939    35.00    8  0.058136
+34915456554014582525917600193729889078123439511142300084708166078827417051777    mlb-kc-pit-2026-09-19       total  0.960    35.00    2  0.038080
+63902104212973221155573315968542523246311956961905130458461575671522646799622    mlb-kc-bos-2026-09-13      spread  0.970   488.00    8  0.028545
+33552483675712385840561715422947197609248241507763242700912961677109575904656   mlb-lad-cin-2026-09-17       total  0.970  5000.00    2  0.028545
+101042422543506620682034009797969505081231871463583840982876671765147411145462  mlb-tor-tex-2026-09-19       total  0.970   100.00   74  0.028545
+62859106517225526853139247872132961235255474297397263916398618289892390332561   mlb-chc-cin-2026-09-18   moneyline  0.970   317.58    0  0.028545
+  prints after decision, taker SOLD   the winner: 1,830 prints in 169 games, 8,800 shares/game, discount to $1: median 0.10c, share-weighted 0.14c, total $12.10/game
+  prints after decision, taker BOUGHT the winner: 146 prints in 44 games, 380 shares/game, discount to $1: median 0.10c, share-weighted 0.50c, total $1.89/game
+
+=== 2b. Moneyline bought at 98c or more in-game: how often does it lose?
+  paid [0.9, 0.95): 168 samples in 68 games, 17 losing samples in 6 games; mean price 0.9209; break-even win rate 0.9245, observed by game 0.9118
+  paid [0.95, 0.98): 128 samples in 65 games, 5 losing samples in 3 games; mean price 0.9628; break-even win rate 0.9646, observed by game 0.9538
+  paid [0.98, 0.995): 98 samples in 47 games, 0 losing samples in 0 games; mean price 0.9878; break-even win rate 0.9884, observed by game 1.0000
+  paid [0.995, 1): 62 samples in 37 games, 0 losing samples in 0 games; mean price 0.9970; break-even win rate 0.9971, observed by game 1.0000
+
+=== 4. Extra innings against a state table (inning x margin), fit before 2026-09-21
+  fit games 143 (base rate 0.091), test games with the market 12, plate appearances 39, median spread 37c
+  edge > 3c: 4 trades (0 YES) in 4 games, +29.97c/share [+21.14, +38.80]
+  edge > 6c: 3 trades (0 YES) in 3 games, +33.24c/share [+22.11, +38.80]
+  hindsight (always the right side): 27 trades, +15.64c/share
+
+=== 3b/6b. Pre-game maker: are there fills, and what is left after the price moves to first pitch?
+  first_inning_run      7 prints/game,   1,419 shares/game (41% taker buys of YES), spread median 1c, shares resting at the touch median 2,389
+      fit  maker edge at first pitch +0.20c/share [-0.19, +0.50] | held to settlement +3.27c [-11.69, +18.28] | whole market $1.13/game
+      test maker edge at first pitch +0.57c/share [+0.38, +0.77] | held to settlement +14.82c [+5.96, +23.17] | whole market $5.97/game
+  moneyline           111 prints/game,  82,049 shares/game (60% taker buys of YES), spread median 1c, shares resting at the touch median 100,795
+      fit  maker edge at first pitch +0.30c/share [+0.17, +0.44] | held to settlement -5.04c [-11.05, +1.63] | whole market $236.97/game
+      test maker edge at first pitch +0.03c/share [-0.22, +0.29] | held to settlement -4.03c [-16.70, +11.44] | whole market $-222.44/game
+  other props           4 prints/game,     997 shares/game (54% taker buys of YES), spread median 1c, shares resting at the touch median 352
+      fit  maker edge at first pitch +0.78c/share [+0.44, +1.16] | held to settlement -4.62c [-14.89, +7.19] | whole market $7.85/game
+      test maker edge at first pitch +1.21c/share [+0.21, +2.80] | held to settlement -3.69c [-15.03, +8.95] | whole market $1.05/game
+  spread               19 prints/game,   9,219 shares/game (56% taker buys of YES), spread median 1c, shares resting at the touch median 12,770
+      fit  maker edge at first pitch +0.34c/share [+0.24, +0.43] | held to settlement -3.91c [-8.73, +1.84] | whole market $27.52/game
+      test maker edge at first pitch +0.17c/share [-0.16, +0.50] | held to settlement +6.46c [-8.20, +18.64] | whole market $-55.78/game
+  total                48 prints/game,  56,036 shares/game (54% taker buys of YES), spread median 1c, shares resting at the touch median 28,528
+      fit  maker edge at first pitch +0.27c/share [+0.10, +0.43] | held to settlement -1.79c [-10.41, +7.28] | whole market $163.28/game
+      test maker edge at first pitch +0.09c/share [-0.06, +0.24] | held to settlement -4.65c [-13.90, +4.61] | whole market $71.15/game

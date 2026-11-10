@@ -1,0 +1,124 @@
+grid rows 5,734,560  tokens 2909  games 171  settled 2397 (yes 989)  unknown 512
+settlement check, moneyline: 92 games, last-quote payoff agrees with final score in 100.0%
+signed prints with a settled contract: 106,848 in 171 games
+
+=== 3. Prop takers held to settlement: what the MAKER side of every print earned (c/share, game-clustered 95% CI)
+  extra_innings      fit       52 prints   +3.62c/share  [-3.82, +13.53]   per game 2 prints, median 26 sh
+  extra_innings      test      22 prints   +4.03c/share  [-1.41, +7.64]   per game 2 prints, median 8 sh
+  first_five_spread  fit       29 prints  -16.64c/share  [-31.86, +2.84]   per game 2 prints, median 19 sh
+  first_five_spread  test      31 prints   +6.51c/share  [-4.14, +15.89]   per game 2 prints, median 27 sh
+  first_five_total   fit      421 prints   -1.39c/share  [-7.90, +6.07]   per game 5 prints, median 32 sh
+  first_five_total   test     290 prints   -4.98c/share  [-12.84, +4.94]   per game 6 prints, median 23 sh
+  first_inning_run   fit      649 prints   +3.20c/share  [-6.44, +12.52]   per game 9 prints, median 39 sh
+  first_inning_run   test     890 prints  +10.30c/share  [+4.45, +15.77]   per game 14 prints, median 20 sh
+  moneyline          fit   39,450 prints   -0.01c/share  [-1.40, +1.42]   per game 669 prints, median 14 sh
+  moneyline          test  21,675 prints   -1.04c/share  [-4.44, +2.62]   per game 602 prints, median 20 sh
+  spread             fit   10,358 prints   -0.80c/share  [-2.83, +1.37]   per game 103 prints, median 20 sh
+  spread             test   7,926 prints   +1.42c/share  [-2.27, +5.04]   per game 115 prints, median 28 sh
+  total              fit   15,370 prints   -0.97c/share  [-3.92, +2.06]   per game 152 prints, median 19 sh
+  total              test   9,685 prints   -0.94c/share  [-5.18, +2.94]   per game 138 prints, median 29 sh
+  props, by taker price paid (all sessions):
+    taker paid (0.0, 0.1]     2,663 prints   +0.76c/share  [-0.95, +2.03]
+    taker paid (0.1, 0.25]    3,747 prints   -1.23c/share  [-5.58, +2.68]
+    taker paid (0.25, 0.4]    7,296 prints   -2.88c/share  [-7.49, +1.49]
+    taker paid (0.4, 0.6]    20,479 prints   -0.48c/share  [-3.56, +2.30]
+    taker paid (0.6, 0.75]    6,976 prints   +2.68c/share  [-1.02, +6.44]
+    taker paid (0.75, 0.9]    3,186 prints   +0.47c/share  [-3.22, +4.61]
+    taker paid (0.9, 1.0]     1,376 prints   +1.09c/share  [-1.12, +3.88]
+
+=== 2. Calibration: buy at the ask every 10 min, hold to settlement (c/share after fee; price paid bucket)
+  moneyline, in-game
+    paid (0.0, 0.05]   fit     153 prints   -2.51c/share  [-2.85, -2.23] | test      82 prints   -2.34c/share  [-2.71, -1.99]
+    paid (0.05, 0.1]   fit     104 prints   +1.42c/share  [-8.23, +17.63] | test      85 prints   +1.38c/share  [-8.09, +17.46]
+    paid (0.1, 0.25]   fit     228 prints  +12.13c/share  [-0.99, +24.30] | test     125 prints  -11.06c/share  [-16.62, -3.81]
+    paid (0.25, 0.4]   fit     283 prints   -8.82c/share  [-17.95, +1.95] | test     148 prints  -11.46c/share  [-25.13, +3.20]
+    paid (0.4, 0.6]    fit     514 prints   -2.22c/share  [-2.94, -1.55] | test     322 prints   -2.18c/share  [-3.30, -0.96]
+    paid (0.6, 0.75]   fit     289 prints   +5.51c/share  [-5.61, +14.87] | test     148 prints   +7.16c/share  [-7.28, +20.38]
+    paid (0.75, 0.9]   fit     233 prints  -13.86c/share  [-25.98, -0.58] | test     133 prints   +8.53c/share  [+0.80, +14.39]
+    paid (0.9, 0.95]   fit      97 prints   -4.60c/share  [-22.93, +6.79] | test      76 prints   -2.51c/share  [-17.85, +6.78]
+    paid (0.95, 0.98]  fit      80 prints   +1.57c/share  [-1.62, +2.93] | test      36 prints   +0.38c/share  [-7.03, +3.31]
+    paid (0.98, 1.0]   fit      83 prints   +0.68c/share  [+0.59, +0.78] | test      57 prints   +0.66c/share  [+0.56, +0.75]
+  moneyline, pre-game
+    paid (0.25, 0.4]   fit      60 prints  -11.74c/share  [-27.22, +7.34] | test      33 prints   -7.69c/share  [-32.56, +20.01]
+    paid (0.4, 0.6]    fit     228 prints   -1.71c/share  [-1.74, -1.68] | test     150 prints   -1.73c/share  [-1.74, -1.73]
+    paid (0.6, 0.75]   fit      60 prints   +8.56c/share  [-10.59, +24.02] | test      33 prints   +4.48c/share  [-23.21, +29.44]
+  small props, in-game
+    paid (0.1, 0.25]   fit     151 prints  -12.91c/share  [-16.94, -8.20] | test      89 prints  -11.79c/share  [-18.45, -3.84]
+    paid (0.25, 0.4]   fit     380 prints   -5.19c/share  [-10.04, -0.21] | test     314 prints  -10.28c/share  [-16.71, -3.64]
+    paid (0.4, 0.6]    fit     801 prints   -7.09c/share  [-10.09, -4.26] | test     514 prints   -5.76c/share  [-9.41, -2.04]
+    paid (0.6, 0.75]   fit     438 prints  -14.17c/share  [-18.96, -9.81] | test     352 prints   -7.46c/share  [-13.52, -1.38]
+    paid (0.75, 0.9]   fit     596 prints  -15.14c/share  [-21.09, -9.19] | test     336 prints   -7.70c/share  [-13.29, -2.30]
+    paid (0.9, 0.95]   fit     191 prints  -18.04c/share  [-25.67, -10.82] | test     121 prints  -19.21c/share  [-30.56, -6.32]
+    paid (0.95, 0.98]  fit     239 prints  -40.13c/share  [-49.23, -31.20] | test      94 prints  -49.44c/share  [-60.75, -36.85]
+    paid (0.98, 1.0]   fit     364 prints  -50.73c/share  [-61.32, -39.54] | test     230 prints  -53.08c/share  [-64.55, -39.45]
+  small props, pre-game
+    paid (0.05, 0.1]   fit      48 prints   -8.24c/share  [-10.41, -3.42] | test      31 prints   -9.78c/share  [-10.24, -9.27]
+    paid (0.1, 0.25]   fit     244 prints   -3.70c/share  [-10.17, +3.47] | test     296 prints   -2.55c/share  [-9.32, +4.48]
+    paid (0.25, 0.4]   fit     857 prints   +1.32c/share  [-3.05, +5.76] | test     613 prints   -3.23c/share  [-9.12, +3.14]
+    paid (0.4, 0.6]    fit   1,059 prints   -1.88c/share  [-3.09, -0.70] | test     712 prints   -2.04c/share  [-2.95, -1.05]
+    paid (0.6, 0.75]   fit     733 prints   -7.98c/share  [-12.92, -3.12] | test     545 prints   -1.94c/share  [-8.41, +4.30]
+    paid (0.75, 0.9]   fit     374 prints   -4.81c/share  [-11.23, +1.42] | test     285 prints   -3.52c/share  [-11.64, +4.79]
+    paid (0.9, 0.95]   fit     135 prints   -1.40c/share  [-8.51, +4.54] | test     115 prints   +3.50c/share  [-3.36, +7.11]
+    paid (0.95, 0.98]  fit      23 prints  -23.23c/share  [-47.15, -2.54] | test      15 prints   +3.05c/share  [+2.72, +3.44]
+  spread/total, in-game
+    paid (0.0, 0.05]   fit     620 prints   -1.16c/share  [-3.47, +2.73] | test     332 prints   -1.92c/share  [-3.95, +1.93]
+    paid (0.05, 0.1]   fit     989 prints   -1.65c/share  [-4.88, +2.43] | test     607 prints   -3.91c/share  [-6.43, -0.98]
+    paid (0.1, 0.25]   fit   2,573 prints   -2.94c/share  [-6.53, +0.86] | test   1,747 prints   -2.74c/share  [-8.58, +3.91]
+    paid (0.25, 0.4]   fit   2,930 prints   -0.55c/share  [-4.72, +3.35] | test   1,882 prints   -1.82c/share  [-7.18, +3.79]
+    paid (0.4, 0.6]    fit   3,621 prints   -3.13c/share  [-4.01, -2.27] | test   2,220 prints   -4.02c/share  [-5.14, -2.99]
+    paid (0.6, 0.75]   fit   2,836 prints   -8.06c/share  [-11.84, -4.09] | test   1,854 prints   -6.53c/share  [-11.12, -1.94]
+    paid (0.75, 0.9]   fit   2,853 prints   -6.46c/share  [-10.37, -2.38] | test   1,900 prints   -6.69c/share  [-12.57, -1.15]
+    paid (0.9, 0.95]   fit     994 prints   -7.06c/share  [-11.49, -2.86] | test     655 prints   -4.71c/share  [-11.07, -0.00]
+    paid (0.95, 0.98]  fit     732 prints   -5.96c/share  [-10.11, -2.43] | test     470 prints   -8.34c/share  [-13.39, -3.50]
+    paid (0.98, 1.0]   fit     862 prints   -3.48c/share  [-6.72, -0.78] | test     487 prints   -2.82c/share  [-5.92, -0.33]
+  spread/total, pre-game
+    paid (0.1, 0.25]   fit     243 prints   -9.46c/share  [-15.83, -2.14] | test     222 prints   -0.94c/share  [-9.90, +9.63]
+    paid (0.25, 0.4]   fit     835 prints   -0.05c/share  [-5.19, +5.07] | test     587 prints   +1.84c/share  [-4.69, +8.60]
+    paid (0.4, 0.6]    fit   1,380 prints   -1.73c/share  [-1.74, -1.73] | test     908 prints   -1.74c/share  [-1.75, -1.73]
+    paid (0.6, 0.75]   fit     832 prints   -3.02c/share  [-8.20, +2.11] | test     583 prints   -4.94c/share  [-11.76, +1.45]
+    paid (0.75, 0.9]   fit     246 prints   +6.10c/share  [-0.88, +12.57] | test     226 prints   -2.35c/share  [-12.88, +6.68]
+
+=== 7. Follow large signed prints on the moneyline: enter 1 s later at the ask, hold to settlement
+  large = top 1% by dollars on fit sessions (>= $3,099)
+  large, follow            fit      320 prints   -3.98c/share  [-14.82, +6.78]
+  large, follow            test     218 prints   +0.69c/share  [-6.30, +8.20]
+  ordinary prints, follow  fit   13,456 prints   -2.24c/share  [-3.59, -0.78]
+  ordinary prints, follow  test   6,445 prints   -0.62c/share  [-1.95, +0.81]
+  ordinary prints, fade    fit   13,456 prints   -1.14c/share  [-2.57, +0.17]
+  ordinary prints, fade    test   6,445 prints   -2.62c/share  [-4.10, -1.26]
+
+=== 5/6. Touch maker by game phase (moneyline): every print is a fill for the resting side; value 30 s and 5 min later
+  inning breaks: 3563 in 213 games, median usable length 113 s
+  in play          456 prints/game
+      at mid +30s        fit   29,253 prints   -0.03c/share  [-0.25, +0.14]
+      at mid +30s        test  13,588 prints   +0.08c/share  [-0.08, +0.25]
+      at mid +5min       fit   28,065 prints   +0.09c/share  [-0.35, +0.46]
+      at mid +5min       test  13,104 prints   -0.08c/share  [-0.49, +0.36]
+      crossed out +5min  fit   28,841 prints   -1.01c/share  [-1.50, -0.51]
+      crossed out +5min  test  13,344 prints   -1.50c/share  [-1.99, -1.01]
+      held to settlement fit   29,523 prints   +0.54c/share  [-0.95, +1.96]
+      held to settlement test  13,750 prints   -0.06c/share  [-1.36, +1.22]
+  inning break      62 prints/game
+      at mid +30s        fit    3,697 prints   +0.36c/share  [+0.29, +0.42]
+      at mid +30s        test   2,204 prints   +0.17c/share  [-0.26, +0.45]
+      at mid +5min       fit    3,615 prints   +0.05c/share  [-0.49, +0.54]
+      at mid +5min       test   2,145 prints   +0.23c/share  [-0.34, +0.77]
+      crossed out +5min  fit    3,672 prints   -1.01c/share  [-1.88, +0.04]
+      crossed out +5min  test   2,164 prints   -1.22c/share  [-1.82, -0.66]
+      held to settlement fit    3,708 prints   +2.99c/share  [-0.91, +6.69]
+      held to settlement test   2,213 prints   -0.02c/share  [-3.63, +3.57]
+  post-game         13 prints/game
+      at mid +30s        fit       39 prints   +0.26c/share  [-0.85, +2.55]
+      crossed out +5min  fit      675 prints   +0.13c/share  [-0.03, +0.27]
+      crossed out +5min  test     399 prints   -0.18c/share  [-0.46, +0.01]
+      held to settlement fit      752 prints   +0.08c/share  [-0.11, +0.21]
+      held to settlement test     428 prints   +0.12c/share  [+0.10, +0.14]
+  pre-game         113 prints/game
+      at mid +30s        fit    5,467 prints   +0.41c/share  [+0.31, +0.49]
+      at mid +30s        test   5,284 prints   +0.47c/share  [+0.44, +0.49]
+      at mid +5min       fit    5,467 prints   +0.34c/share  [+0.26, +0.42]
+      at mid +5min       test   5,284 prints   +0.27c/share  [+0.11, +0.40]
+      crossed out +5min  fit    5,467 prints   -1.29c/share  [-1.32, -1.25]
+      crossed out +5min  test   5,284 prints   -1.44c/share  [-1.63, -1.29]
+      held to settlement fit    5,467 prints   -5.02c/share  [-10.98, +1.59]
+      held to settlement test   5,284 prints   -4.11c/share  [-16.81, +11.40]
