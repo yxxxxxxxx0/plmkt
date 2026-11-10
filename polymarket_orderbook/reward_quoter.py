@@ -7,12 +7,15 @@ of its capital in rewards; this measures the other half, the fills, live.
 Selection (once, saved in the state file so a restart resumes the same markets):
   every market in /rewards/markets/current with min size <= --max-min-size, no taker delay,
   not sports, 9-120 days to its end date, traded in the last 24 h, mid 15-85c, another maker
-  already scoring (an empty book is usually a new or decided market), then the --markets best
+  already scoring (an empty book is usually a new or decided market), book spread within 2 x the
+  reward band (a wider book's mid is no fair value: on 2026-11-10 other makers re-centred 10-25c
+  away from it and ran over every quote), then the --markets best
   by estimated reward per dollar that fit in the bankroll.
 
 Quoting, in YES space (an ask on YES is a bid on NO): size = max(min size, 20) shares, half way
 out in the reward band (score 0.25 of the best), re-priced when the target moves a tick, pulled
-for 60 s when the mid moves 5c within 30 s. Inventory cap 2 x size per side. Fills use the queue
+for 60 s when the mid moves 5c within 30 s. Inventory cap 2 x size per side, with quotes leaned
+against the position (sigbot/pmmm.py's skew) so it is worked off by the opposite quote, not held. Fills use the queue
 model from arb_scan.py (join the back of the level; prints at our price eat the queue first; a
 print or the opposite book through our price fills us). Rewards are scored once a minute with the
 docs' formula: S = ((v - s) / v)^2 per share, min of the two sides (single side / 3 when the mid
@@ -127,7 +130,8 @@ def select(a):
         others = q_min(score(bid, mid, c["v"], c["minsz"]), score(ask, mid, c["v"], c["minsz"]), mid)
         n = max(c["minsz"], 20)
         c.update(mid=mid, size=n, capital=n * (1 - c["v"]), others=others)   # both sides rest: n*(mid-v/2) + n*(1-mid-v/2)
-        if 0.15 <= mid <= 0.85 and others > 0:
+        spread = min(p for p, _ in ask) - max(p for p, _ in bid)
+        if 0.15 <= mid <= 0.85 and others > 0 and spread <= 2 * c["v"]:
             mine = 0.25 * n
             c["est"] = c["rate"] * mine / (mine + others) / c["capital"]
     C.sort(key=lambda c: -c["est"])
@@ -160,7 +164,7 @@ class Quoter:
 
     @staticmethod
     def _csv(path, header):
-        new = not os.path.exists(path)
+        new = not os.path.exists(path) or os.path.getsize(path) == 0
         f = open(path, "a", newline="", encoding="utf-8")
         w = csv.writer(f)
         if new:
@@ -202,11 +206,14 @@ class Quoter:
             h.pop(0)
         if max(x for _, x in h) - min(x for _, x in h) >= PULL_MOVE:
             self.pulled[t] = now + PULL_S
-        if now < self.pulled[t]:
+        if now < self.pulled[t] or min(b["asks"]) - max(b["bids"]) > 2 * m["v"]:   # no anchor for the mid
             self.orders[t] = {}
             return
         net, n = self.acct.net.get(t, 0.0), m["size"]
-        tgt = {"bid": tick_floor(mid - m["v"] / 2, m["tick"]), "ask": tick_ceil(mid + m["v"] / 2, m["tick"])}
+        # inventory skew, as in sigbot/pmmm.py: lean both quotes against the position so the other side
+        # fills and flattens it instead of holding to resolution. At the cap the closing quote sits at the mid.
+        c = mid - m["v"] / 2 * net / (2 * n)
+        tgt = {"bid": tick_floor(c - m["v"] / 2, m["tick"]), "ask": tick_ceil(c + m["v"] / 2, m["tick"])}
         tgt["bid"] = min(tgt["bid"], round(min(b["asks"]) - m["tick"], 6))   # never cross
         tgt["ask"] = max(tgt["ask"], round(max(b["bids"]) + m["tick"], 6))
         for side in ("bid", "ask"):
@@ -308,7 +315,7 @@ def report():
     import pandas as pd
     st = json.load(open(STATE))
     M = pd.read_csv(MIN_CSV)
-    F = pd.read_csv(FILL_CSV) if os.path.exists(FILL_CSV) else pd.DataFrame()
+    F = pd.read_csv(FILL_CSV) if os.path.exists(FILL_CSV) and os.path.getsize(FILL_CSV) else pd.DataFrame()
     days = (M.ts.max() - M.ts.min()) / 86400
     print(f"{len(st['markets'])} markets, {days:.2f} days logged, bankroll ${st['bankroll']:.0f}")
     by = M.groupby("cond").agg(minutes=("ts", "size"), quoted=("my_q", lambda x: (x > 0).mean()), share=("share", "mean"),
@@ -320,12 +327,17 @@ def report():
     paid = daily.where(daily >= 1, 0)                  # payouts under $1 a day are not paid (assumed account-wide)
     print(f"\nrewards accrued ${daily.sum():.2f}; paid after the $1/day minimum ${paid.sum():.2f}")
     last = M.sort_values("ts").groupby("cond").tail(1).set_index("cond")
-    pos = sum(n * last.loc[next(m['cond'] for m in st['markets'] if m['yes'] == t), "mid"]
-              for t, n in st["net"].items() if any(m["yes"] == t for m in st["markets"]))
-    fill_pnl = st["cash"] + pos - st["bankroll"]
-    print(f"fill P&L marked at the last mid: ${fill_pnl:+.2f} ({len(F)} fills)  ->  net ${paid.sum() + fill_pnl:+.2f}")
+    cond = {m["yes"]: m["cond"] for m in st["markets"]}
+    for how, col in (("mid", "mid"), ("price you could sell or cover at", None)):
+        px = lambda t, n: last.loc[cond[t], "mid"] if col else last.loc[cond[t], "best_bid" if n > 0 else "best_ask"]
+        pos = sum(n * px(t, n) if n > 0 else -n * (1 - px(t, n)) for t, n in st["net"].items() if t in cond)   # short YES = long NO
+        fill_pnl = st["cash"] + pos - st["bankroll"]
+        print(f"fill P&L marked at the last {how}: ${fill_pnl:+.2f} ({len(F)} fills)  ->  net ${paid.sum() + fill_pnl:+.2f}")
     if len(F):
-        M2 = M.sort_values("ts")
+        rt = F.assign(sgn=F.side.map({"bid": -1, "ask": 1}))
+        print(f"  fills: {(F.side == 'bid').sum()} buys, {(F.side == 'ask').sum()} sells; "
+              f"shares still held {sum(abs(n) for n in st['net'].values()):.0f}")
+        M2 = M.sort_values("ts").astype({"ts": float})
         for h in (60, 600, 3600):
             x = pd.merge_asof(F.assign(t2=F.ts + h).sort_values("t2"), M2[["ts", "cond", "mid"]].rename(columns={"ts": "t2", "mid": "mid_h"}),
                               on="t2", by="cond", direction="forward").dropna(subset=["mid_h"])
