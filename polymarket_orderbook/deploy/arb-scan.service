@@ -1,0 +1,14 @@
+[Unit]
+Description=Polymarket neg-risk arb paper scanner
+After=network-online.target
+
+[Service]
+WorkingDirectory=/opt/plmkt/polymarket_orderbook
+ExecStart=/opt/plmkt/venv/bin/python -u arb_scan.py --duration 3600
+# exits hourly on purpose -> restart = fresh event discovery
+Restart=always
+RestartSec=5
+User=ec2-user
+
+[Install]
+WantedBy=multi-user.target
