@@ -5,13 +5,14 @@ Universe (refreshed every REFRESH_MIN): every open event from Gamma, paged with 
 is unset or 0. Arbitrage checked, all on delay-free markets only:
 
   buy all YES   negRisk event, one YES per outcome; pays $1 if exactly one outcome wins.
-                Safe only if the outcomes are exhaustive: READ THE RULES before trading.
+                Skipped on negRiskAugmented events (outcomes can be added later, so an unlisted
+                winner pays $0). Still READ THE RULES before trading.
   buy all NO    negRisk event, one NO per outcome; pays n-1 if one wins (n if none), always safe.
   nested        team champion NO + same team conference YES; pays >= $1 whatever happens.
 
 Books come from the CLOB market websocket (full snapshot, then price_change deltas), so every
 change is seen. A group is evaluated only once every leg has had a snapshot. A gap OPENS when the
-locked-in profit (after a taker fee of 0.05*p(1-p) a share, walking the ask ladders, cost capped at
+locked-in profit (after each market's own taker fee, rate*p(1-p) a share, walking the ask ladders, cost capped at
 $100) exceeds MIN_PROFIT, and CLOSES when profit falls to 0. Each opening is re-checked against
 the REST /books endpoint, so a gap caused by a missed websocket update is marked unconfirmed.
 
@@ -47,7 +48,23 @@ NESTED = [("Pro Football: 2027 Champion", ["Pro Football: 2027 NFC Champion", "P
           ("NBA: 2027 Champion", ["NBA: 2027 Western Conference Champion", "NBA: 2027 Eastern Conference Champion"])]
 BUDGET, MIN_PROFIT = 100.0, 0.01
 CHUNK, REFRESH_MIN, STATUS_S = 400, 30, 60
-fee = lambda p: 0.05 * p * (1 - p)
+MIN_PER_YEAR, MAX_DAYS = 0.10, 30     # a gap is flagged TRADE only if it pays >= 10%/yr and frees the money within 30 days
+
+
+def rate(m):
+    """The market's own taker fee rate (crypto 0.07, politics 0.04, geopolitics 0, ...)."""
+    if not m.get("feesEnabled"):
+        return 0.0
+    return float((m.get("feeSchedule") or {}).get("rate", 0.05))
+
+
+def tradeable(profit, cost, end_date):
+    try:
+        days = (dt.date.fromisoformat(end_date) - dt.date.today()).days
+    except (TypeError, ValueError):
+        return False
+    py = per_year(profit, cost, end_date)
+    return 0 <= days <= MAX_DAYS and py is not None and py >= MIN_PER_YEAR
 
 
 def per_year(profit, cost, end_date):
@@ -106,10 +123,12 @@ def build_groups(E):
         T = [toks(m) for m in ms]
         if any(None in t for t in T):
             continue
+        F = [rate(m) for m in ms]
         base = dict(title=e.get("title", ""), slug=e.get("slug", ""), end=(e.get("endDate") or "")[:10], n=len(ms),
                     has_other=any((m.get("groupItemTitle") or "").strip().lower().startswith("other") or m.get("negRiskOther") for m in ms))
-        G[f"{e['id']}:YES"] = dict(base, kind="buy all YES", legs=[t[0] for t in T], payout=1.0)
-        G[f"{e['id']}:NO"] = dict(base, kind="buy all NO", legs=[t[1] for t in T], payout=len(ms) - 1.0)
+        if not e.get("negRiskAugmented"):
+            G[f"{e['id']}:YES"] = dict(base, kind="buy all YES", legs=[t[0] for t in T], fees=F, payout=1.0)
+        G[f"{e['id']}:NO"] = dict(base, kind="buy all NO", legs=[t[1] for t in T], fees=F, payout=len(ms) - 1.0)
     by_title = {(e.get("title") or "").strip(): e for e in E}
     for champ, confs in NESTED:
         C = {(m.get("groupItemTitle") or "").strip(): m for m in by_title.get(champ, {}).get("markets", [])
@@ -119,13 +138,14 @@ def build_groups(E):
                 t = (m.get("groupItemTitle") or "").strip()
                 if t in C and not m.get("closed") and delay_free(m):
                     a, b = toks(C[t])[1], toks(m)[0]
+                    fz = [rate(C[t]), rate(m)]
                     if a and b:
                         G[f"nested:{conf}:{t}"] = dict(kind="nested", title=f"{t}: {champ} NO + {conf} YES", slug="", end="",
-                                                       n=2, has_other=False, legs=[a, b], payout=1.0)
+                                                       n=2, has_other=False, legs=[a, b], fees=fz, payout=1.0)
     return G, n_free, n_all
 
 
-def fill(ladders, payout):
+def fill(ladders, payout, rates):
     """Buy one share of every leg per set, walking each ask ladder. Returns (sets, cost, profit, gross)."""
     legs = [list(l) for l in ladders]
     if not legs or any(not l for l in legs):
@@ -133,7 +153,7 @@ def fill(ladders, payout):
     sets = cost = profit = gross = 0.0
     while all(legs):
         prices = [l[0][0] for l in legs]
-        unit = sum(p + fee(p) for p in prices)
+        unit = sum(p + r * p * (1 - p) for p, r in zip(prices, rates))
         if payout - unit <= 0:
             break
         q = min(min(l[0][1] for l in legs), (BUDGET - cost) / unit)
@@ -171,27 +191,28 @@ class Watcher:
         g = self.groups.get(gid)
         if not g or not all(t in self.ready for t in g["legs"]):
             return
-        sets, cost, profit, gross = fill([self.ladder(t) for t in g["legs"]], g["payout"])
+        sets, cost, profit, gross = fill([self.ladder(t) for t in g["legs"]], g["payout"], g["fees"])
         now = time.time(); o = self.open.get(gid)
         if o is None and profit > MIN_PROFIT:
             o = self.open[gid] = dict(gid=gid, kind=g["kind"], title=g["title"], slug=g["slug"], end_date=g["end"], n=g["n"],
                                       has_other=g["has_other"], start=now, profit_open=round(profit, 4), sets_open=round(sets, 2),
                                       cost_open=round(cost, 2), gross_open=round(gross, 4), best=round(profit, 4), confirmed=None,
-                                      per_year=per_year(profit, cost, g["end"]))
+                                      per_year=per_year(profit, cost, g["end"]),
+                                      trade=tradeable(profit, cost, g["end"]))
             py = o["per_year"]
-            log(f"OPEN   {g['kind']:11s} ${profit:6.2f} on ${cost:6.2f} ({sets:.1f} sets)  "
+            log(f"OPEN   {'TRADE ' if o['trade'] else ''}{g['kind']:11s} ${profit:6.2f} on ${cost:6.2f} ({sets:.1f} sets)  "
                 f"{'%6.1f%%/yr' % (100 * py) if py is not None else '   ?%/yr'} to {g['end'] or '?'}  {g['title'][:60]}")
-            asyncio.get_running_loop().run_in_executor(None, self.confirm, gid, list(g["legs"]), g["payout"])
+            asyncio.get_running_loop().run_in_executor(None, self.confirm, gid, list(g["legs"]), g["payout"], list(g["fees"]))
         elif o is not None:
             if profit <= 0:
                 self.close(gid, "taken or repriced")
             else:
                 o["best"] = round(max(o["best"], profit), 4)
 
-    def confirm(self, gid, legs, payout):
+    def confirm(self, gid, legs, payout, rates):
         books = curl("https://clob.polymarket.com/books", [{"token_id": t} for t in legs]) or []
         L = {b["asset_id"]: sorted((float(x["price"]), float(x["size"])) for x in b.get("asks", [])) for b in books}
-        _, _, p, _ = fill([L.get(t, []) for t in legs], payout)
+        _, _, p, _ = fill([L.get(t, []) for t in legs], payout, rates)
         if gid in self.open:
             self.open[gid]["confirmed"] = bool(p > 0)
             self.open[gid]["profit_rest"] = round(p, 4)
@@ -293,7 +314,10 @@ def report():
     import statistics as st
     d = sorted(r["seconds_open"] for r in real)
     print(f"seconds open: median {st.median(d):.1f}, 90th pct {d[int(.9 * (len(d) - 1))]:.1f}, max {d[-1]:.1f}")
-    print(f"confirmed on REST: {sum(r['confirmed'] is True for r in real)}/{len(real)}\n")
+    print(f"confirmed on REST: {sum(r['confirmed'] is True for r in real)}/{len(real)}")
+    t = [r for r in real if r.get("trade") and r["confirmed"]]
+    print(f"TRADE gaps (>= {MIN_PER_YEAR:.0%}/yr, money back within {MAX_DAYS} days, confirmed): {len(t)}, "
+          f"${sum(r['best'] for r in t):.2f} best-case in total\n")
     for r in sorted(real, key=lambda r: -r["best"])[:30]:
         py = r.get("per_year")
         print(f"  {'%6.1f%%/yr' % (100 * py) if py is not None else '   ?%/yr'}  ${r['best']:6.2f} best (${r['profit_open']:.2f} at open, cost ${r['cost_open']:.2f})  open {r['seconds_open']:8.1f}s  "
