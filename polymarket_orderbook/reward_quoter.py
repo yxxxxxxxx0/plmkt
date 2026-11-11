@@ -299,8 +299,19 @@ class Quoter:
                 self.requote(t, now)
             await asyncio.sleep(1)
 
+    def refresh_rates(self):
+        # the pool changes daily; selection-time total_daily_rate went stale (Super Bowl 200 -> 50/day)
+        today = dt.date.today().isoformat()
+        for m in self.mk.values():
+            d = get(f"{CLOB}/rewards/markets/{m['cond']}") or {}
+            cfg = (d.get("data") or [{}])[0].get("rewards_config") or []
+            m["rate"] = sum(c["rate_per_day"] for c in cfg if c["start_date"] <= today <= c["end_date"])
+
     async def sample_loop(self):
+        await asyncio.to_thread(self.refresh_rates)
         while True:
+            if int(time.time() // 60) % 30 == 0:
+                await asyncio.to_thread(self.refresh_rates)
             await asyncio.sleep(60 - time.time() % 60 + random.uniform(0, 59))   # one random instant per minute
             self.sample()
             if int(time.time() // 60) % 15 == 0:

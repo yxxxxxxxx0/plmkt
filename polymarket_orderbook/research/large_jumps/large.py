@@ -10,7 +10,6 @@ FEE, STAKE, MINHOLD, TIMEOUT = 0.05, 10.0, 25, 450          # slots: 5s min hold
 STABLE = (10, 15, 25)                                       # 2s, 3s, 5s of stillness
 fee = lambda p: FEE * p * (1 - p) / 0.01
 
-D = pd.read_pickle(os.path.join(S, 'combined_test.pkl'))    # (test rows only) -> rebuild full set below
 D = pd.read_pickle(os.path.join(S, 'newmodel_ds.pkl'))
 meta = pd.read_csv(os.path.join(IN, 'yes_meta.csv'), dtype={'yes': str}).drop_duplicates('yes').set_index('yes')
 G = pd.read_csv(os.path.join(IN, 'game_state.csv')).sort_values(['slug', 't'])
