@@ -9,3 +9,4 @@ orjson>=3.12
 
 # build_match_index.py (streams multi-GB data/uniform/*.json without json.load)
 ijson>=3.5
+py-clob-client

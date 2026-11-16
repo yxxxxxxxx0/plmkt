@@ -1,7 +1,13 @@
 """python test_arb_scan.py -- sizing, fills, inventory and quoting logic."""
+import os
+import tempfile
 from types import SimpleNamespace
 
-from arb_scan import Account, Sim, SimOrder, fill, ladder, on_book, on_trade, sets_held, size_arb
+import arb_scan
+from arb_scan import (Account, Sim, SimOrder, exit_fill, exit_ladder, fill, ladder, on_book, on_trade, sets_held,
+                      size_arb, size_exit)
+
+arb_scan.STATE = os.path.join(tempfile.mkdtemp(), "state.json")   # never read or write the live state
 
 # 3 outcomes, asks sum 0.90 for 10 sets, then 0.99 for more: no fee
 books = [{"bids": {0.25: 50}, "asks": {0.30: 10, 0.33: 100}} for _ in range(3)]
@@ -18,6 +24,14 @@ s, lim, _ = size_arb([ladder(b, "BUY_NO", {}) for b in nb], [0] * 3, 2.0, 0.005,
 assert abs(s - 20) < 1e-6 and abs(lim[0] - 0.60) < 1e-9
 assert fill([(0.30, 10), (0.33, 100)], 0.30, 50, 0)[0] == 10          # limit respected
 assert ladder(books[0], "BUY_YES", {0.30: 10}) == [(0.33, 100)]       # footprint
+
+# take profit: YES sets sell into bids, NO sets sell by buying YES at the ask
+xb = [{"bids": {0.36: 10, 0.34: 100}, "asks": {0.37: 10}} for _ in range(3)]
+s, lim, got = size_exit([exit_ladder(b, "yes") for b in xb], [0] * 3, 1.03, 50)
+assert abs(s - 10) < 1e-6 and lim == [0.36] * 3 and abs(got - 10.8) < 1e-9   # 1.02 a set stops at the floor
+assert abs(size_exit([exit_ladder(b, "yes") for b in xb], [0] * 3, 1.0, 50)[0] - 50) < 1e-6   # held caps it
+assert exit_ladder(xb[0], "no") == [(1 - 0.37, 10)]
+assert exit_fill([(0.36, 10), (0.34, 100)], 0.36, 50, 0)[0] == 10      # limit respected
 
 # queue (same cases as sigbot tests/test_pmmm.py)
 o = SimOrder("bid", 0.30, 100, ahead=150, live_at=0)
